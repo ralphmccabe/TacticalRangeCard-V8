@@ -1,0 +1,16 @@
+name: Keep Supabase Alive
+on:
+  schedule:
+    # Runs at 00:00 every 3rd day to prevent the 7-day auto-pause
+    - cron: '0 0 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping_supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          curl -s -X GET "https://nvnwqcfgpwzheekninle.supabase.co/rest/v1/" \
+            -H "apikey: sb_publishable_si9fg-bURw3K5yprgAgifw_Eez79zU0" \
+            -H "Authorization: Bearer sb_publishable_si9fg-bURw3K5yprgAgifw_Eez79zU0"

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Range Card - Privacy Protocol</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #94a3b8; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="p-8 max-w-2xl mx-auto">
+    <header class="mb-12 border-b border-gray-800 pb-6 text-center">
+        <h1 class="text-emerald-500 font-mono font-black text-2xl tracking-tighter uppercase">Privacy Protocol</h1>
+        <p class="text-[10px] text-gray-400 mt-2 uppercase tracking-widest">Document ID: TRC-PRIV-2026-A</p>
+    </header>
+
+    <section class="space-y-8 text-sm leading-relaxed">
+        <div>
+            <h2 class="text-white font-black uppercase text-xs mb-2">1. Geospatial Data (GPS)</h2>
+            <p>Tactical Range Card utilizes high-precision GNSS sensors to calculate Earth-rotation (Coriolis) and target vector solutions. This data is processed locally on your device. We do not transmit your live location to external servers unless you explicitly engage the 'Tac Comms' mission mode, which shares location only with your authenticated team members.</p>
+        </div>
+
+        <div>
+            <h2 class="text-white font-black uppercase text-xs mb-2">2. Optical & Acoustic Sensors</h2>
+            <p>Access to your device's Camera and Microphone is required for situational awareness features (Body Cam/Surveillance Hub) and PTT voice communications. All video and audio data is processed end-to-end between your tactical units. We do not record or store your surveillance feeds on our infrastructure.</p>
+        </div>
+
+        <div>
+            <h2 class="text-white font-black uppercase text-xs mb-2">3. Local Storage & IndexedDB</h2>
+            <p>To ensure total offline reliability (Airplane Mode), all range cards, profiles, and intel snapshots are stored in an encrypted local database (IndexedDB) on your device. This data remains on your hardware until you manually delete it or clear the application cache.</p>
+        </div>
+
+        <div>
+            <h2 class="text-white font-black uppercase text-xs mb-2">4. Third-Party Data Sharing</h2>
+            <p>We absolutely do not sell, rent, or share your personal data, location data, or sensor feeds with any third-party advertising networks, analytics providers, or external organizations. Your tactical data belongs to you.</p>
+        </div>
+
+
+    </section>
+
+    <footer class="mt-24 text-[8px] text-gray-400 uppercase text-center tracking-widest">
+        &copy; 2026 Tactical Range Card | MISSION CRITICAL PRIVACY
+    </footer>
+</body>
+</html>
+

@@ -1,0 +1,48 @@
+# Custom Sandbox Rules
+cert.pfx
+run_secure_server.py
+*.pfx
+serve.ps1
+
+# Node.js / NPM
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Android & Gradle Build Files
+.gradle/
+build/
+app/
+gradle/
+build.gradle
+gradlew
+gradlew.bat
+gradle.properties
+settings.gradle
+twa-manifest.json
+manifest-checksum.txt
+manifest-recipe.txt
+local.properties
+*.apk
+*.aab
+*.idsig
+android.keystore
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+*.pem
+generate_cert.py
+
+# Local dev scratch folder (never pushed)
+_dev/
+__pycache__/
+*.pyc
+fix_*.py
+inject_*.py
+check_*.py
+update_canvas.py
+server.py
+secure_server.py

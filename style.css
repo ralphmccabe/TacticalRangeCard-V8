@@ -1,0 +1,596 @@
+/* Base Setup */
+html,
+body {
+    overscroll-behavior-y: contain !important;
+    height: auto !important;
+    min-height: 100vh;
+}
+
+:root {
+    --neon-red: #ff3131;
+    --dark-bg: #1e293b;
+    /* gray-800 equivalent */
+    --panel-bg: #0f172a;
+    /* gray-900 equivalent */
+    --border-color: #475569;
+    /* gray-600 equivalent */
+}
+
+/* Hide number input spinner arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-green);
+}
+
+.flex-1.overflow-y-auto,
+.overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    /* Smooth inertial scrolling for iOS */
+}
+
+/* Form Styles */
+.input-field {
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid #333;
+    color: #eee;
+    padding: 0.5rem;
+    font-size: 16px;
+    /* Minimum 16px to prevent auto-zoom on iOS/Android focus */
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.input-field:focus {
+    border-color: var(--neon-green);
+    box-shadow: 0 0 5px rgba(57, 255, 20, 0.2);
+}
+
+/* Force Calendar/Time picker icon to be white */
+::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+.section-label {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.btn-icon {
+    padding: 0.5rem;
+    background: #222;
+    border: 1px solid #333;
+    color: #ccc;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: #333;
+    color: white;
+}
+
+.btn-icon-danger {
+    padding: 0.5rem;
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    color: #ff6b6b;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon-danger:hover {
+    background: rgba(255, 0, 0, 0.2);
+    border-color: #ff6b6b;
+}
+
+/* Grid Background for Main Area */
+.bg-grid-pattern {
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Canvas Styles */
+canvas {
+    touch-action: pinch-zoom;
+}
+
+/* Distance Table Styling */
+.distance-row {
+    flex: 1;
+    border-bottom: 1px solid #e5e7eb;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    text-align: center;
+}
+
+.distance-row:last-child {
+    border-bottom: none;
+}
+
+.distance-cell {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #1e3a8a;
+    /* blue-900 */
+}
+
+.distance-cell:last-child {
+    border-right: none;
+}
+
+.distance-marker {
+    font-weight: bold;
+    color: #1e3a8a;
+}
+
+/* Handwriting Font Simulation with Layout Guard */
+.font-handwriting {
+    font-family: 'Inter', sans-serif;
+    font-style: italic;
+    font-size: 11px;
+    /* Prevent long names or notes from stretching the containers */
+    overflow-wrap: break-word;
+    word-break: break-all;
+    display: inline-block;
+    max-width: 100%;
+}
+
+/* Mobile View Toggle Styling */
+#mobileViewToggle {
+    box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.4);
+}
+
+@media (max-width: 1024px) {
+    #mainLayout {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        height: auto !important;
+    }
+
+    aside {
+        height: auto !important;
+        overflow-y: visible !important;
+        width: 100% !important;
+    }
+
+    #previewPanel {
+        padding: 0.5rem;
+        min-height: 100vh;
+        width: 100% !important;
+        flex-shrink: 0;
+    }
+
+    .section-label {
+        font-size: 11px;
+        padding-top: 0.75rem;
+        border-bottom-color: #333;
+    }
+
+    .input-field {
+        height: 44px;
+        font-size: 14px;
+    }
+
+    aside .shrink-0 {
+        position: sticky;
+        top: 0;
+        background: #000;
+        border-bottom: 1px solid #222;
+        z-index: 50;
+    }
+}
+
+/* Global Accent overrides */
+:root {
+    --accent-color: #22c55e;
+    --accent-rgb: 34, 197, 94;
+    --neon-green: var(--accent-color);
+}
+
+.text-neon-green {
+    color: var(--accent-color) !important;
+}
+
+.bg-neon-green {
+    background-color: var(--accent-color) !important;
+}
+
+.border-neon-green {
+    border-color: var(--accent-color) !important;
+}
+
+/* Handle Tailwind's transparency utilities */
+.border-neon-green\/30 {
+    border-color: rgba(var(--accent-rgb), 0.3) !important;
+}
+
+.border-neon-green\/50 {
+    border-color: rgba(var(--accent-rgb), 0.5) !important;
+}
+
+.bg-neon-green\/5 {
+    background-color: rgba(var(--accent-rgb), 0.05) !important;
+}
+
+.bg-neon-green\/10 {
+    background-color: rgba(var(--accent-rgb), 0.1) !important;
+}
+
+.bg-neon-green\/20 {
+    background-color: rgba(var(--accent-rgb), 0.2) !important;
+}
+
+.accent-neon-green {
+    accent-color: var(--accent-color) !important;
+}
+
+.selection\:bg-neon-green::selection {
+    background-color: var(--accent-color) !important;
+}
+
+/* Selection fix for Firefox */
+.selection\:bg-neon-green::-moz-selection {
+    background-color: var(--accent-color) !important;
+}
+
+/* Ensure icons using data-lucide also inherit the color if they have the utility class */
+[data-lucide].text-neon-green {
+    stroke: var(--accent-color) !important;
+}
+
+/* Disable hover effects on touch devices to prevent "stuck" states */
+@media (hover: none) {
+    .hover\:bg-gray-700:hover {
+        background-color: rgb(31 41 55 / var(--tw-bg-opacity));
+    }
+
+    .hover\:bg-blue-900\/40:hover {
+        background-color: rgb(30 58 138 / 0.4);
+    }
+
+    .hover\:border-blue-50:hover {
+        border-color: rgb(59 130 246 / 0.5);
+    }
+
+    button:active {
+        transform: scale(0.95);
+    }
+}
+
+/* Mobile Input Adjustments */
+@media (max-width: 1024px) {
+    .input-field {
+        font-size: 16px !important;
+        /* Force 16px on mobile to stop zoom */
+        padding: 12px 8px;
+    }
+}
+
+/* Industrial Strength Snapshot Fix: Capture Context */
+body.is-capturing #card-container {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 1000px !important;
+    height: 750px !important;
+    transform: none !important;
+    z-index: 99999 !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 2rem !important;
+    /* Matches p-8 (32px) */
+    box-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+}
+
+body.is-capturing {
+    overflow: hidden !important;
+}
+
+body.is-capturing #previewPanel {
+    opacity: 1 !important;
+    display: block !important;
+    visibility: visible !important;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    z-index: 99998;
+}
+
+body.is-capturing #card-scale-wrapper {
+    width: 1000px !important;
+    height: 750px !important;
+    transform: none !important;
+    padding: 0 !important;
+}
+
+/* === TACTICAL TOOLS DASHBOARD FRAMEWORK === */
+.tactical-dashboard-active {
+    overflow: hidden !important;
+}
+
+/* Only clamp height when dashboard overlay is actively open */
+.tactical-dashboard-active, 
+.tactical-dashboard-active body {
+    overscroll-behavior-y: contain !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+}
+
+#tacticalDashboard {
+    font-family: 'Inter', 'JetBrains Mono', monospace;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(6, minmax(0, 1fr));
+    gap: 0.5rem;
+    width: 100%;
+    height: calc(100vh - 4.5rem);
+    padding: 0.5rem;
+    overflow: hidden;
+}
+
+/* Standard Grid Positions */
+.dash-sidebar { 
+    grid-column: span 3; 
+    grid-row: span 6; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 0.5rem; 
+    overflow-y: auto; 
+    overflow-x: hidden; 
+    max-height: calc(100vh - 5rem);
+    padding-right: 4px;
+}
+/* Clean custom scrollbar for professional look */
+.dash-sidebar::-webkit-scrollbar { width: 4px; }
+.dash-sidebar::-webkit-scrollbar-track { background: transparent; }
+.dash-sidebar::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 4px; }
+.dash-viewport { grid-column: span 9; grid-row: span 3; position: relative; }
+.dash-bottombar { 
+    grid-column: span 9; 
+    grid-row: span 2; 
+    display: grid; 
+    grid-auto-flow: column; 
+    grid-auto-columns: minmax(220px, 1fr); 
+    gap: 0.5rem; 
+    overflow-x: auto; 
+    overflow-y: hidden; 
+    padding-bottom: 2px;
+}
+/* Stealth thin scrollbar for bottom dock if expanding */
+.dash-bottombar::-webkit-scrollbar { height: 3px; }
+.dash-bottombar::-webkit-scrollbar-track { background: transparent; }
+.dash-bottombar::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.2); border-radius: 4px; }
+
+#dash-bottom-row {
+    grid-column: span 9; 
+    grid-row: span 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Widget Container Base */
+.dash-panel {
+    background: rgba(17, 24, 39, 0.9);
+    border: 1px solid rgba(var(--accent-rgb), 0.5);
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.dash-panel:hover {
+    border-color: rgba(var(--accent-rgb), 1);
+    box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.2);
+}
+
+.dash-panel-header {
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.dash-panel-title {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.dash-panel-content {
+    flex: 1;
+    overflow: auto;
+    padding: 0.75rem;
+    position: relative;
+}
+
+.maximize-btn .close-label { display: none; }
+.is-maximized .maximize-btn .close-label { display: inline; }
+
+    #dash-panels.panel-maximized .dash-panel.maximized .maximize-btn .close-label {
+        display: inline-flex !important;
+        white-space: nowrap;
+        font-size: 8px !important;
+        padding: 4px 6px !important;
+    }
+
+    #dash-panels.panel-maximized .dash-panel.maximized .maximize-btn {
+        padding: 4px !important;
+        margin: 0px !important;
+        z-index: 50;
+        position: relative;
+    }
+
+/* FULLSCREEN MODE TOGGLE */
+.dash-panel.is-maximized {
+    position: fixed !important;
+    top: 1rem !important;
+    left: 1rem !important;
+    right: 1rem !important;
+    bottom: 1rem !important;
+    z-index: 999 !important;
+    background: #0f172a !important;
+    /* Outer border is ALWAYS mission green — signals "you are in a popup" */
+    border: 2px solid #10b981 !important;
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.2), 0 0 100px rgba(0,0,0,0.9) !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* Inner cards inside ANY maximized panel use the user's selected flavor/accent color */
+.vault-accent-card {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.2);
+}
+.vault-accent-card:hover {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 14px rgba(var(--accent-rgb), 0.4);
+    background: rgba(var(--accent-rgb), 0.07) !important;
+}
+
+
+/* Mobile Adaptation for Dashboard */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        height: auto;
+    }
+    .dash-panel {
+        min-height: 200px;
+    }
+    .dash-viewport {
+        min-height: 300px;
+    }
+}
+
+/* === FINAL HEAVY DUTY MOBILE OVERRIDE === */
+@media (max-width: 768px) {
+    .tactical-dashboard-active, .tactical-dashboard-active body { height: auto !important; max-height: none !important; overflow-y: auto !important; }
+    #tacticalDashboard:not(.hidden) { height: auto !important; min-height: 100vh; overflow-y: auto !important; display: block !important; }
+    .dashboard-grid { display: flex !important; flex-direction: column !important; height: auto !important; max-height: none !important; overflow: visible !important; gap: 1.5rem !important; padding: 0.75rem !important; }
+    .dash-sidebar, .dash-viewport, .dash-bottombar, #dash-bottom-row { grid-column: span 12 !important; grid-row: auto !important; width: 100% !important; height: auto !important; }
+    .dash-viewport { order: 1; height: 350px !important; z-index: 50 !important; display: flex !important; flex-direction: column !important; position: sticky !important; top: 0 !important; background: #030712 !important; border-bottom: 1px solid rgba(16,185,129,0.2) !important; }
+    .dash-sidebar { order: 2; height: auto !important; overflow-y: visible !important; max-height: none !important; }
+    .dash-sidebar .dash-panel { height: auto !important; min-height: 250px !important; }
+    .dash-bottombar { order: 3; display: flex !important; flex-direction: column !important; gap: 1rem !important; overflow-x: visible !important; height: auto !important; }
+    #dash-bottom-row { order: 4; height: auto !important; }
+    .dash-panel { height: 280px !important; display: flex !important; flex-direction: column !important; }
+    .dash-panel.is-maximized { position: fixed !important; top: 1rem !important; left: 0.5rem !important; right: 0.5rem !important; bottom: 2rem !important; width: auto !important; height: auto !important; z-index: 99999 !important; border-radius: 0.5rem !important; border: 2px solid #10b981 !important; }
+}
+
+
+/* ============================================================
+   TAC COMMS — 4-COLUMN MOBILE FIX
+   Keeps PTT / Chat / Map / Roster side by side on phones
+   ============================================================ */
+
+/* Force 4-col grid on ALL screen sizes — override Tailwind's sm/lg breakpoints */
+#comms-dashboard {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-rows: 1fr !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+/* On screens narrower than 600px: switch to 2x2 grid (still side by side, not stacked) */
+@media (max-width: 600px) {
+    #comms-dashboard {
+        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-rows: repeat(2, 1fr) !important;
+        overflow-y: hidden !important;
+        height: 420px !important;
+        min-height: 420px !important;
+    }
+    
+    /* Give the comms panel enough room on mobile */
+    #panel-comms {
+        height: 460px !important;
+        max-height: 460px !important;
+    }
+
+    /* Each comms column should show properly */
+    #comms-dashboard > div {
+        height: 210px !important;
+        max-height: 210px !important;
+        overflow-y: auto !important;
+    }
+}
+
+
+
+
+[data-lucide] {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Custom Circle Buttons */
+.circle-btn-ammo { background-color: rgba(52, 211, 153, 0.15) !important; border-color: #34d399 !important; color: #34d399 !important; box-shadow: 0 0 20px rgba(52, 211, 153, 0.25) !important; }
+.circle-btn-ammo:hover { background-color: rgba(52, 211, 153, 0.3) !important; transform: scale(1.03) !important; }
+.circle-btn-ammo i, .circle-btn-ammo span { filter: drop-shadow(0 0 5px rgba(52,211,153,0.8)); }
+
+.circle-btn-mapper { background-color: rgba(232, 121, 249, 0.15) !important; border-color: #e879f9 !important; color: #e879f9 !important; box-shadow: 0 0 20px rgba(232, 121, 249, 0.25) !important; }
+.circle-btn-mapper:hover { background-color: rgba(232, 121, 249, 0.3) !important; transform: scale(1.03) !important; }
+.circle-btn-mapper i, .circle-btn-mapper span { filter: drop-shadow(0 0 5px rgba(232,121,249,0.8)); }
+
+.circle-btn-hud { background-color: rgba(163, 230, 53, 0.15) !important; border-color: #a3e635 !important; color: #a3e635 !important; box-shadow: 0 0 20px rgba(163, 230, 53, 0.25) !important; }
+.circle-btn-hud:hover { background-color: rgba(163, 230, 53, 0.3) !important; transform: scale(1.03) !important; }
+.circle-btn-hud i, .circle-btn-hud span { filter: drop-shadow(0 0 5px rgba(163,230,53,0.8)); }
+
+.circle-btn-tools { background-color: rgba(244, 63, 94, 0.15) !important; border-color: #f43f5e !important; color: #f43f5e !important; box-shadow: 0 0 20px rgba(244, 63, 94, 0.25) !important; }
+.circle-btn-tools:hover { background-color: rgba(244, 63, 94, 0.3) !important; transform: scale(1.03) !important; }
+.circle-btn-tools i, .circle-btn-tools span { filter: drop-shadow(0 0 5px rgba(244,63,94,0.8)); }
+
