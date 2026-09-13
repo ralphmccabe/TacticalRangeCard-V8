@@ -9156,8 +9156,18 @@ try {
             </div>
         </div>
     </div>
+    <!-- MODULE INJECTIONS -->
+    <script type="module">
+        import { initCalculator } from './js/modules/calculator.js';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            initCalculator();
+            console.log("[V8 ENGINE] Calculator module loaded successfully.");
+        });
+    </script>
 </body>
 </html>
+
 
 
 
