@@ -26,7 +26,7 @@ function buildPopup(d) {
 }
 
 function upsertHostile(data) {
-    const map = window.orbitalMap;
+    const map = window.commsMapInstance;
     if (!map) return;
     const icon = makeHostileIcon(data.threatLevel);
     if (hostiles[data.id]) {
@@ -55,13 +55,13 @@ function renderHostileList() {
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 6px;border-bottom:1px solid #1e293b;gap:4px;">'
             + '<span style="color:' + tc(d.threatLevel) + ';font-weight:bold;font-size:10px;flex:1;">H: ' + (d.callsign||'?') + '</span>'
             + '<span style="color:#94a3b8;font-size:9px;">' + d.threatLevel + '</span>'
-            + '<button onclick="if(window.orbitalMap){window.orbitalMap.flyTo([' + d.lat + ',' + d.lng + '],14);setTimeout(()=>window.rtHostiles[\''+id+'\']&&window.rtHostiles[\''+id+'\'].marker.openPopup(),400);}" style="background:#1e293b;color:#f87171;border:1px solid #7f1d1d;border-radius:2px;padding:1px 5px;font-size:9px;cursor:pointer;">LOCATE</button>'
+            + '<button onclick="if(window.commsMapInstance){window.commsMapInstance.flyTo([' + d.lat + ',' + d.lng + '],14);setTimeout(()=>window.rtHostiles[\''+id+'\']&&window.rtHostiles[\''+id+'\'].marker.openPopup(),400);}" style="background:#1e293b;color:#f87171;border:1px solid #7f1d1d;border-radius:2px;padding:1px 5px;font-size:9px;cursor:pointer;">LOCATE</button>'
             + '</div>';
     }).join('');
 }
 
 function dropHostile(lat, lng) {
-    const map = window.orbitalMap;
+    const map = window.commsMapInstance;
     if (!map) { alert('Open the Geo Matrix map first.'); return; }
     const center = map.getCenter();
     const hostile = {
@@ -83,7 +83,7 @@ function dropHostile(lat, lng) {
 window.dropHostileBtn = dropHostile;
 
 function initMapLongPress() {
-    const map = window.orbitalMap;
+    const map = window.commsMapInstance;
     if (!map) return;
     let t = null;
     map.on('mousedown', (e) => { if (e.originalEvent.button !== 0) return; t = setTimeout(() => dropHostile(e.latlng.lat, e.latlng.lng), 700); });
@@ -180,7 +180,7 @@ export function initRedTeam() {
         }
     });
     const wait = setInterval(() => {
-        if (window.orbitalMap) {
+        if (window.commsMapInstance) {
             clearInterval(wait);
             initMapLongPress();
             initRedTeamChannel();

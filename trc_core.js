@@ -9301,6 +9301,8 @@ function initializeTacticalDashboard2() {
                 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     crossOrigin: true
                 }).addTo(commsMapInstance);
+                // Expose globally so Red Team module can hook in
+                window.commsMapInstance = commsMapInstance;
             }
         }
         
