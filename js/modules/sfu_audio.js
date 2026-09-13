@@ -209,34 +209,8 @@ function hookPTTButton() {
 }
 
 const waitCore = setInterval(() => {
-    const connectBtn = document.getElementById('comms-connect-btn');
-    if (connectBtn) {
+    if (window.commsChannel && window.commsUser) {
         clearInterval(waitCore);
-        
-        const oldClick = connectBtn.onclick;
-        connectBtn.onclick = () => {
-            const freqEl = document.getElementById('comms-freq');
-            const freq = freqEl ? freqEl.value : 'ALPHA';
-            
-            const liveFreqEl = document.getElementById('live-freq');
-            if (liveFreqEl) liveFreqEl.value = freq;
-            
-            if (window.commsUser) window.commsUser.freq = freq;
-            
-            if (oldClick) oldClick();
-            
-            setTimeout(() => {
-                if (window.commsUser && window.commsUser.id) {
-                    window.commsUser.freq = freq;
-                    connectToLiveKit(
-                        document.getElementById('comms-mission-id').value.trim() || 'TRC-MISSION-V8',
-                        window.commsUser.callsign,
-                        window.commsUser.role,
-                        freq
-                    );
-                }
-            }, 1000);
-        };
         
         const liveFreqEl = document.getElementById('live-freq');
         if (liveFreqEl) {
@@ -255,8 +229,10 @@ const waitCore = setInterval(() => {
                 }
                 
                 if (window.commsUser && window.commsUser.callsign) {
+                    const passEl = document.getElementById('comms-passcode');
+                    const mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
                     connectToLiveKit(
-                        document.getElementById('comms-mission-id').value.trim() || 'TRC-MISSION-V8',
+                        mission,
                         window.commsUser.callsign,
                         window.commsUser.role,
                         newFreq
@@ -264,6 +240,12 @@ const waitCore = setInterval(() => {
                 }
             });
         }
+        
+        // Initial connection
+        const passEl = document.getElementById('comms-passcode');
+        const mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
+        const freq = window.commsUser.freq || 'ALPHA';
+        connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, freq);
         
         console.log('[V8 ENGINE] LiveKit Audio Module loaded.');
     }
