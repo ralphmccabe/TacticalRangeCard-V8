@@ -3945,7 +3945,7 @@ function initializeTacticalDashboard2() {
         }
 
         // Adjust camera briefly to see both points perfectly
-        const group = new L.featureGroup(mapMarkers);
+        const group = L.featureGroup(mapMarkers);
         orbitalMap.fitBounds(group.getBounds().pad(0.2));
     }
 
@@ -9351,7 +9351,24 @@ function initializeTacticalDashboard2() {
                         }
                     }
                 } catch(e) {}
-                window.pushTacLog("GPS UN-AVAILABLE - SATELLITE MAP STANDBY", "WARNING");
+                window.pushTacLog("GPS UN-AVAILABLE - DEFAULTING TO MAP CENTER", "WARNING");
+                
+                // Force a coordinate so the operator is at least visible to teammates
+                if (commsMapInstance && !window.myLatestCoords) {
+                    const center = commsMapInstance.getCenter();
+                    window.myLatestCoords = { lat: center.lat, lng: center.lng };
+                    lastLat = center.lat;
+                    lastLng = center.lng;
+                    if (commsChannel) {
+                        commsChannel.track({
+                            online_at: new Date().toISOString(),
+                            location: window.myLatestCoords,
+                            user: commsUser,
+                            distress: window.isDistressActive,
+                            dutyStatus: window.myDutyStatus || ''
+                        }).catch(e=>{});
+                    }
+                }
             };
 
             const startGeoWatch = (highAcc) => {
@@ -9397,7 +9414,7 @@ function initializeTacticalDashboard2() {
         if (syncBtn) {
             syncBtn.onclick = () => {
                 if (Object.keys(window.teamMarkers || {}).length > 0) {
-                    const group = new L.featureGroup(Object.values(window.teamMarkers));
+                    const group = L.featureGroup(Object.values(window.teamMarkers));
                     commsMapInstance.fitBounds(group.getBounds().pad(0.1));
                     window.pushTacLog("MAP ALIGNED TO ENTIRE SQUAD", "SYS");
                 } else {
