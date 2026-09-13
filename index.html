@@ -6295,7 +6295,10 @@ try {
 
                         <div class="text-center">
 
-                            <h3 class="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em]">ESTABLISH SECURE LINK</h3>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em]">ESTABLISH SECURE LINK</h3>
+                                <button onclick="window.showCommsManual()" class="text-[7px] bg-cyan-950 border border-cyan-700 text-cyan-400 px-1.5 py-0.5 rounded font-bold uppercase hover:bg-cyan-900 transition-colors" aria-label="Comms Manual">? MANUAL</button>
+                            </div>
 
                             <p class="text-[6px] text-gray-400 uppercase">Authorized Personnel Only</p>
 
@@ -9181,7 +9184,37 @@ try {
         import { initMissionBoard } from './js/modules/mission_board.js';
         initMissionBoard();
     </script>
+
+    <!-- V8 COMMS MANUAL -->
+    <script>
+        window.showCommsManual = function() {
+            if(window.Swal) {
+                Swal.fire({
+                    title: '<span style="color:#06b6d4;font-family:monospace;">C2 COMMS MANUAL</span>',
+                    html: `
+                        <div style="text-align:left; font-family:monospace; font-size:11px; color:#cbd5e1; line-height:1.6; margin-top:10px;">
+                            <strong style="color:#f87171; font-size:12px;">🛡️ CHAIN OF COMMAND (ROLES)</strong><br>
+                            Typing <span style="color:#fbbf24; font-weight:bold;">COMMAND, LEAD, or DISPATCH</span> into your Role box unlocks the <b>Mission Status Board</b>, allowing you to post official SITREPs. All other roles are read-only.<br><br>
+                            
+                            <strong style="color:#f87171; font-size:12px;">🎯 RED TEAM TRACKER</strong><br>
+                            Click the <b style="color:#ef4444;">RED TEAM</b> button in the Team Tracker header. <b>Long-press (hold)</b> anywhere on the map to drop a hostile marker. Hostiles turn AMBER after 10 minutes to warn of stale intel.<br><br>
+
+                            <strong style="color:#f87171; font-size:12px;">🛰️ GPS VISIBILITY RULES</strong><br>
+                            The <b>Personnel List</b> shows everyone connected to the radio. The <b>Map</b> ONLY shows operators with active GPS sensors. Desktop PCs without GPS hardware will not appear on the map.<br>
+                        </div>
+                    `,
+                    background: '#0f172a',
+                    confirmButtonColor: '#0891b2',
+                    confirmButtonText: 'ACKNOWLEDGED',
+                    width: 400
+                });
+            } else {
+                alert("COMMS MANUAL\n\nROLES: Type COMMAND or LEAD to unlock Mission Board.\nRED TEAM: Long-press map to drop hostiles.\nGPS: Desktop PCs without GPS won't appear on the map.");
+            }
+        };
+    </script>
 </body>
+
 </html>
 
 
