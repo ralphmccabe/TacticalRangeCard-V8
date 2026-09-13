@@ -5,11 +5,12 @@ let currentRoom = null;
 let currentFreq = null;
 let micTrack = null;
 
-const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
 function playTone(type) {
+    audioCtx = window.trcAudioCtx;
     if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioCtx = new AudioContext();
     }
     if (audioCtx.state === 'suspended') {

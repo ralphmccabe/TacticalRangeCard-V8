@@ -7826,6 +7826,11 @@ function initializeTacticalDashboard2() {
             window.commsUser = commsUser;
 
             // === UNLOCK AUDIO CONTEXT ON USER CLICK ===
+            try {
+                window.trcAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (window.trcAudioCtx.state === 'suspended') window.trcAudioCtx.resume();
+            } catch(e) {}
+            
             const rxAudio = document.getElementById('comms-rx-audio');
             if (rxAudio) {
                 rxAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";

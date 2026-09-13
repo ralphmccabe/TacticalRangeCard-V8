@@ -6309,12 +6309,21 @@ try {
                         <div class="flex flex-col md:flex-row items-stretch md:items-end gap-3 w-full max-w-4xl bg-black/40 p-3 rounded border border-emerald-900/20">
 
                             <div class="flex-1 space-y-1">
-
-                                <div class="text-[7px] text-gray-400 uppercase font-black ml-1">Team / Unit</div>
-
-                                <label for="comms-team" class="sr-only">e.g. ALPHA</label><input type="text" id="comms-team" class="w-full bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. ALPHA" aria-label="e.g. ALPHA">
-
-                            </div>
+    <div class="text-[7px] text-gray-400 uppercase font-black ml-1 flex justify-between">
+        <span>Team / Unit</span>
+        <span class="text-cyan-500">Radio Freq</span>
+    </div>
+    <div class="flex gap-1">
+        <label for="comms-team" class="sr-only">e.g. TRC</label><input type="text" id="comms-team" class="w-1/2 bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. TRC" aria-label="e.g. TRC">
+        
+        <label for="comms-freq" class="sr-only">Freq</label><select id="comms-freq" class="w-1/2 bg-black border border-cyan-900/50 rounded px-1 py-2 text-[10px] text-cyan-400 focus:border-cyan-500 outline-none uppercase cursor-pointer text-center font-bold">
+            <option value="ALPHA">CH-1: ALPHA</option>
+            <option value="BRAVO">CH-2: BRAVO</option>
+            <option value="COMMAND">CH-3: COMMAND</option>
+            <option value="GLOBAL">CH-4: GLOBAL</option>
+        </select>
+    </div>
+</div>
 
                             <div class="flex-1 space-y-1">
 
