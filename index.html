@@ -580,6 +580,8 @@ try {
 
     </script>
 
+    <!-- LiveKit Client SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
 </head>
 
 
@@ -6387,6 +6389,15 @@ try {
                         <!-- COL 1: RADIO / PTT -->
 
                         <div class="flex flex-col bg-black/20 p-2 overflow-hidden">
+                            <div class="w-full mb-3 pb-2 border-b border-gray-800">
+                                <label class="text-[7px] text-gray-400 uppercase font-bold tracking-widest mb-1 block">Active Channel</label>
+                                <select id="live-freq" class="w-full bg-slate-900 border border-slate-700 text-emerald-400 px-2 py-1.5 rounded font-mono text-[9px] focus:outline-none font-bold shadow-inner uppercase cursor-pointer text-center tracking-widest">
+                                    <option value="ALPHA">CH-1: ALPHA</option>
+                                    <option value="BRAVO">CH-2: BRAVO</option>
+                                    <option value="COMMAND">CH-3: COMMAND</option>
+                                    <option value="GLOBAL">CH-4: GLOBAL</option>
+                                </select>
+                            </div>
 
                             <div class="flex items-center justify-between mb-2 border-b border-gray-800 pb-1">
 
@@ -9213,6 +9224,7 @@ try {
             }
         };
     </script>
+    <script type="module" src="js/modules/sfu_audio.js"></script>
 </body>
 
 </html>
