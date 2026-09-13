@@ -9160,13 +9160,13 @@ try {
     <script type="module">
         import { initCalculator } from './js/modules/calculator.js';
         
-        document.addEventListener('DOMContentLoaded', () => {
-            initCalculator();
-            console.log("[V8 ENGINE] Calculator module loaded successfully.");
-        });
+        // Modules are automatically deferred, so DOM is already loaded here!
+        initCalculator();
+        console.log("[V8 ENGINE] Calculator module loaded successfully.");
     </script>
 </body>
 </html>
+
 
 
 
