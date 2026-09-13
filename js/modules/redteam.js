@@ -21,7 +21,10 @@ function buildPopup(d) {
         + '<div style="color:#94a3b8;margin-top:2px;">THREAT: <span style="color:' + tc + ';font-weight:bold;">' + d.threatLevel + '</span></div>'
         + (d.notes ? '<div style="color:#cbd5e1;margin-top:3px;">' + d.notes + '</div>' : '')
         + '<div style="color:#475569;font-size:9px;margin-top:4px;">' + new Date(d.timestamp).toLocaleTimeString() + '</div>'
-        + '<button onclick="window.removeHostile(\'' + d.id + '\')" style="margin-top:5px;background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;border-radius:3px;padding:2px 8px;font-size:9px;cursor:pointer;width:100%;">REMOVE</button>'
+        + '<div style="display:flex; justify-content:space-between; margin-top:5px;">'
+        + '<button onclick="window.removeHostile(\'' + d.id + '\')" style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;border-radius:3px;padding:2px;font-size:9px;cursor:pointer;width:48%;">REMOVE</button>'
+        + '<button onclick="window.commsMapInstance.closePopup()" style="background:#1e293b;color:#94a3b8;border:1px solid #475569;border-radius:3px;padding:2px;font-size:9px;cursor:pointer;width:48%;">CLOSE</button>'
+        + '</div>'
         + '</div>';
 }
 
@@ -199,7 +202,8 @@ export function initRedTeam() {
         }
     });
     const wait = setInterval(() => {
-        if (window.commsMapInstance) {
+        const sb = window.supabaseClient;
+        if (window.commsMapInstance && sb) {
             clearInterval(wait);
             initMapLongPress();
             initRedTeamChannel();
