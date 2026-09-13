@@ -92,6 +92,18 @@ function initMapLongPress() {
     map.on('contextmenu', (e) => {
         dropHostile(e.latlng.lat, e.latlng.lng);
     });
+    
+    // Add manual left-click hold for PC users
+    let pcHoldTimer = null;
+    map.on('mousedown', (e) => {
+        if (e.originalEvent && e.originalEvent.button !== 0) return;
+        pcHoldTimer = setTimeout(() => {
+            dropHostile(e.latlng.lat, e.latlng.lng);
+        }, 600);
+    });
+    map.on('mouseup mousemove dragstart', () => {
+        if (pcHoldTimer) clearTimeout(pcHoldTimer);
+    });
 }
 
 function initRedTeamChannel() {
