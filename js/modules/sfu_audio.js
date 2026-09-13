@@ -63,11 +63,24 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
     try {
         window.pushTacLog(`CONNECTING SECURE COMM LINK [${freq}]...`, "SYS");
         
-        const res = await fetch(`/livekit-token?room=${encodeURIComponent(roomName)}&user=${encodeURIComponent(callsign)}`);
-        if (!res.ok) throw new Error("Failed to get LiveKit token");
+        // Generate Token Locally (Serverless Mode for GitHub Pages)
+        const apiKey = "APITy5FkUwwNzcw";
+        const apiSecret = "vIlpkOpK11f0jeATaTPz2Oni6UaB6lTkK4LycHudrI2";
         
-        const data = await res.json();
-        const token = data.token;
+        const header = { alg: "HS256", typ: "JWT" };
+        const payload = {
+            iss: apiKey,
+            sub: callsign,
+            name: callsign,
+            exp: Math.floor(Date.now() / 1000) + (60 * 60 * 12), // 12 hours
+            nbf: Math.floor(Date.now() / 1000) - 10,
+            video: {
+                roomJoin: true,
+                room: roomName
+            }
+        };
+        
+        const token = KJUR.jws.JWS.sign(null, header, payload, { utf8: apiSecret });
         const wsUrl = "wss://tacticlerangecardv-8-xp5phgeh.livekit.cloud";
         
         if (!window.LivekitClient) {
