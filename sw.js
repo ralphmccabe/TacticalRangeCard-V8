@@ -2,26 +2,26 @@
 const CACHE_NAME = 'trc-v8.0.0.0';
 const ASSETS = [
     './',
-    './index.html?v=7.27.48.85',
+    './index.html?v=8.0.0.0',
     './style.css?v=118',
-    './trc_core.js?v=7.27.48.85',
-    './blog_logic.js?v=7.27.48.85',
+    './trc_core.js?v=8.0.0.0',
+    './blog_logic.js?v=8.0.0.0',
     './manifest.json',
     './icon-512.png',
     './icon-192.png',
     './splash-page.jpg',
-    './workstation_logic.js?v=7.27.48.85',
-    './officer_card_logic.js?v=7.27.48.85',
-    './gametag_logic.js?v=7.27.48.85',
-    './bolo_logic.js?v=7.27.48.85',
-    './license_logic.js?v=7.27.48.85',
+    './workstation_logic.js?v=8.0.0.0',
+    './officer_card_logic.js?v=8.0.0.0',
+    './gametag_logic.js?v=8.0.0.0',
+    './bolo_logic.js?v=8.0.0.0',
+    './license_logic.js?v=8.0.0.0',
     './tailwind.css?v=1.1',
     './lucide.min.js?v=1.5',
     './html2canvas.min.js?v=1.5',
     './idb_helper.js?v=1.6',
     './lib/supabase.min.js',
-    './master_op_card_logic.js?v=7.27.48.85',
-    './supply_depot_logic.js?v=7.27.48.85'
+    './master_op_card_logic.js?v=8.0.0.0',
+    './supply_depot_logic.js?v=8.0.0.0'
 ];
 
 self.addEventListener('install', event => {
@@ -109,6 +109,7 @@ self.addEventListener('fetch', event => {
         })
     );
 });
+
 
 
 
