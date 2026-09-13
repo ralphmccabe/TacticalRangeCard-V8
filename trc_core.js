@@ -7814,7 +7814,10 @@ function initializeTacticalDashboard2() {
                 localStorage.setItem('trc_device_pin', devicePin);
             }
             const deterministicId = 'u_' + (team + callsign).replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + '_' + devicePin;
-            commsUser = { id: deterministicId, callsign, role, team };
+            const freqEl = document.getElementById('comms-freq');
+            const freq = freqEl ? freqEl.value : 'ALPHA';
+            commsUser = { id: deterministicId, callsign, role, team, freq };
+            window.commsUser = commsUser;
 
             // === UNLOCK AUDIO CONTEXT ON USER CLICK ===
             const rxAudio = document.getElementById('comms-rx-audio');
@@ -9609,8 +9612,15 @@ function initializeTacticalDashboard2() {
         const seenCallsigns = new Set();
         const myCall = (commsUser?.callsign || '').trim().toUpperCase();
         
-        // Local user first, then teammates alphabetically
+        // Instructors/Command first, then local, then alphabetically
         const sortedCallsigns = Object.keys(window.activeSquadRegistry).sort((a, b) => {
+            const roleA = (window.activeSquadRegistry[a]?.user?.role || '').toUpperCase();
+            const roleB = (window.activeSquadRegistry[b]?.user?.role || '').toUpperCase();
+            const isCmdA = roleA.includes('COMMAND') || roleA.includes('INSTRUCTOR') || roleA.includes('DISPATCH');
+            const isCmdB = roleB.includes('COMMAND') || roleB.includes('INSTRUCTOR') || roleB.includes('DISPATCH');
+            
+            if (isCmdA && !isCmdB) return -1;
+            if (!isCmdA && isCmdB) return 1;
             if (a === myCall) return -1;
             if (b === myCall) return 1;
             return a.localeCompare(b);
@@ -9626,12 +9636,13 @@ function initializeTacticalDashboard2() {
                     const statusIcon = member.dutyStatus ? ` <span class="font-bold text-amber-300 ml-0.5">${member.dutyStatus}</span>` : '';
                     const roleLabel = member.user.role || 'OP';
                     
+                    const freqTag = member.user.freq ? `<span class="text-cyan-300 ml-0.5 font-bold">[${member.user.freq}]</span>` : '';
                     if (member.distress) {
                         tag.className = 'bg-red-950/80 border border-red-500/50 text-red-400 px-1.5 py-0.5 rounded text-[7px] font-black uppercase flex items-center gap-1 animate-pulse';
-                        tag.innerHTML = `<span class="w-1 h-1 rounded-full bg-red-500 animate-pulse"></span> ${normCall} [${roleLabel}]${statusIcon}`;
+                        tag.innerHTML = `<span class="w-1 h-1 rounded-full bg-red-500 animate-pulse"></span> ${normCall} [${roleLabel}]${freqTag}${statusIcon}`;
                     } else {
                         tag.className = 'bg-emerald-950/60 border border-emerald-500/50 text-emerald-400 px-1.5 py-0.5 rounded text-[7px] font-black uppercase flex items-center gap-1';
-                        tag.innerHTML = `<span class="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span> ${normCall} [${roleLabel}]${statusIcon}`;
+                        tag.innerHTML = `<span class="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span> ${normCall} [${roleLabel}]${freqTag}${statusIcon}`;
                     }
                     roster.appendChild(tag);
                 }
