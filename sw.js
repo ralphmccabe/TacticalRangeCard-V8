@@ -1,5 +1,5 @@
-/* TRC-VERSION - v7.27.48.87 */
-const CACHE_NAME = 'trc-v7.27.48.87';
+/* TRC-VERSION - v8.0.0.0 */
+const CACHE_NAME = 'trc-v8.0.0.0';
 const ASSETS = [
     './',
     './index.html?v=7.27.48.85',
@@ -109,6 +109,7 @@ self.addEventListener('fetch', event => {
         })
     );
 });
+
 
 
 
