@@ -179,7 +179,8 @@ function hookPTTButton() {
     };
     
     const stopPTT = async (e) => {
-        if (e) e.preventDefault();
+        // DO NOT preventDefault globally, otherwise the whole app freezes on clicks!
+        if (e && e.target === finalBtn && e.cancelable) e.preventDefault();
         
         if (finalBtn.dataset.talking === "true") {
             playTone('roger');

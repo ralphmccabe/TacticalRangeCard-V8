@@ -7820,8 +7820,8 @@ function initializeTacticalDashboard2() {
                 localStorage.setItem('trc_device_pin', devicePin);
             }
             const deterministicId = 'u_' + (team + callsign).replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + '_' + devicePin;
-            const freqEl = document.getElementById('comms-freq');
-            const freq = freqEl ? freqEl.value : 'ALPHA';
+            const liveFreqEl2 = document.getElementById('comms-freq');
+            const freq = liveFreqEl2 ? liveFreqEl2.value : 'ALPHA';
             commsUser = { id: deterministicId, callsign, role, team, freq };
             window.commsUser = commsUser;
 
