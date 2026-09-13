@@ -8474,7 +8474,15 @@ function initializeTacticalDashboard2() {
             updateTeamRoster(state);
             updateTeamMarkers(state);
             if (key === commsUser.id) return;
-            window.pushTacLog(`PLAYER JOINED: ${newPresences[0]?.user?.callsign || key}`, "SYS");
+            const joinCallsign = newPresences[0]?.user?.callsign;
+            const uid = newPresences[0]?.user?.id;
+            
+            // Only log if they aren't already in the registry to prevent spam from GPS updates
+            if (uid && !window.activeSquadRegistry[uid]) {
+                window.pushTacLog(`PLAYER JOINED: ${joinCallsign || key}`, "SYS");
+            } else if (!uid) {
+                window.pushTacLog(`PLAYER JOINED: ${key}`, "SYS");
+            }
 
             if (!window.peerConnections[key] && commsUser.id > key) {
                 createPeerConnection(key, true);
@@ -9388,8 +9396,14 @@ function initializeTacticalDashboard2() {
         const syncBtn = document.getElementById('comms-map-sync');
         if (syncBtn) {
             syncBtn.onclick = () => {
-                commsMapInstance.setView([lastLat, lastLng], 15);
-                window.pushTacLog("GPS ALIGNED TO LOCAL COORDINATES", "SYS");
+                if (Object.keys(window.teamMarkers || {}).length > 0) {
+                    const group = new L.featureGroup(Object.values(window.teamMarkers));
+                    commsMapInstance.fitBounds(group.getBounds().pad(0.1));
+                    window.pushTacLog("MAP ALIGNED TO ENTIRE SQUAD", "SYS");
+                } else {
+                    commsMapInstance.setView([lastLat, lastLng], 15);
+                    window.pushTacLog("GPS ALIGNED TO LOCAL COORDINATES", "SYS");
+                }
             };
         }
 
