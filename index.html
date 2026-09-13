@@ -646,6 +646,7 @@ try {
                             <button class="calc-toggle-btn p-1 flex items-center justify-center transition-colors shrink-0" style="color:#2dd4bf;" title="Tactical Calculator" aria-label="Tactical Calculator">
                                 <i data-lucide="calculator" class="w-6 h-6" style="color:#2dd4bf;"></i>
                             </button>
+                            <button id="redteam-toggle-btn" class="p-1 flex items-center justify-center transition-colors shrink-0" style="color:#f87171;" title="Red Team Tracker" aria-label="Red Team Tracker"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.5"/><text x="12" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff">H</text></svg></button>
 
                             <button class="remarks-toggle-btn p-1 flex items-center justify-center transition-colors shrink-0" style="color:#fbbf24;" title="ReMarks Jotter" aria-label="ReMarks Jotter">
                                 <i data-lucide="edit-3" class="w-6 h-6" style="color:#fbbf24;"></i>
@@ -9156,16 +9157,17 @@ try {
             </div>
         </div>
     </div>
-    <!-- MODULE INJECTIONS -->
+
+    <!-- V8 RED TEAM MODULE -->
     <script type="module">
-        import { initCalculator } from './js/modules/calculator.js';
-        
-        // Modules are automatically deferred, so DOM is already loaded here!
-        initCalculator();
-        console.log("[V8 ENGINE] Calculator module loaded successfully.");
+        import { initRedTeam } from './js/modules/redteam.js';
+        initRedTeam();
+        console.log('[V8 ENGINE] Red Team module loaded.');
     </script>
 </body>
 </html>
+
+
 
 
 
