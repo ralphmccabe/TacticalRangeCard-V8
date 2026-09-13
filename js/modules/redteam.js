@@ -85,15 +85,14 @@ window.dropHostileBtn = dropHostile;
 function initMapLongPress() {
     const map = window.commsMapInstance;
     if (!map) return;
-    let t = null;
-    map.on('mousedown', (e) => { if (e.originalEvent.button !== 0) return; t = setTimeout(() => dropHostile(e.latlng.lat, e.latlng.lng), 700); });
-    map.on('mouseup mouseleave', () => clearTimeout(t));
-    map.on('touchstart', (e) => { t = setTimeout(() => { const ll = map.mouseEventToLatLng(e.originalEvent.touches[0]); dropHostile(ll.lat, ll.lng); }, 700); }, {passive:true});
-    map.on('touchend touchcancel', () => clearTimeout(t));
+    // Leaflet triggers contextmenu on long-press for mobile natively, and right-click on desktop
+    map.on('contextmenu', (e) => {
+        dropHostile(e.latlng.lat, e.latlng.lng);
+    });
 }
 
 function initRedTeamChannel() {
-    const sb = window.TRC_SUPABASE_CLIENT || window.supabase || window._supabase;
+    const sb = window.supabaseClient;
     if (!sb) { console.warn('[RED TEAM] No Supabase - offline only.'); return; }
     redTeamChannel = sb.channel('trc-redteam-v8');
     redTeamChannel

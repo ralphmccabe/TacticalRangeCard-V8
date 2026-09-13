@@ -79,7 +79,7 @@ export function initMissionBoard() {
     
     // Poll for Supabase and Role changes
     const wait = setInterval(() => {
-        const sb = window.TRC_SUPABASE_CLIENT || window.supabase || window._supabase;
+        const sb = window.supabaseClient;
         const linkBtn = document.getElementById('comms-connect-btn');
         
         // Enforce UI on typing in the role box
