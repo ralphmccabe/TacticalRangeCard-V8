@@ -214,6 +214,9 @@ const waitCore = setInterval(() => {
         
         const liveFreqEl = document.getElementById('live-freq');
         if (liveFreqEl) {
+            if (window.commsUser && window.commsUser.freq) {
+                liveFreqEl.value = window.commsUser.freq;
+            }
             liveFreqEl.addEventListener('change', (e) => {
                 const newFreq = e.target.value;
                 if (window.commsUser) window.commsUser.freq = newFreq;

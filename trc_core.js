@@ -7755,6 +7755,9 @@ function initializeTacticalDashboard2() {
     if (document.getElementById('comms-passcode') && localStorage.getItem('trc_comms_passcode')) {
         document.getElementById('comms-passcode').value = localStorage.getItem('trc_comms_passcode');
     }
+    if (document.getElementById('comms-freq') && localStorage.getItem('trc_comms_freq')) {
+        document.getElementById('comms-freq').value = localStorage.getItem('trc_comms_freq');
+    }
 
     if (connectBtn) {
         connectBtn.addEventListener('click', async () => {
@@ -7769,6 +7772,9 @@ function initializeTacticalDashboard2() {
             localStorage.setItem('trc_comms_callsign', callsign);
             localStorage.setItem('trc_comms_role', role);
             localStorage.setItem('trc_comms_passcode', passcode);
+            
+            const freqEl = document.getElementById('comms-freq');
+            if (freqEl) localStorage.setItem('trc_comms_freq', freqEl.value);
             
             const encSecret = document.getElementById('comms-encryption-secret') ? document.getElementById('comms-encryption-secret').value.trim().toUpperCase() : '';
             if (encSecret) {
