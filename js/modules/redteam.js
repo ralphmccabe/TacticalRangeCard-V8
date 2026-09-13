@@ -169,6 +169,26 @@ function buildRedTeamPanel() {
     renderHostileList();
 }
 
+
+// Check for stale hostiles every 30 seconds
+setInterval(() => {
+    const now = Date.now();
+    let updated = false;
+    Object.keys(hostiles).forEach(id => {
+        const h = hostiles[id];
+        // 10 minutes = 600000 ms
+        if (!h.data.isStale && (now - h.data.timestamp > 600000)) {
+            h.data.isStale = true;
+            // Add STALE warning to popup
+            h.data.notes = '⚠️ [STALE INTEL] ' + (h.data.notes || '');
+            h.marker.setPopupContent(buildPopup(h.data));
+            // Dim the icon slightly by resetting it (we could make a stale icon, but let's just update popup and list for now)
+            updated = true;
+        }
+    });
+    if (updated) renderHostileList();
+}, 30000);
+
 export function initRedTeam() {
     console.log('[V8 ENGINE] Red Team module starting...');
     buildRedTeamPanel();

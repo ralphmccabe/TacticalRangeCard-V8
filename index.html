@@ -6430,8 +6430,19 @@ try {
 
 
                         <!-- COL 2: MISSION CHAT -->
-
                         <div class="flex flex-col bg-black/40 overflow-hidden">
+
+                            <!-- MISSION STATUS BOARD -->
+                            <div class="border-b border-gray-800 bg-black/60 flex flex-col" style="height: 35%;">
+                                <div class="p-2 border-b border-gray-800 flex items-center justify-between">
+                                    <span class="text-[8px] font-black text-yellow-400 uppercase tracking-widest flex items-center gap-1"><i data-lucide="clipboard-list" class="w-2.5 h-2.5"></i> MISSION STATUS BOARD</span>
+                                    <button id="msb-post-btn" class="hidden text-[6px] bg-yellow-950 border border-yellow-800 text-yellow-400 px-1.5 py-0.5 rounded font-bold uppercase hover:bg-yellow-900 transition-all cursor-pointer" onclick="window.promptMissionStatus()">+ POST SITREP</button>
+                                </div>
+                                <div id="mission-status-feed" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                                    <div class="text-[8px] text-gray-500 font-mono text-center mt-2">WAITING FOR COMMAND UPDATE...</div>
+                                </div>
+                            </div>
+
 
                             <div class="p-2 border-b border-gray-800 flex items-center justify-between">
 
@@ -9163,6 +9174,12 @@ try {
         import { initRedTeam } from './js/modules/redteam.js';
         initRedTeam();
         console.log('[V8 ENGINE] Red Team module loaded.');
+    </script>
+
+    <!-- V8 MISSION STATUS BOARD MODULE -->
+    <script type="module">
+        import { initMissionBoard } from './js/modules/mission_board.js';
+        initMissionBoard();
     </script>
 </body>
 </html>
