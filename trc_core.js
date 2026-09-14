@@ -8575,7 +8575,27 @@ function initializeTacticalDashboard2() {
                 if (geoWatchId) { navigator.geolocation.clearWatch(geoWatchId); geoWatchId = null; }
             } catch(e) {}
 
+            // 5b. Disconnect LiveKit SFU room
+            try {
+                window.sfuStartPTT = null;
+                window.sfuStopPTT  = null;
+                window.sfuAudioElements = [];
+                if (window.sfuRoom) { window.sfuRoom.disconnect().catch(()=>{}); window.sfuRoom = null; }
+                // Also call connectToLiveKit's internal reference via import
+                if (window._sfuDisconnect) { window._sfuDisconnect(); }
+            } catch(e) {}
+
+            // 5c. Complete disconnect state cleanup
+            commsUser = null;
+            window.commsUser = null;
+            window.commsChannel = null;
+            window.isIntentionalDisconnect = true;
+            window._disconnectBtnWired = false;
+            const connBtn = document.getElementById('comms-connect-btn');
+            if (connBtn) connBtn.innerHTML = "ESTABLISH SECURE LINK";
+
             // 6. Reset Registry & Markers
+
             window.activeSquadRegistry = {};
             window.latestPresenceState = {};
 
@@ -8639,21 +8659,34 @@ function initializeTacticalDashboard2() {
                 document.getElementById('comms-dashboard').classList.add('grid');
                 document.getElementById('comms-sos-bar').classList.remove('hidden');
                 
-                // Wire up disconnect button
+                // Wire up disconnect button — only once, even if channel re-subscribes on mobile
                 const disconnectBtn = document.getElementById('comms-terminate-link-btn');
-                if (disconnectBtn) {
+                if (disconnectBtn && !window._disconnectBtnWired) {
+                    window._disconnectBtnWired = true;
                     disconnectBtn.classList.remove('hidden');
                     const freshBtn = disconnectBtn.cloneNode(true);
                     disconnectBtn.parentNode.replaceChild(freshBtn, disconnectBtn);
                     freshBtn.classList.remove('hidden');
                     freshBtn.addEventListener('click', (e) => {
                         if (e) e.stopPropagation();
+                        window._disconnectBtnWired = false; // reset so next login can wire it again
                         doDisconnect();
                     });
+                } else if (disconnectBtn) {
+                    disconnectBtn.classList.remove('hidden');
                 }
+
 
                 // Initialize Map
                 initCommsMap();
+
+                // Trigger LiveKit SFU connection on every successful login
+                if (window.connectToLiveKit && commsUser) {
+                    const passEl = document.getElementById('comms-passcode');
+                    const mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
+                    const freq = commsUser.freq || 'ALPHA';
+                    window.connectToLiveKit(mission, commsUser.callsign, commsUser.role, freq);
+                }
 
                 // Track presence immediately
                 if (commsChannel) {
@@ -9074,102 +9107,52 @@ function initializeTacticalDashboard2() {
         }, 100);
     };
 
-    // PTT LOGIC (WebRTC True Half-Duplex)
+    // PTT LOGIC (V8 LiveKit SFU)
     const pttBtn = document.getElementById('ptt-btn');
     if (pttBtn) {
         const startPTT = async (e) => {
             if (e) e.preventDefault();
             if (!commsUser || !commsUser.callsign) { alert("Log into the Comms First Before Operating the Comms"); return; }
-            if (!window.activeMicStream) {
-                window.pushTacLog('⚠️ PTT AUDIO UNAVAILABLE: Requires HTTPS for voice.', 'ALERT');
-                // Do not return; allow visual PTT to transmit
+            if (window.sfuStartPTT) {
+                await window.sfuStartPTT();
+                return;
             }
             pttBtn.classList.add('border-emerald-500', 'bg-emerald-950/20', 'shadow-[0_0_20px_rgba(16,185,129,0.3)]');
-            
             window.pushTacLog(`TRANSMITTING TO SQUAD`, "SYS");
-            const activeSpeaker = document.getElementById('ptt-active-speaker');
-            if (activeSpeaker) {
-                activeSpeaker.textContent = `TX: ${commsUser.callsign} (${commsUser.role})`;
-                activeSpeaker.classList.add('text-emerald-400', 'animate-pulse');
-            }
-
-            try {
-                // If microphone is not yet armed, acquire it now on direct user gesture
-                if (!window.activeMicStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    try {
-                        window.activeMicStream = await navigator.mediaDevices.getUserMedia({ 
-                            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
-                        });
-                    } catch (e1) {
-                        try {
-                            window.activeMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        } catch (e2) {
-                            window.activeMicStream = null;
-                        }
-                    }
-                    if (window.activeMicStream) {
-                        if (window.attachMicToPeers) window.attachMicToPeers(window.activeMicStream);
-                        window.pushTacLog("MICROPHONE ARMED (PTT)", "SUCCESS");
-                    }
-                }
-
-                // Half-Duplex Rule: Mute incoming remote speakers while transmitting to stop acoustic feedback loops
-                document.querySelectorAll('audio[id^="webrtc-audio-"]').forEach(el => { el.muted = true; });
-
-                // Unmute the microphone to start broadcasting
-                if (window.activeMicStream && window.activeMicStream.getAudioTracks().length > 0) {
-                    window.activeMicStream.getAudioTracks()[0].enabled = true;
-                }
-
-                if (commsChannel) {
-                    commsChannel.send({
-                        type: 'broadcast', event: 'ptt',
-                        payload: { data: TacticalCrypto.encrypt({ active: true, user: commsUser }) }
-                    }).catch(() => {});
-                }
-                window.diagTxCount++;
-                const diagTx = document.getElementById('diag-tx');
-                if (diagTx) diagTx.textContent = `TX: ${window.diagTxCount}`;
-            } catch(e) { 
-                console.error("PTT Start Error", e); 
-                window.pushTacLog(`MIC ERROR`, "ERROR");
+            if (commsChannel) {
+                commsChannel.send({
+                    type: 'broadcast', event: 'ptt',
+                    payload: { data: TacticalCrypto.encrypt({ active: true, user: commsUser }) }
+                }).catch(() => {});
             }
         };
 
         const stopPTT = async (e) => {
             if (e) e.preventDefault();
             if (!commsUser || !commsUser.callsign) return;
-            pttBtn.classList.remove('border-emerald-500', 'bg-emerald-950/20', 'shadow-[0_0_20px_rgba(16,185,129,0.3)]');
-            
-            const activeSpeaker = document.getElementById('ptt-active-speaker');
-            if (activeSpeaker) {
-                activeSpeaker.textContent = 'STANDBY';
-                activeSpeaker.classList.remove('text-emerald-400', 'animate-pulse');
+            if (window.sfuStopPTT) {
+                await window.sfuStopPTT();
+                return;
             }
-
-            try {
-                // Mute the microphone to stop broadcasting
-                if (window.activeMicStream && window.activeMicStream.getAudioTracks().length > 0) {
-                    window.activeMicStream.getAudioTracks()[0].enabled = false;
-                }
-
-                // Restore remote speakers to hear incoming squad transmissions
-                document.querySelectorAll('audio[id^="webrtc-audio-"]').forEach(el => { el.muted = false; });
-
-                if (commsChannel) {
-                    commsChannel.send({
-                        type: 'broadcast', event: 'ptt',
-                        payload: { data: TacticalCrypto.encrypt({ active: false, user: commsUser }) }
-                    }).catch(() => {});
-                }
-            } catch(e) { console.error("PTT Stop error", e); }
+            pttBtn.classList.remove('border-emerald-500', 'bg-emerald-950/20', 'shadow-[0_0_20px_rgba(16,185,129,0.3)]');
+            if (commsChannel) {
+                commsChannel.send({
+                    type: 'broadcast', event: 'ptt',
+                    payload: { data: TacticalCrypto.encrypt({ active: false, user: commsUser }) }
+                }).catch(() => {});
+            }
         };
+
         pttBtn.onmousedown = startPTT;
         pttBtn.onmouseup = stopPTT;
         pttBtn.onmouseleave = stopPTT;
         pttBtn.ontouchstart = startPTT;
         pttBtn.ontouchend = stopPTT;
         pttBtn.ontouchcancel = stopPTT;
+
+        // Global release listeners so mouseup or touchend anywhere stops transmitting
+        document.addEventListener('mouseup', () => { if (window.sfuStopPTT) window.sfuStopPTT(); });
+        document.addEventListener('touchend', () => { if (window.sfuStopPTT) window.sfuStopPTT(); });
     }
 
     // CHAT SEND

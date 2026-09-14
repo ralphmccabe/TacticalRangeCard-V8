@@ -6280,7 +6280,7 @@ try {
 
 
 
-                        <button id="comms-terminate-link-btn" class="hidden relative z-50 text-[9px] uppercase tracking-widest bg-red-950/80 px-2 py-1 rounded border border-red-600/50 text-red-400 hover:bg-red-900 hover:text-white transition-colors font-black pointer-events-auto" style="touch-action:manipulation;" aria-label="Disconnect from comms">DISCONNECT</button>
+                        <button id="comms-terminate-link-btn" class="hidden relative z-50 text-[9px] uppercase tracking-widest bg-red-950/80 px-2 py-1 rounded border border-red-600/50 text-red-400 hover:bg-red-900 hover:text-white transition-colors font-black pointer-events-auto" style="touch-action:manipulation;" aria-label="Disconnect from comms" onclick="event.stopPropagation(); if(window.doDisconnect) window.doDisconnect();" ontouchstart="event.stopPropagation();" ontouchend="event.stopPropagation(); event.preventDefault(); if(window.doDisconnect) window.doDisconnect();">DISCONNECT</button>
 
                         <button class="maximize-btn text-gray-400 hover:text-emerald-400 flex items-center p-4 m-[-10px]" onclick="event.stopPropagation(); toggleFullscreen('panel-comms')" aria-label="Action Button"><span class="close-label font-black text-[9px] uppercase tracking-widest bg-emerald-950/80 px-2 py-1 rounded border border-emerald-600/50 text-emerald-400 mr-2">CLOSE WINDOW</span><i data-lucide="maximize-2" class="w-6 h-6"></i></button>
 
@@ -9234,7 +9234,7 @@ try {
             }
         };
     </script>
-    <script type="module" src="js/modules/sfu_audio.js?v=8.4"></script>
+    <script type="module" src="js/modules/sfu_audio.js?v=8.5"></script>
 </body>
 
 </html>

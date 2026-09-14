@@ -2,7 +2,6 @@
 // js/modules/sfu_audio.js
 // Architecture: sfu_audio exposes window.sfuStartPTT / window.sfuStopPTT
 // trc_core.js owns the button DOM — it calls these window functions on press/release.
-// No button cloning. No competing addEventListener. Clean separation.
 
 let currentRoom = null;
 let currentFreq  = null;
@@ -50,7 +49,6 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         try { await currentRoom.disconnect(); } catch (e) {}
         currentRoom = null;
     }
-    // Clear sfuStartPTT/sfuStopPTT so trc_core falls back to visual-only while reconnecting
     window.sfuStartPTT = null;
     window.sfuStopPTT  = null;
     currentFreq = freq;
@@ -60,7 +58,7 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
     try {
         if (window.pushTacLog) window.pushTacLog('CONNECTING [' + freq + ']...', 'SYS');
 
-        // Stop any lingering mic stream so browser AEC context is clean
+        // Stop any lingering background mic stream so browser AEC context is clean
         if (window.activeMicStream) {
             window.activeMicStream.getTracks().forEach(function(t){ t.stop(); });
             window.activeMicStream = null;
@@ -99,7 +97,7 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             el.autoplay    = true;
             el.playsInline = true;
             el.volume      = 1.0;
-            el.dataset.sfuRx = 'true'; // mark so we can find it later
+            el.dataset.sfuRx = 'true';
             if (typeof el.setSinkId === 'function') el.setSinkId('default').catch(function(){});
             document.body.appendChild(el);
             window.sfuAudioElements.push(el);
@@ -112,8 +110,9 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             if (window.pushTacLog) window.pushTacLog('RX: ' + participant.identity, 'SYS');
         });
 
-
-        room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, function(track){ track.detach(); });
+        room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, function(track){
+            try { track.detach(); } catch(e){}
+        });
 
         // Channel-busy indicator
         room.on(window.LivekitClient.RoomEvent.ActiveSpeakersChanged, function(speakers) {
@@ -135,10 +134,10 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
 
         await room.connect(wsUrl, token);
         currentRoom = room;
+        window.sfuRoom = room;
         if (window.pushTacLog) window.pushTacLog('LINK SECURED [' + freq + '] — PTT READY', 'SUCCESS');
 
         // ── Expose PTT handlers on window for trc_core to call ──
-        // No mic track is published until the user first presses PTT.
         window.sfuStartPTT = async function() {
             var btn      = document.getElementById('ptt-btn');
             var statusEl = document.getElementById('ptt-status');
@@ -150,7 +149,18 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             // Mute all incoming speakers while transmitting — prevents self-echo
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = true; });
 
-            await currentRoom.localParticipant.setMicrophoneEnabled(true);
+            try {
+                if (currentRoom && currentRoom.localParticipant) {
+                    await currentRoom.localParticipant.setMicrophoneEnabled(true);
+                }
+            } catch(e) {
+                console.error("LiveKit mic enable failed:", e);
+                if (window.pushTacLog) window.pushTacLog("MIC ERROR: " + e.message, "ERROR");
+                btn.dataset.talking = 'false';
+                (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
+                return;
+            }
+
             btn.classList.add('border-emerald-500', 'bg-emerald-900/60');
             if (statusEl) { statusEl.innerText = 'TRANSMITTING'; statusEl.style.color = '#34d399'; }
             var spk = document.getElementById('ptt-active-speaker');
@@ -163,7 +173,12 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             if (!btn || btn.dataset.talking !== 'true') return;
             btn.dataset.talking = 'false';
             playTone('roger');
-            if (currentRoom) await currentRoom.localParticipant.setMicrophoneEnabled(false);
+
+            if (currentRoom && currentRoom.localParticipant) {
+                try {
+                    await currentRoom.localParticipant.setMicrophoneEnabled(false);
+                } catch(e) {}
+            }
 
             // Restore incoming speakers now that we're done transmitting
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
@@ -174,21 +189,31 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             if (spk) { spk.innerText = ''; }
         };
 
-
     } catch (err) {
         console.error('[SFU] Connection error:', err);
         if (window.pushTacLog) window.pushTacLog('SFU FAILED: ' + err.message, 'WARNING');
     }
 }
 
-// ─── BOOT ────────────────────────────────────────────────────────────────────
-var _sfuWait = setInterval(function() {
-    if (!window.commsChannel || !window.commsUser) return;
-    clearInterval(_sfuWait);
+// Expose functions globally
+window.connectToLiveKit = connectToLiveKit;
+window._sfuDisconnect = async function() {
+    if (currentRoom) {
+        try { await currentRoom.disconnect(); } catch(e) {}
+        currentRoom = null;
+        window.sfuRoom = null;
+    }
+    window.sfuStartPTT = null;
+    window.sfuStopPTT = null;
+};
 
+// ─── BOOT & DIAL WATCHER ─────────────────────────────────────────────────────
+var _dialWired = false;
+setInterval(function() {
+    // Watch for frequency dial change
     var liveFreqEl = document.getElementById('live-freq');
-    if (liveFreqEl) {
-        if (window.commsUser.freq) liveFreqEl.value = window.commsUser.freq;
+    if (liveFreqEl && !_dialWired) {
+        _dialWired = true;
         liveFreqEl.addEventListener('change', function(e) {
             var newFreq = e.target.value;
             if (window.commsUser) window.commsUser.freq = newFreq;
@@ -199,15 +224,19 @@ var _sfuWait = setInterval(function() {
             }).catch(function(){});
             var passEl  = document.getElementById('comms-passcode');
             var mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
-            connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, newFreq);
+            if (window.commsUser && window.commsUser.callsign) {
+                connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, newFreq);
+            }
         });
     }
 
-    var passEl  = document.getElementById('comms-passcode');
-    var mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
-    var freq    = window.commsUser.freq || 'ALPHA';
-    connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, freq);
-    console.log('[V8 ENGINE] LiveKit Audio Module loaded.');
-}, 500);
+    // Auto-connect if user is logged in but LiveKit room is not yet connected
+    if (window.commsChannel && window.commsUser && !currentRoom && !window.isIntentionalDisconnect) {
+        var passEl  = document.getElementById('comms-passcode');
+        var mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
+        var freq    = window.commsUser.freq || 'ALPHA';
+        connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, freq);
+    }
+}, 800);
 
 export { connectToLiveKit };
