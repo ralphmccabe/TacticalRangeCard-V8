@@ -8441,8 +8441,11 @@ function initializeTacticalDashboard2() {
             try {
                 const data = payload.payload;
                 if (data && data.user) {
+                    const isFirstTimeSeen = !window.activeSquadRegistry || !window.activeSquadRegistry[data.user.id];
                     if (window.registerSquadMember) window.registerSquadMember(data.user, data.location, data.dutyStatus);
-                    window.pushTacLog(`OPERATOR ONLINE: ${data.user.callsign}`, "SUCCESS");
+                    if (isFirstTimeSeen) {
+                        window.pushTacLog(`OPERATOR ONLINE: ${data.user.callsign}`, "SUCCESS");
+                    }
                     if (data.user.id !== commsUser.id) {
                         // Immediately respond so the new teammate sees our badge too!
                         commsChannel.send({
@@ -8632,8 +8635,13 @@ function initializeTacticalDashboard2() {
         }
         window.doDisconnect = doDisconnect;
 
+        let isReconnecting = false;
+        let reconnectTimer = null;
+
         function reconnectComms() {
-            if (isIntentionalDisconnect || !commsUser || !commsUser.callsign) return;
+            if (isIntentionalDisconnect || !commsUser || !commsUser.callsign || isReconnecting) return;
+            isReconnecting = true;
+            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
             window.pushTacLog("LINK SIGNAL RE-SYNCING...", "ALERT");
             try {
                 if (commsChannel) {
@@ -8641,9 +8649,11 @@ function initializeTacticalDashboard2() {
                     commsChannel = null;
                 }
                 initSupabaseComms(window.currentTeamName, window.currentPasscode, () => {
+                    isReconnecting = false;
                     window.pushTacLog("FREQUENCY LINK RESTORED", "SUCCESS");
                 });
             } catch(err) {
+                isReconnecting = false;
                 console.warn("Reconnect attempt error:", err);
             }
         }
@@ -8655,13 +8665,20 @@ function initializeTacticalDashboard2() {
             if (diagSub) diagSub.textContent = `SUB: ${status}${hexBadge}`;
             window.pushTacLog(`COMMS LINK: ${status}${hexBadge}`, status === 'SUBSCRIBED' ? "SUCCESS" : "ERROR");
             
-            if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                if (!isIntentionalDisconnect) {
-                    window.pushTacLog(`SIGNAL DROPPED (${status}). RECONNECTING IN 2s...`, "ALERT");
-                    setTimeout(() => {
-                        if (!isIntentionalDisconnect) reconnectComms();
-                    }, 2000);
+            // Only reconnect on actual errors or timeouts — NEVER on 'CLOSED' (which happens when un-subscribing)
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                if (!isIntentionalDisconnect && !isReconnecting) {
+                    window.pushTacLog(`SIGNAL DROPPED (${status}). RECONNECTING IN 5s...`, "ALERT");
+                    if (reconnectTimer) clearTimeout(reconnectTimer);
+                    reconnectTimer = setTimeout(() => {
+                        reconnectComms();
+                    }, 5000);
                 }
+            }
+
+            if (status === 'SUBSCRIBED') {
+                isReconnecting = false;
+                if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
             }
 
             if (status === 'SUBSCRIBED') {
