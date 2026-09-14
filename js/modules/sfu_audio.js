@@ -132,8 +132,8 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             el.setAttribute('webkit-playsinline', 'true');
             el.autoplay    = true;
             el.playsInline = true;
-            el.volume      = 1.0;
-            el.muted       = false;
+            var pttBtnEl = document.getElementById('ptt-btn');
+            el.muted       = (pttBtnEl && pttBtnEl.dataset.talking === 'true');
             el.dataset.sfuRx = 'true';
             if (typeof el.setSinkId === 'function') el.setSinkId('default').catch(function(){});
             document.body.appendChild(el);
