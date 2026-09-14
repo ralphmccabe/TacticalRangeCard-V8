@@ -1,10 +1,11 @@
 /* TRC-VERSION - v8.0.0.0 */
-const CACHE_NAME = 'trc-v8.10';
+const CACHE_NAME = 'trc-v8.11';
 const ASSETS = [
     './',
-    './index.html?v=8.10',
+    './index.html?v=8.11',
     './style.css?v=118',
-    './trc_core.js?v=8.10',
+    './trc_core.js?v=8.11',
+    './js/modules/sfu_audio.js?v=8.11',
     './blog_logic.js?v=8.0.0.0',
     './manifest.json',
     './icon-512.png',
@@ -79,13 +80,37 @@ self.addEventListener('fetch', event => {
     // Only cache GET requests
     if (event.request.method !== 'GET') return;
 
+    // Network-First for all app logic & HTML: ensures code updates land immediately
+    const networkFirstPatterns = ['index.html', 'trc_core.js', 'sfu_audio.js', 'style.css', 'style.min.css'];
+    const isNavigation = event.request.mode === 'navigate' || event.request.destination === 'document';
+    const isCoreApp = networkFirstPatterns.some(p => event.request.url.includes(p));
+
+    if (isNavigation || isCoreApp) {
+        event.respondWith(
+            fetch(event.request).then(networkResponse => {
+                if (networkResponse && networkResponse.status === 200) {
+                    const clone = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        if (event.request.url.startsWith('http')) cache.put(event.request, clone);
+                    });
+                }
+                return networkResponse;
+            }).catch(() => {
+                return caches.match(event.request).then(cachedResponse => {
+                    if (cachedResponse) return cachedResponse;
+                    if (isNavigation) return caches.match('./index.html') || caches.match('./');
+                });
+            })
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
             if (cachedResponse) {
                 return cachedResponse;
             }
 
-            // If not in cache, fetch from network and dynamically add it to the cache
             return fetch(event.request).then(networkResponse => {
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'error') {
                     return networkResponse;
@@ -101,7 +126,7 @@ self.addEventListener('fetch', event => {
                 return networkResponse;
             }).catch(error => {
                 console.error('[SW] Fetch failed; returning offline fallback.', error);
-                if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+                if (isNavigation) {
                     return caches.match('./index.html') || caches.match('./');
                 }
                 throw error;

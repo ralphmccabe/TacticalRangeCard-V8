@@ -243,34 +243,11 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             document.body.appendChild(el);
             window.sfuAudioElements.push(el);
 
-            // Web Audio routing for mobile loud speakerphone playback
-            try {
-                const AC = window.AudioContext || window.webkitAudioContext;
-                if (!window.trcAudioCtx || window.trcAudioCtx.state === 'closed') {
-                    window.trcAudioCtx = new AC();
-                }
-                const ctx = window.trcAudioCtx;
-                if (ctx.state === 'suspended') ctx.resume().catch(function(){});
 
-                if (track.mediaStreamTrack) {
-                    const stream = new MediaStream([track.mediaStreamTrack]);
-                    const srcNode = ctx.createMediaStreamSource(stream);
-                    const gainNode = ctx.createGain();
-                    gainNode.gain.value = 1.0;
-                    srcNode.connect(gainNode);
-                    gainNode.connect(ctx.destination);
-                    track._trcGainNode = gainNode;
-                }
-            } catch(webaudioErr) {
-                console.warn('[SFU] Web Audio routing fallback:', webaudioErr);
-            }
 
             // Track mute / unmute events from remote
             track.on('unmuted', function() {
                 if (room.startAudio) room.startAudio().catch(function(){});
-                if (window.trcAudioCtx && window.trcAudioCtx.state === 'suspended') {
-                    window.trcAudioCtx.resume().catch(function(){});
-                }
                 if (el.paused && !el.muted) el.play().catch(function(){});
             });
 
@@ -300,10 +277,7 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                     window.sfuAudioElements = (window.sfuAudioElements || []).filter(function(e){ return e !== el; });
                 });
             } catch(e){}
-            if (track._trcGainNode) {
-                try { track._trcGainNode.disconnect(); } catch(e){}
-                track._trcGainNode = null;
-            }
+
         });
 
         // Channel-busy indicator
