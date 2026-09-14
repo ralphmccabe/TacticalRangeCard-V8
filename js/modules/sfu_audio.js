@@ -1,50 +1,86 @@
 // TACTICAL RANGE CARD V8 — LIVEKIT SFU ENGINE
 // js/modules/sfu_audio.js
-// Architecture: sfu_audio exposes window.sfuStartPTT / window.sfuStopPTT
-// trc_core.js owns the button DOM — it calls these window functions on press/release.
+// Architecture: Pre-warmed audio track, instant mute/unmute PTT, mobile autoplay unlocking.
 
 let currentRoom = null;
 let currentFreq  = null;
+let localAudioTrack = null;
 
-// ─── TONES ───────────────────────────────────────────────────────────────────
+// ─── TONES (Guaranteed AudioContext resumption) ───────────────────────────────
 function playTone(type) {
     try {
-        const AC  = window.AudioContext || window.webkitAudioContext;
-        const ctx = window.trcAudioCtx || new AC();
-        if (!window.trcAudioCtx) window.trcAudioCtx = ctx;
-        if (ctx.state === 'suspended') ctx.resume();
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        const t = ctx.currentTime;
-        if (type === 'permit') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1200, t);
-            osc.frequency.exponentialRampToValueAtTime(1600, t + 0.12);
-            gain.gain.setValueAtTime(0, t);
-            gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
-            gain.gain.linearRampToValueAtTime(0, t + 0.12);
-            osc.start(t); osc.stop(t + 0.15);
-        } else if (type === 'roger') {
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(700, t);
-            gain.gain.setValueAtTime(0.08, t);
-            gain.gain.linearRampToValueAtTime(0, t + 0.08);
-            osc.start(t); osc.stop(t + 0.25);
-        } else if (type === 'error') {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(180, t);
-            gain.gain.setValueAtTime(0.2, t);
-            gain.gain.linearRampToValueAtTime(0, t + 0.3);
-            osc.start(t); osc.stop(t + 0.3);
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!window.trcAudioCtx || window.trcAudioCtx.state === 'closed') {
+            window.trcAudioCtx = new AC();
         }
-    } catch (e) {}
+        const ctx = window.trcAudioCtx;
+
+        const executeTone = function() {
+            try {
+                const t = ctx.currentTime;
+                if (type === 'permit') {
+                    // Crisp military radio chirp (950Hz -> 1250Hz)
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(950, t);
+                    osc.frequency.exponentialRampToValueAtTime(1250, t + 0.08);
+                    gain.gain.setValueAtTime(0.25, t);
+                    gain.gain.linearRampToValueAtTime(0.001, t + 0.12);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(t);
+                    osc.stop(t + 0.13);
+                } else if (type === 'roger') {
+                    // Motorola style Roger double-beep
+                    const osc1 = ctx.createOscillator();
+                    const gain1 = ctx.createGain();
+                    osc1.type = 'square';
+                    osc1.frequency.setValueAtTime(880, t);
+                    gain1.gain.setValueAtTime(0.12, t);
+                    gain1.gain.linearRampToValueAtTime(0.001, t + 0.06);
+                    osc1.connect(gain1);
+                    gain1.connect(ctx.destination);
+                    osc1.start(t);
+                    osc1.stop(t + 0.07);
+
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    osc2.type = 'square';
+                    osc2.frequency.setValueAtTime(660, t + 0.08);
+                    gain2.gain.setValueAtTime(0.12, t + 0.08);
+                    gain2.gain.linearRampToValueAtTime(0.001, t + 0.15);
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.start(t + 0.08);
+                    osc2.stop(t + 0.16);
+                } else if (type === 'error') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, t);
+                    gain.gain.setValueAtTime(0.2, t);
+                    gain.gain.linearRampToValueAtTime(0.001, t + 0.25);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(t);
+                    osc.stop(t + 0.26);
+                }
+            } catch(e) {
+                console.warn('Tone play error:', e);
+            }
+        };
+
+        if (ctx.state === 'suspended') {
+            ctx.resume().then(executeTone).catch(executeTone);
+        } else {
+            executeTone();
+        }
+    } catch(e) {}
 }
 
-// ─── CONNECT ─────────────────────────────────────────────────────────────────
+// ─── CONNECT TO LIVEKIT ───────────────────────────────────────────────────────
 async function connectToLiveKit(missionId, callsign, role, freq) {
-    // Tear down existing room first
     if (currentRoom) {
         try { await currentRoom.disconnect(); } catch (e) {}
         currentRoom = null;
@@ -52,13 +88,14 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
     window.sfuStartPTT = null;
     window.sfuStopPTT  = null;
     currentFreq = freq;
+    localAudioTrack = null;
 
     const roomName = missionId + '-' + freq;
 
     try {
         if (window.pushTacLog) window.pushTacLog('CONNECTING [' + freq + ']...', 'SYS');
 
-        // Stop any lingering background mic stream so browser AEC context is clean
+        // Stop legacy getUserMedia tracks so AEC has a fresh context
         if (window.activeMicStream) {
             window.activeMicStream.getTracks().forEach(function(t){ t.stop(); });
             window.activeMicStream = null;
@@ -83,30 +120,40 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
 
         var room = new window.LivekitClient.Room({ adaptiveStream: true, dynacast: true });
 
-        // Track all incoming audio elements so we can mute them while transmitting
         window.sfuAudioElements = window.sfuAudioElements || [];
 
-        // Incoming audio from other participants
+        // Incoming audio from remote participants
         room.on(window.LivekitClient.RoomEvent.TrackSubscribed, function(track, _pub, participant) {
             if (track.kind !== window.LivekitClient.Track.Kind.Audio) return;
-
-            // NEVER attach your own audio back to yourself — this is the self-echo source
             if (participant.isLocal) return;
 
             var el = track.attach();
+            el.setAttribute('playsinline', 'true');
+            el.setAttribute('webkit-playsinline', 'true');
             el.autoplay    = true;
             el.playsInline = true;
             el.volume      = 1.0;
+            el.muted       = false;
             el.dataset.sfuRx = 'true';
             if (typeof el.setSinkId === 'function') el.setSinkId('default').catch(function(){});
             document.body.appendChild(el);
             window.sfuAudioElements.push(el);
 
-            el.play().catch(function() {
-                var retry = function(){ el.play().catch(function(){}); };
-                document.addEventListener('click',    retry, { once: true });
-                document.addEventListener('touchend', retry, { once: true });
-            });
+            // Unlock audio playback immediately on mobile
+            if (room.startAudio) room.startAudio().catch(function(){});
+            var p = el.play();
+            if (p && p.catch) {
+                p.catch(function() {
+                    const unlock = function() {
+                        if (room.startAudio) room.startAudio().catch(function(){});
+                        el.play().catch(function(){});
+                        document.removeEventListener('click', unlock);
+                        document.removeEventListener('touchend', unlock);
+                    };
+                    document.addEventListener('click', unlock, { once: true });
+                    document.addEventListener('touchend', unlock, { once: true });
+                });
+            }
             if (window.pushTacLog) window.pushTacLog('RX: ' + participant.identity, 'SYS');
         });
 
@@ -135,6 +182,23 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         await room.connect(wsUrl, token);
         currentRoom = room;
         window.sfuRoom = room;
+
+        // Auto-unlock audio engine on connect
+        if (room.startAudio) room.startAudio().catch(function(){});
+
+        // Pre-warm local microphone track on login so PTT is instant (0ms delay)
+        try {
+            localAudioTrack = await window.LivekitClient.createLocalAudioTrack({
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            });
+            await room.localParticipant.publishTrack(localAudioTrack);
+            await localAudioTrack.mute(); // Muted by default until PTT is pressed
+        } catch(micErr) {
+            console.warn('[SFU] Pre-warm mic deferred until PTT press:', micErr);
+        }
+
         if (window.pushTacLog) window.pushTacLog('LINK SECURED [' + freq + '] — PTT READY', 'SUCCESS');
 
         // ── Expose PTT handlers on window for trc_core to call ──
@@ -150,8 +214,11 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = true; });
 
             try {
-                if (currentRoom && currentRoom.localParticipant) {
+                if (localAudioTrack) {
+                    await localAudioTrack.unmute();
+                } else if (currentRoom && currentRoom.localParticipant) {
                     await currentRoom.localParticipant.setMicrophoneEnabled(true);
+                    localAudioTrack = currentRoom.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Microphone)?.track || null;
                 }
             } catch(e) {
                 console.error("LiveKit mic enable failed:", e);
@@ -174,11 +241,13 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             btn.dataset.talking = 'false';
             playTone('roger');
 
-            if (currentRoom && currentRoom.localParticipant) {
-                try {
+            try {
+                if (localAudioTrack) {
+                    await localAudioTrack.mute();
+                } else if (currentRoom && currentRoom.localParticipant) {
                     await currentRoom.localParticipant.setMicrophoneEnabled(false);
-                } catch(e) {}
-            }
+                }
+            } catch(e) {}
 
             // Restore incoming speakers now that we're done transmitting
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
@@ -195,6 +264,21 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
     }
 }
 
+// Global unlock on any user tap anywhere
+const unlockAllAudio = function() {
+    if (currentRoom && currentRoom.startAudio) {
+        currentRoom.startAudio().catch(function(){});
+    }
+    if (window.trcAudioCtx && window.trcAudioCtx.state === 'suspended') {
+        window.trcAudioCtx.resume().catch(function(){});
+    }
+    (window.sfuAudioElements || []).forEach(function(el) {
+        if (el.paused && !el.muted) el.play().catch(function(){});
+    });
+};
+document.addEventListener('click', unlockAllAudio, { passive: true });
+document.addEventListener('touchend', unlockAllAudio, { passive: true });
+
 // Expose functions globally
 window.connectToLiveKit = connectToLiveKit;
 window._sfuDisconnect = async function() {
@@ -203,6 +287,7 @@ window._sfuDisconnect = async function() {
         currentRoom = null;
         window.sfuRoom = null;
     }
+    localAudioTrack = null;
     window.sfuStartPTT = null;
     window.sfuStopPTT = null;
 };
@@ -210,7 +295,6 @@ window._sfuDisconnect = async function() {
 // ─── BOOT & DIAL WATCHER ─────────────────────────────────────────────────────
 var _dialWired = false;
 setInterval(function() {
-    // Watch for frequency dial change
     var liveFreqEl = document.getElementById('live-freq');
     if (liveFreqEl && !_dialWired) {
         _dialWired = true;
