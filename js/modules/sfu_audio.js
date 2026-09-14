@@ -96,7 +96,18 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
             if (track.kind === window.LivekitClient.Track.Kind.Audio) {
                 const element = track.attach();
+                element.autoplay = true;
+                element.playsInline = true;
+                element.volume = 1.0;
                 document.body.appendChild(element);
+                element.play().catch(err => {
+                    console.warn('[SFU] Audio autoplay blocked, will retry on next user interaction:', err);
+                    // retry on next tap/click (covers iOS)
+                    const retry = () => { element.play().catch(()=>{}); document.removeEventListener('click', retry); document.removeEventListener('touchend', retry); };
+                    document.addEventListener('click', retry, { once: true });
+                    document.addEventListener('touchend', retry, { once: true });
+                });
+                window.pushTacLog(`RX AUDIO: ${participant.identity}`, 'SYS');
             }
         });
         
@@ -143,12 +154,14 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         window.pushTacLog(`SFU AUDIO LINK SECURED: ${freq}`, "SUCCESS");
         currentRoom = room;
         
-        const localTracks = await window.LivekitClient.createLocalTracks({ audio: true, video: false });
-        micTrack = localTracks[0];
-        await room.localParticipant.publishTrack(micTrack);
+        // Start mic as DISABLED (muted at source). PTT will call setMicrophoneEnabled(true/false).
+        // This is the correct LiveKit pattern — publish happens automatically when enabled.
         await room.localParticipant.setMicrophoneEnabled(false);
+        micTrack = room.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Microphone) || null;
         
         hookPTTButton();
+        window.pushTacLog(`AUDIO READY — PUSH TO TALK [${freq}]`, "SUCCESS");
+
         
     } catch (err) {
         console.error("LiveKit connection error:", err);
@@ -174,7 +187,7 @@ function hookPTTButton() {
             return;
         }
         
-        if (currentRoom && micTrack) {
+        if (currentRoom) {
             playTone('permit');
             await currentRoom.localParticipant.setMicrophoneEnabled(true);
             
@@ -190,6 +203,7 @@ function hookPTTButton() {
             document.getElementById('ptt-status').innerText = "TRANSMITTING";
             document.getElementById('ptt-status').classList.replace('text-gray-400', 'text-emerald-400');
         }
+
     };
     
     const stopPTT = async (e) => {
