@@ -1,11 +1,11 @@
 /* TRC-VERSION - v8.0.0.0 */
-const CACHE_NAME = 'trc-v8.11';
+const CACHE_NAME = 'trc-v8.12';
 const ASSETS = [
     './',
-    './index.html?v=8.11',
+    './index.html?v=8.12',
     './style.css?v=118',
-    './trc_core.js?v=8.11',
-    './js/modules/sfu_audio.js?v=8.11',
+    './trc_core.js?v=8.12',
+    './js/modules/sfu_audio.js?v=8.12',
     './blog_logic.js?v=8.0.0.0',
     './manifest.json',
     './icon-512.png',

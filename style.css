@@ -521,7 +521,7 @@ body.is-capturing #card-scale-wrapper {
     #tacticalDashboard:not(.hidden) { height: auto !important; min-height: 100vh; overflow-y: auto !important; display: block !important; }
     .dashboard-grid { display: flex !important; flex-direction: column !important; height: auto !important; max-height: none !important; overflow: visible !important; gap: 1.5rem !important; padding: 0.75rem !important; }
     .dash-sidebar, .dash-viewport, .dash-bottombar, #dash-bottom-row { grid-column: span 12 !important; grid-row: auto !important; width: 100% !important; height: auto !important; }
-    .dash-viewport { order: 1; height: 260px !important; z-index: 10 !important; display: flex !important; flex-direction: column !important; position: relative !important; top: auto !important; background: #030712 !important; border-bottom: 1px solid rgba(16,185,129,0.2) !important; }
+    .dash-viewport { order: 1; height: 350px !important; z-index: 50 !important; display: flex !important; flex-direction: column !important; position: sticky !important; top: 0 !important; background: #030712 !important; border-bottom: 1px solid rgba(16,185,129,0.2) !important; }
     .dash-sidebar { order: 2; height: auto !important; overflow-y: visible !important; max-height: none !important; }
     .dash-sidebar .dash-panel { height: auto !important; min-height: 250px !important; }
     .dash-bottombar { order: 3; display: flex !important; flex-direction: column !important; gap: 1rem !important; overflow-x: visible !important; height: auto !important; }
