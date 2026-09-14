@@ -8421,6 +8421,21 @@ function initializeTacticalDashboard2() {
             } catch (err) { window.pushTacLog(`PTT HANDLER ERROR`, "ERROR"); }
         });
 
+        // 2.2 Voice-to-Text Transmission Logger
+        commsChannel.on('broadcast', { event: 'voice_transcript' }, (payload) => {
+            try {
+                const dec = TacticalCrypto.decrypt(payload.payload.data);
+                if (dec && dec.user && dec.text && dec.user.id !== commsUser.id) {
+                    if (window.pushTacLog) {
+                        window.pushTacLog(`🎙️ [RADIO] ${dec.user.callsign}: "${dec.text}"`, 'SYS');
+                    }
+                    if (window.renderChatMessage) {
+                        window.renderChatMessage(dec.user, `🎙️ [RADIO] "${dec.text}"`, false);
+                    }
+                }
+            } catch (err) { console.error('Voice transcript RX error:', err); }
+        });
+
         // 2.5 DUAL-LAYER DISCOVERY HANDSHAKE (Instant teammate visibility without re-login)
         commsChannel.on('broadcast', { event: 'announce_join' }, (payload) => {
             try {

@@ -1,10 +1,79 @@
-// TACTICAL RANGE CARD V8 — LIVEKIT SFU ENGINE
+// TACTICAL RANGE CARD V8 — LIVEKIT SFU ENGINE + VOICE TRANSCRIPT
 // js/modules/sfu_audio.js
-// Architecture: Pre-warmed audio track, instant mute/unmute PTT, mobile autoplay unlocking.
+// Features: Pre-warmed audio, 0ms PTT, Speech-to-Text transcription to Audit Log & Chat,
+// anti-sticking PTT guard, and solid connection lock (no infinite loops).
 
 let currentRoom = null;
 let currentFreq  = null;
 let localAudioTrack = null;
+let isConnecting = false;
+let isTalking = false;
+
+// ─── SPEECH RECOGNITION (VOICE-TO-TEXT LOGGING) ──────────────────────────────
+const SpeechRecClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+let activeRecognition = null;
+let transcriptBuffer = '';
+
+function startVoiceTranscription() {
+    transcriptBuffer = '';
+    if (!SpeechRecClass) return;
+    try {
+        if (activeRecognition) {
+            try { activeRecognition.abort(); } catch(e){}
+        }
+        activeRecognition = new SpeechRecClass();
+        activeRecognition.continuous = true;
+        activeRecognition.interimResults = false;
+        activeRecognition.lang = 'en-US';
+        activeRecognition.onresult = function(event) {
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    transcriptBuffer += event.results[i][0].transcript + ' ';
+                }
+            }
+        };
+        activeRecognition.onerror = function(e) {};
+        activeRecognition.start();
+    } catch(err) {
+        console.warn('Speech recognition not available:', err);
+    }
+}
+
+function stopAndBroadcastVoiceTranscription(callsign, role, freq) {
+    if (activeRecognition) {
+        try { activeRecognition.stop(); } catch(e){}
+    }
+    setTimeout(() => {
+        const text = transcriptBuffer.trim();
+        if (text && text.length > 0) {
+            // 1. Post to local Tactical System Audit Log
+            if (window.pushTacLog) {
+                window.pushTacLog(`🎙️ [RADIO] ${callsign}: "${text}"`, 'SUCCESS');
+            }
+            // 2. Render into Mission Chat
+            if (window.renderChatMessage && window.commsUser) {
+                window.renderChatMessage(window.commsUser, `🎙️ [RADIO] "${text}"`, true);
+            }
+            // 3. Broadcast to all teammates via Supabase Realtime
+            if (window.commsChannel && window.TacticalCrypto && window.commsUser) {
+                try {
+                    window.commsChannel.send({
+                        type: 'broadcast',
+                        event: 'voice_transcript',
+                        payload: {
+                            data: window.TacticalCrypto.encrypt({
+                                user: window.commsUser,
+                                text: text,
+                                freq: freq,
+                                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            })
+                        }
+                    }).catch(() => {});
+                } catch(e){}
+            }
+        }
+    }, 250);
+}
 
 // ─── TONES (Guaranteed AudioContext resumption) ───────────────────────────────
 function playTone(type) {
@@ -81,6 +150,12 @@ function playTone(type) {
 
 // ─── CONNECT TO LIVEKIT ───────────────────────────────────────────────────────
 async function connectToLiveKit(missionId, callsign, role, freq) {
+    if (isConnecting) return;
+    if (currentRoom && currentFreq === freq && currentRoom.state === 'connected') {
+        return; // Already connected to this room!
+    }
+    isConnecting = true;
+
     if (currentRoom) {
         try { await currentRoom.disconnect(); } catch (e) {}
         currentRoom = null;
@@ -119,7 +194,6 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         }
 
         var room = new window.LivekitClient.Room({ adaptiveStream: true, dynacast: true });
-
         window.sfuAudioElements = window.sfuAudioElements || [];
 
         // Incoming audio from remote participants
@@ -132,8 +206,9 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             el.setAttribute('webkit-playsinline', 'true');
             el.autoplay    = true;
             el.playsInline = true;
-            var pttBtnEl = document.getElementById('ptt-btn');
-            el.muted       = (pttBtnEl && pttBtnEl.dataset.talking === 'true');
+            el.volume      = 1.0;
+            var pttBtnEl   = document.getElementById('ptt-btn');
+            el.muted       = isTalking || (pttBtnEl && pttBtnEl.dataset.talking === 'true');
             el.dataset.sfuRx = 'true';
             if (typeof el.setSinkId === 'function') el.setSinkId('default').catch(function(){});
             document.body.appendChild(el);
@@ -154,7 +229,7 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                     document.addEventListener('touchend', unlock, { once: true });
                 });
             }
-            if (window.pushTacLog) window.pushTacLog('RX: ' + participant.identity, 'SYS');
+            if (window.pushTacLog) window.pushTacLog('AUDIO RX: ' + participant.identity, 'SYS');
         });
 
         room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, function(track){
@@ -204,12 +279,16 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
 
         // ── Expose PTT handlers on window for trc_core to call ──
         window.sfuStartPTT = async function() {
+            if (isTalking) return;
             var btn      = document.getElementById('ptt-btn');
             var statusEl = document.getElementById('ptt-status');
-            if (!btn || btn.dataset.busy === 'true') { playTone('error'); return; }
-            if (btn.dataset.talking === 'true') return;
-            btn.dataset.talking = 'true';
+            if (btn && btn.dataset.busy === 'true') { playTone('error'); return; }
+            
+            isTalking = true;
+            if (btn) btn.dataset.talking = 'true';
+
             playTone('permit');
+            startVoiceTranscription();
 
             // Mute all incoming speakers while transmitting — prevents self-echo
             document.querySelectorAll('audio').forEach(function(el){ el.muted = true; });
@@ -224,24 +303,31 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                 }
             } catch(e) {
                 console.error("LiveKit mic enable failed:", e);
-                if (window.pushTacLog) window.pushTacLog("MIC ERROR: " + e.message, "ERROR");
-                btn.dataset.talking = 'false';
-                (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
+                isTalking = false;
+                if (btn) btn.dataset.talking = 'false';
+                document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
                 return;
             }
 
-            btn.classList.add('border-emerald-500', 'bg-emerald-900/60');
+            if (btn) {
+                btn.classList.add('border-emerald-500', 'bg-emerald-900/60');
+                btn.classList.remove('border-gray-800', 'bg-gray-900');
+            }
             if (statusEl) { statusEl.innerText = 'TRANSMITTING'; statusEl.style.color = '#34d399'; }
             var spk = document.getElementById('ptt-active-speaker');
             if (spk) { spk.innerText = 'TX: ' + callsign; spk.style.color = '#34d399'; }
         };
 
         window.sfuStopPTT = async function() {
+            if (!isTalking) return;
+            isTalking = false;
+
             var btn      = document.getElementById('ptt-btn');
             var statusEl = document.getElementById('ptt-status');
-            if (!btn || btn.dataset.talking !== 'true') return;
-            btn.dataset.talking = 'false';
+            if (btn) btn.dataset.talking = 'false';
+
             playTone('roger');
+            stopAndBroadcastVoiceTranscription(callsign, role, currentFreq || 'ALPHA');
 
             try {
                 if (localAudioTrack) {
@@ -255,8 +341,11 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
 
-            btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');
-            if (statusEl) { statusEl.innerText = btn.dataset.busy === 'true' ? 'CHANNEL BUSY' : 'STANDBY'; statusEl.style.color = ''; }
+            if (btn) {
+                btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');
+                btn.classList.add('border-gray-800', 'bg-gray-900');
+            }
+            if (statusEl) { statusEl.innerText = (btn && btn.dataset.busy === 'true') ? 'CHANNEL BUSY' : 'STANDBY'; statusEl.style.color = ''; }
             var spk = document.getElementById('ptt-active-speaker');
             if (spk) { spk.innerText = ''; }
         };
@@ -264,6 +353,8 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
     } catch (err) {
         console.error('[SFU] Connection error:', err);
         if (window.pushTacLog) window.pushTacLog('SFU FAILED: ' + err.message, 'WARNING');
+    } finally {
+        isConnecting = false;
     }
 }
 
@@ -293,14 +384,17 @@ window._sfuDisconnect = async function() {
     localAudioTrack = null;
     window.sfuStartPTT = null;
     window.sfuStopPTT = null;
+    isTalking = false;
+    isConnecting = false;
 };
 
-// ─── BOOT & DIAL WATCHER ─────────────────────────────────────────────────────
+// Dial change event wiring — only wired ONCE
 var _dialWired = false;
-setInterval(function() {
+var _dialCheck = setInterval(function() {
     var liveFreqEl = document.getElementById('live-freq');
     if (liveFreqEl && !_dialWired) {
         _dialWired = true;
+        clearInterval(_dialCheck);
         liveFreqEl.addEventListener('change', function(e) {
             var newFreq = e.target.value;
             if (window.commsUser) window.commsUser.freq = newFreq;
@@ -316,14 +410,6 @@ setInterval(function() {
             }
         });
     }
-
-    // Auto-connect if user is logged in but LiveKit room is not yet connected
-    if (window.commsChannel && window.commsUser && !currentRoom && !window.isIntentionalDisconnect) {
-        var passEl  = document.getElementById('comms-passcode');
-        var mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
-        var freq    = window.commsUser.freq || 'ALPHA';
-        connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, freq);
-    }
-}, 800);
+}, 500);
 
 export { connectToLiveKit };
