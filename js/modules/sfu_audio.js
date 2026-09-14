@@ -161,27 +161,24 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         window.pushTacLog(`SFU AUDIO LINK SECURED: ${freq}`, "SUCCESS");
         currentRoom = room;
         
-        // === KILL THE OLD BACKGROUND MIC STREAM ===
-        // trc_core.js captures window.activeMicStream during login for the old WebRTC engine.
-        // Even though P2P is disabled, those mic tracks are still LIVE and cause echo
-        // because the phone speaker plays received audio that the open mic picks up.
+        // === STOP THE OLD BACKGROUND MIC STREAM COMPLETELY ===
+        // Two simultaneous getUserMedia captures break the browser's built-in AEC.
+        // We must STOP (not just disable) the old tracks so the browser fully releases the mic,
+        // then LiveKit creates a fresh capture with proper echo cancellation.
         if (window.activeMicStream) {
-            window.activeMicStream.getAudioTracks().forEach(t => { t.enabled = false; });
+            window.activeMicStream.getTracks().forEach(t => t.stop());
+            window.activeMicStream = null;
         }
         
-        // Start mic DISABLED. Use explicit echo cancellation constraints when PTT enables it.
-        await room.localParticipant.setMicrophoneEnabled(false, {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 16000,
-        });
+        // Start mic DISABLED — LiveKit will create a fresh mic capture with AEC when PTT enables it.
+        await room.localParticipant.setMicrophoneEnabled(false);
         micTrack = room.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Microphone) || null;
         
         hookPTTButton();
         window.pushTacLog(`AUDIO READY — PUSH TO TALK [${freq}]`, "SUCCESS");
 
         
+
 
     } catch (err) {
         console.error("LiveKit connection error:", err);
@@ -234,10 +231,6 @@ function hookPTTButton() {
             playTone('roger');
             if (currentRoom) {
                 await currentRoom.localParticipant.setMicrophoneEnabled(false);
-            }
-            // Re-silence the background stream so it doesn't cause echo while receiving
-            if (window.activeMicStream) {
-                window.activeMicStream.getAudioTracks().forEach(t => { t.enabled = false; });
             }
 
             
