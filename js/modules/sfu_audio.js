@@ -191,7 +191,8 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             localAudioTrack = await window.LivekitClient.createLocalAudioTrack({
                 echoCancellation: true,
                 noiseSuppression: true,
-                autoGainControl: true
+                autoGainControl: false,
+                voiceIsolation: true
             });
             await room.localParticipant.publishTrack(localAudioTrack);
             await localAudioTrack.mute(); // Muted by default until PTT is pressed
@@ -211,6 +212,7 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             playTone('permit');
 
             // Mute all incoming speakers while transmitting — prevents self-echo
+            document.querySelectorAll('audio').forEach(function(el){ el.muted = true; });
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = true; });
 
             try {
@@ -250,6 +252,7 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             } catch(e) {}
 
             // Restore incoming speakers now that we're done transmitting
+            document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
 
             btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');

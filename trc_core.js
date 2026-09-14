@@ -7845,7 +7845,7 @@ function initializeTacticalDashboard2() {
                 if (!window.activeMicStream) {
                     try {
                         window.activeMicStream = await navigator.mediaDevices.getUserMedia({ 
-                            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+                            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } 
                         });
                     } catch (e1) {
                         try {
