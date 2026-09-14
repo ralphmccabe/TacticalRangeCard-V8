@@ -85,23 +85,33 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
 
         var room = new window.LivekitClient.Room({ adaptiveStream: true, dynacast: true });
 
+        // Track all incoming audio elements so we can mute them while transmitting
+        window.sfuAudioElements = window.sfuAudioElements || [];
+
         // Incoming audio from other participants
         room.on(window.LivekitClient.RoomEvent.TrackSubscribed, function(track, _pub, participant) {
             if (track.kind !== window.LivekitClient.Track.Kind.Audio) return;
+
+            // NEVER attach your own audio back to yourself — this is the self-echo source
+            if (participant.isLocal) return;
+
             var el = track.attach();
             el.autoplay    = true;
             el.playsInline = true;
             el.volume      = 1.0;
+            el.dataset.sfuRx = 'true'; // mark so we can find it later
             if (typeof el.setSinkId === 'function') el.setSinkId('default').catch(function(){});
             document.body.appendChild(el);
+            window.sfuAudioElements.push(el);
+
             el.play().catch(function() {
-                // Retry on next user interaction (iOS requirement)
                 var retry = function(){ el.play().catch(function(){}); };
                 document.addEventListener('click',    retry, { once: true });
                 document.addEventListener('touchend', retry, { once: true });
             });
             if (window.pushTacLog) window.pushTacLog('RX: ' + participant.identity, 'SYS');
         });
+
 
         room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, function(track){ track.detach(); });
 
@@ -136,6 +146,10 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             if (btn.dataset.talking === 'true') return;
             btn.dataset.talking = 'true';
             playTone('permit');
+
+            // Mute all incoming speakers while transmitting — prevents self-echo
+            (window.sfuAudioElements || []).forEach(function(el){ el.muted = true; });
+
             await currentRoom.localParticipant.setMicrophoneEnabled(true);
             btn.classList.add('border-emerald-500', 'bg-emerald-900/60');
             if (statusEl) { statusEl.innerText = 'TRANSMITTING'; statusEl.style.color = '#34d399'; }
@@ -150,11 +164,16 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             btn.dataset.talking = 'false';
             playTone('roger');
             if (currentRoom) await currentRoom.localParticipant.setMicrophoneEnabled(false);
+
+            // Restore incoming speakers now that we're done transmitting
+            (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
+
             btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');
             if (statusEl) { statusEl.innerText = btn.dataset.busy === 'true' ? 'CHANNEL BUSY' : 'STANDBY'; statusEl.style.color = ''; }
             var spk = document.getElementById('ptt-active-speaker');
             if (spk) { spk.innerText = ''; }
         };
+
 
     } catch (err) {
         console.error('[SFU] Connection error:', err);
