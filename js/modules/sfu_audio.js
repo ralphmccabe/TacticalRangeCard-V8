@@ -99,10 +99,16 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                 element.autoplay = true;
                 element.playsInline = true;
                 element.volume = 1.0;
+                
+                // Force speakerphone on mobile (prevents audio routing to tiny earpiece)
+                if (typeof element.setSinkId === 'function') {
+                    element.setSinkId('default').catch(() => {});
+                }
+                
                 document.body.appendChild(element);
+                
                 element.play().catch(err => {
                     console.warn('[SFU] Audio autoplay blocked, will retry on next user interaction:', err);
-                    // retry on next tap/click (covers iOS)
                     const retry = () => { element.play().catch(()=>{}); document.removeEventListener('click', retry); document.removeEventListener('touchend', retry); };
                     document.addEventListener('click', retry, { once: true });
                     document.addEventListener('touchend', retry, { once: true });
@@ -110,6 +116,7 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                 window.pushTacLog(`RX AUDIO: ${participant.identity}`, 'SYS');
             }
         });
+
         
         room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
             track.detach();
@@ -154,15 +161,28 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         window.pushTacLog(`SFU AUDIO LINK SECURED: ${freq}`, "SUCCESS");
         currentRoom = room;
         
-        // Start mic as DISABLED (muted at source). PTT will call setMicrophoneEnabled(true/false).
-        // This is the correct LiveKit pattern — publish happens automatically when enabled.
-        await room.localParticipant.setMicrophoneEnabled(false);
+        // === KILL THE OLD BACKGROUND MIC STREAM ===
+        // trc_core.js captures window.activeMicStream during login for the old WebRTC engine.
+        // Even though P2P is disabled, those mic tracks are still LIVE and cause echo
+        // because the phone speaker plays received audio that the open mic picks up.
+        if (window.activeMicStream) {
+            window.activeMicStream.getAudioTracks().forEach(t => { t.enabled = false; });
+        }
+        
+        // Start mic DISABLED. Use explicit echo cancellation constraints when PTT enables it.
+        await room.localParticipant.setMicrophoneEnabled(false, {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 16000,
+        });
         micTrack = room.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Microphone) || null;
         
         hookPTTButton();
         window.pushTacLog(`AUDIO READY — PUSH TO TALK [${freq}]`, "SUCCESS");
 
         
+
     } catch (err) {
         console.error("LiveKit connection error:", err);
         window.pushTacLog(`SFU AUDIO LINK FAILED: ${err.message}`, "WARNING");
@@ -215,6 +235,11 @@ function hookPTTButton() {
             if (currentRoom) {
                 await currentRoom.localParticipant.setMicrophoneEnabled(false);
             }
+            // Re-silence the background stream so it doesn't cause echo while receiving
+            if (window.activeMicStream) {
+                window.activeMicStream.getAudioTracks().forEach(t => { t.enabled = false; });
+            }
+
             
             finalBtn.dataset.talking = "false";
             finalBtn.classList.remove('bg-emerald-900', 'border-emerald-400', 'text-emerald-100', 'shadow-[0_0_15px_rgba(16,185,129,0.5)]', 'scale-[0.98]');
