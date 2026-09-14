@@ -1,304 +1,212 @@
-// TACTICAL RANGE CARD V8 - LIVEKIT SFU ENGINE
+// TACTICAL RANGE CARD V8 — LIVEKIT SFU ENGINE (CLEAN REWRITE)
 // js/modules/sfu_audio.js
+// Rules:
+//   1. No mic track is published until the user physically presses PTT.
+//   2. Document-level listeners are added ONCE only, guarded by a flag.
+//   3. On disconnect, room is fully torn down before reconnecting.
 
 let currentRoom = null;
-let currentFreq = null;
-let micTrack = null;
+let currentFreq  = null;
+let docListenersAttached = false;
 
-let audioCtx = null;
-
+// ─── TONES ────────────────────────────────────────────────────────────────────
 function playTone(type) {
-    audioCtx = window.trcAudioCtx;
-    if (!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-    
-    const osc = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    
-    if (type === 'permit') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1600, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
-        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
-    } else if (type === 'roger') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 0.05);
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime + 0.1);
-        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
-    } else if (type === 'error') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-    }
+    try {
+        const AC  = window.AudioContext || window.webkitAudioContext;
+        const ctx = window.trcAudioCtx || new AC();
+        if (!window.trcAudioCtx) window.trcAudioCtx = ctx;
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const t = ctx.currentTime;
+        if (type === 'permit') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, t);
+            osc.frequency.exponentialRampToValueAtTime(1600, t + 0.12);
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
+            gain.gain.linearRampToValueAtTime(0, t + 0.12);
+            osc.start(t); osc.stop(t + 0.15);
+        } else if (type === 'roger') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(700, t);
+            gain.gain.setValueAtTime(0.08, t);
+            gain.gain.linearRampToValueAtTime(0, t + 0.08);
+            osc.frequency.setValueAtTime(700, t + 0.12);
+            gain.gain.setValueAtTime(0.08, t + 0.12);
+            gain.gain.linearRampToValueAtTime(0, t + 0.22);
+            osc.start(t); osc.stop(t + 0.25);
+        } else if (type === 'error') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, t);
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.linearRampToValueAtTime(0, t + 0.3);
+            osc.start(t); osc.stop(t + 0.3);
+        }
+    } catch (e) {}
 }
 
+// ─── CONNECT ──────────────────────────────────────────────────────────────────
 async function connectToLiveKit(missionId, callsign, role, freq) {
     if (currentRoom) {
-        await currentRoom.disconnect();
+        try { await currentRoom.disconnect(); } catch (e) {}
         currentRoom = null;
     }
     currentFreq = freq;
-    
     const roomName = `${missionId}-${freq}`;
-    
     try {
-        window.pushTacLog(`CONNECTING SECURE COMM LINK [${freq}]...`, "SYS");
-        
-        // Generate Token Locally (Serverless Mode for GitHub Pages)
-        const apiKey = "APITy5FkUwwNzcw";
-        const apiSecret = "vIlpkOpK11f0jeATaTPz2Oni6UaB6lTkK4LycHudrI2";
-        
-        const header = { alg: "HS256", typ: "JWT" };
+        if (window.pushTacLog) window.pushTacLog(`CONNECTING [${freq}]...`, 'SYS');
+        const apiKey    = 'APITy5FkUwwNzcw';
+        const apiSecret = 'vIlpkOpK11f0jeATaTPz2Oni6UaB6lTkK4LycHudrI2';
+        const header  = { alg: 'HS256', typ: 'JWT' };
         const payload = {
-            iss: apiKey,
-            sub: callsign,
-            name: callsign,
-            exp: Math.floor(Date.now() / 1000) + (60 * 60 * 12), // 12 hours
+            iss: apiKey, sub: callsign, name: callsign,
+            exp: Math.floor(Date.now() / 1000) + 43200,
             nbf: Math.floor(Date.now() / 1000) - 10,
-            video: {
-                roomJoin: true,
-                room: roomName
-            }
+            video: { roomJoin: true, room: roomName },
         };
-        
         const token = KJUR.jws.JWS.sign(null, header, payload, { utf8: apiSecret });
-        const wsUrl = "wss://tacticlerangecardv-8-xp5phgeh.livekit.cloud";
-        
-        if (!window.LivekitClient) {
-            console.error("LiveKit Client SDK not loaded.");
-            return;
-        }
-        
-        const room = new window.LivekitClient.Room({
-            adaptiveStream: true,
-            dynacast: true,
-        });
-        
-        room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
-            if (track.kind === window.LivekitClient.Track.Kind.Audio) {
-                const element = track.attach();
-                element.autoplay = true;
-                element.playsInline = true;
-                element.volume = 1.0;
-                
-                // Force speakerphone on mobile (prevents audio routing to tiny earpiece)
-                if (typeof element.setSinkId === 'function') {
-                    element.setSinkId('default').catch(() => {});
-                }
-                
-                document.body.appendChild(element);
-                
-                element.play().catch(err => {
-                    console.warn('[SFU] Audio autoplay blocked, will retry on next user interaction:', err);
-                    const retry = () => { element.play().catch(()=>{}); document.removeEventListener('click', retry); document.removeEventListener('touchend', retry); };
-                    document.addEventListener('click', retry, { once: true });
-                    document.addEventListener('touchend', retry, { once: true });
-                });
-                window.pushTacLog(`RX AUDIO: ${participant.identity}`, 'SYS');
-            }
-        });
+        const wsUrl = 'wss://tacticlerangecardv-8-xp5phgeh.livekit.cloud';
+        if (!window.LivekitClient) { if (window.pushTacLog) window.pushTacLog('LIVEKIT SDK NOT LOADED', 'WARNING'); return; }
 
-        
-        room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
-            track.detach();
-        });
-        
-        room.on(window.LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
-            const pttBtn = document.getElementById('ptt-btn');
-            const speakerLabel = document.getElementById('ptt-active-speaker');
-            
-            const otherSpeakers = speakers.filter(s => s.identity !== callsign);
-            
-            if (otherSpeakers.length > 0) {
-                const isCommand = (window.commsUser?.role||'').toUpperCase().includes('COMMAND') || (window.commsUser?.role||'').toUpperCase().includes('INSTRUCTOR');
-                
-                if (!isCommand && pttBtn) {
-                    pttBtn.classList.remove('bg-slate-900', 'border-slate-700', 'text-slate-400');
-                    pttBtn.classList.add('bg-red-900', 'border-red-500', 'text-red-200');
-                    pttBtn.dataset.busy = "true";
-                    document.getElementById('ptt-status').innerText = "CHANNEL BUSY";
-                }
-                if (speakerLabel) {
-                    speakerLabel.innerText = `RX: ${otherSpeakers[0].identity}`;
-                    speakerLabel.style.color = '#ef4444';
-                }
-            } else {
-                if (pttBtn) {
-                    pttBtn.classList.add('bg-slate-900', 'border-slate-700', 'text-slate-400');
-                    pttBtn.classList.remove('bg-red-900', 'border-red-500', 'text-red-200');
-                    pttBtn.dataset.busy = "false";
-                    
-                    if (pttBtn.dataset.talking !== "true") {
-                        document.getElementById('ptt-status').innerText = "STANDBY";
-                    }
-                }
-                if (speakerLabel) {
-                    speakerLabel.innerText = "";
-                }
-            }
-        });
-        
-        await room.connect(wsUrl, token);
-        window.pushTacLog(`SFU AUDIO LINK SECURED: ${freq}`, "SUCCESS");
-        currentRoom = room;
-        
-        // === STOP THE OLD BACKGROUND MIC STREAM COMPLETELY ===
-        // Two simultaneous getUserMedia captures break the browser's built-in AEC.
-        // We must STOP (not just disable) the old tracks so the browser fully releases the mic,
-        // then LiveKit creates a fresh capture with proper echo cancellation.
+        // Stop old mic stream so AEC context is fresh
         if (window.activeMicStream) {
             window.activeMicStream.getTracks().forEach(t => t.stop());
             window.activeMicStream = null;
         }
-        
-        // Start mic DISABLED — LiveKit will create a fresh mic capture with AEC when PTT enables it.
-        await room.localParticipant.setMicrophoneEnabled(false);
-        micTrack = room.localParticipant.getTrackPublication(window.LivekitClient.Track.Source.Microphone) || null;
-        
-        hookPTTButton();
-        window.pushTacLog(`AUDIO READY — PUSH TO TALK [${freq}]`, "SUCCESS");
 
-        
+        const room = new window.LivekitClient.Room({ adaptiveStream: true, dynacast: true });
 
+        room.on(window.LivekitClient.RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+            if (track.kind !== window.LivekitClient.Track.Kind.Audio) return;
+            const el = track.attach();
+            el.autoplay = true; el.playsInline = true; el.volume = 1.0;
+            if (typeof el.setSinkId === 'function') el.setSinkId('default').catch(() => {});
+            document.body.appendChild(el);
+            const tryPlay = () => el.play().catch(() => {});
+            tryPlay();
+            document.addEventListener('click',    tryPlay, { once: true });
+            document.addEventListener('touchend', tryPlay, { once: true });
+            if (window.pushTacLog) window.pushTacLog(`RX: ${participant.identity}`, 'SYS');
+        });
+
+        room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, track => track.detach());
+
+        room.on(window.LivekitClient.RoomEvent.ActiveSpeakersChanged, speakers => {
+            const btn      = document.getElementById('ptt-btn');
+            const statusEl = document.getElementById('ptt-status');
+            const lblEl    = document.getElementById('ptt-active-speaker');
+            if (!btn) return;
+            const others = speakers.filter(s => s.identity !== callsign);
+            const isCmd  = /COMMAND|INSTRUCTOR|LEAD|DISPATCH/i.test(window.commsUser?.role || '');
+            if (others.length > 0) {
+                if (!isCmd) { btn.dataset.busy = 'true'; if (statusEl && btn.dataset.talking !== 'true') statusEl.innerText = 'CHANNEL BUSY'; }
+                if (lblEl) { lblEl.innerText = `RX: ${others[0].identity}`; lblEl.style.color = '#ef4444'; }
+            } else {
+                btn.dataset.busy = 'false';
+                if (statusEl && btn.dataset.talking !== 'true') statusEl.innerText = 'STANDBY';
+                if (lblEl) lblEl.innerText = '';
+            }
+        });
+
+        await room.connect(wsUrl, token);
+        if (window.pushTacLog) window.pushTacLog(`LINK SECURED [${freq}] — PTT READY`, 'SUCCESS');
+        currentRoom = room;
+
+        // NOTE: We do NOT call setMicrophoneEnabled(false) here.
+        // That would publish a muted track on both devices and cause echo.
+        // The mic is only published when PTT is pressed.
+
+        hookPTTButton(callsign);
 
     } catch (err) {
-        console.error("LiveKit connection error:", err);
-        window.pushTacLog(`SFU AUDIO LINK FAILED: ${err.message}`, "WARNING");
+        console.error('[SFU] Connection error:', err);
+        if (window.pushTacLog) window.pushTacLog(`SFU FAILED: ${err.message}`, 'WARNING');
     }
 }
 
-function hookPTTButton() {
-    const pttBtn = document.getElementById('ptt-btn');
-    if (!pttBtn) return;
-    
-    // Replace element to wipe old event listeners
-    const newBtn = pttBtn.cloneNode(true);
-    pttBtn.parentNode.replaceChild(newBtn, pttBtn);
-    const finalBtn = document.getElementById('ptt-btn');
-    
+// ─── PTT BUTTON ───────────────────────────────────────────────────────────────
+function hookPTTButton(callsign) {
+    const oldBtn = document.getElementById('ptt-btn');
+    if (!oldBtn) return;
+    // Clone wipes stale inline listeners from previous sessions
+    const btn = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(btn, oldBtn);
+
+    let isTouching = false;
+
     const startPTT = async (e) => {
-        if (e) e.preventDefault();
-        if (e.type === 'touchstart' && e.cancelable) e.preventDefault(); // prevent double fire with mousedown
-        
-        if (finalBtn.dataset.busy === "true") {
-            playTone('error');
-            return;
-        }
-        
-        if (currentRoom) {
-            playTone('permit');
-            await currentRoom.localParticipant.setMicrophoneEnabled(true);
-            
-            finalBtn.dataset.talking = "true";
-            finalBtn.classList.remove('bg-slate-900', 'border-slate-700', 'text-slate-400', 'text-emerald-400', 'border-emerald-500', 'bg-emerald-900/30');
-            finalBtn.classList.add('bg-emerald-900', 'border-emerald-400', 'text-emerald-100', 'shadow-[0_0_15px_rgba(16,185,129,0.5)]', 'scale-[0.98]');
-            
-            const icon = finalBtn.querySelector('i');
-            if(icon) {
-                icon.classList.remove('text-slate-600');
-                icon.classList.add('text-emerald-300', 'drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]');
-            }
-            document.getElementById('ptt-status').innerText = "TRANSMITTING";
-            document.getElementById('ptt-status').classList.replace('text-gray-400', 'text-emerald-400');
-        }
-
+        if (e.type === 'touchstart') isTouching = true;
+        if (e.type === 'mousedown'  && isTouching) return; // prevent double-fire on touch devices
+        if (e.cancelable) e.preventDefault();
+        if (btn.dataset.busy === 'true') { playTone('error'); return; }
+        if (btn.dataset.talking === 'true') return;
+        if (!currentRoom) return;
+        btn.dataset.talking = 'true';
+        playTone('permit');
+        await currentRoom.localParticipant.setMicrophoneEnabled(true);
+        btn.classList.remove('bg-slate-900','border-slate-700','text-slate-400');
+        btn.classList.add('bg-emerald-900','border-emerald-400','text-emerald-100');
+        const icon = btn.querySelector('i');
+        if (icon) { icon.classList.remove('text-slate-600'); icon.classList.add('text-emerald-300'); }
+        const st = document.getElementById('ptt-status');
+        if (st) { st.innerText = 'TRANSMITTING'; st.classList.replace('text-gray-400','text-emerald-400'); }
     };
-    
+
     const stopPTT = async (e) => {
-        // DO NOT preventDefault globally, otherwise the whole app freezes on clicks!
-        if (e && e.target === finalBtn && e.cancelable) e.preventDefault();
-        
-        if (finalBtn.dataset.talking === "true") {
-            playTone('roger');
-            if (currentRoom) {
-                await currentRoom.localParticipant.setMicrophoneEnabled(false);
-            }
-
-            
-            finalBtn.dataset.talking = "false";
-            finalBtn.classList.remove('bg-emerald-900', 'border-emerald-400', 'text-emerald-100', 'shadow-[0_0_15px_rgba(16,185,129,0.5)]', 'scale-[0.98]');
-            finalBtn.classList.add('bg-slate-900', 'border-slate-700', 'text-slate-400');
-            
-            const icon = finalBtn.querySelector('i');
-            if(icon) {
-                icon.classList.remove('text-emerald-300', 'drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]');
-                icon.classList.add('text-slate-600');
-            }
-            document.getElementById('ptt-status').innerText = finalBtn.dataset.busy === "true" ? "CHANNEL BUSY" : "STANDBY";
-            document.getElementById('ptt-status').classList.replace('text-emerald-400', 'text-gray-400');
-        }
+        if (e.type === 'touchend') isTouching = false;
+        if (btn.dataset.talking !== 'true') return;
+        btn.dataset.talking = 'false';
+        playTone('roger');
+        if (currentRoom) await currentRoom.localParticipant.setMicrophoneEnabled(false);
+        btn.classList.add('bg-slate-900','border-slate-700','text-slate-400');
+        btn.classList.remove('bg-emerald-900','border-emerald-400','text-emerald-100');
+        const icon = btn.querySelector('i');
+        if (icon) { icon.classList.add('text-slate-600'); icon.classList.remove('text-emerald-300'); }
+        const st = document.getElementById('ptt-status');
+        if (st) { st.innerText = btn.dataset.busy === 'true' ? 'CHANNEL BUSY' : 'STANDBY'; st.classList.replace('text-emerald-400','text-gray-400'); }
     };
-    
-    // Bind robustly
-    finalBtn.addEventListener('mousedown', startPTT);
-    document.addEventListener('mouseup', stopPTT); // catch release outside
-    finalBtn.addEventListener('touchstart', startPTT, {passive: false});
-    document.addEventListener('touchend', stopPTT);
+
+    btn.addEventListener('mousedown',  startPTT);
+    btn.addEventListener('touchstart', startPTT, { passive: false });
+
+    // Add document listeners ONCE only to prevent stacking across reconnects
+    if (!docListenersAttached) {
+        document.addEventListener('mouseup',  stopPTT);
+        document.addEventListener('touchend', stopPTT);
+        docListenersAttached = true;
+    }
 }
 
-const waitCore = setInterval(() => {
-    if (window.commsChannel && window.commsUser) {
-        clearInterval(waitCore);
-        
-        const liveFreqEl = document.getElementById('live-freq');
-        if (liveFreqEl) {
-            if (window.commsUser && window.commsUser.freq) {
-                liveFreqEl.value = window.commsUser.freq;
-            }
-            liveFreqEl.addEventListener('change', (e) => {
-                const newFreq = e.target.value;
-                if (window.commsUser) window.commsUser.freq = newFreq;
-                
-                if (window.commsChannel) {
-                    window.commsChannel.track({
-                        online_at: new Date().toISOString(),
-                        location: window.myLatestCoords || null,
-                        user: window.commsUser,
-                        distress: window.isDistressActive || false,
-                        dutyStatus: window.myDutyStatus || ''
-                    }).catch(err => {});
-                }
-                
-                if (window.commsUser && window.commsUser.callsign) {
-                    const passEl = document.getElementById('comms-passcode');
-                    const mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
-                    connectToLiveKit(
-                        mission,
-                        window.commsUser.callsign,
-                        window.commsUser.role,
-                        newFreq
-                    );
-                }
-            });
-        }
-        
-        // Initial connection
-        const passEl = document.getElementById('comms-passcode');
-        const mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
-        const freq = window.commsUser.freq || 'ALPHA';
-        connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, freq);
-        
-        console.log('[V8 ENGINE] LiveKit Audio Module loaded.');
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+const _sfuWait = setInterval(() => {
+    if (!window.commsChannel || !window.commsUser) return;
+    clearInterval(_sfuWait);
+
+    const liveFreqEl = document.getElementById('live-freq');
+    if (liveFreqEl) {
+        if (window.commsUser.freq) liveFreqEl.value = window.commsUser.freq;
+        liveFreqEl.addEventListener('change', e => {
+            const newFreq = e.target.value;
+            if (window.commsUser) window.commsUser.freq = newFreq;
+            if (window.commsChannel) window.commsChannel.track({
+                online_at: new Date().toISOString(), location: window.myLatestCoords || null,
+                user: window.commsUser, distress: window.isDistressActive || false,
+                dutyStatus: window.myDutyStatus || '',
+            }).catch(() => {});
+            const passEl  = document.getElementById('comms-passcode');
+            const mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
+            connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, newFreq);
+        });
     }
+
+    const passEl  = document.getElementById('comms-passcode');
+    const mission = passEl ? passEl.value.trim() : 'TRC-MISSION-V8';
+    const freq    = window.commsUser.freq || 'ALPHA';
+    connectToLiveKit(mission, window.commsUser.callsign, window.commsUser.role, freq);
+    console.log('[V8 ENGINE] LiveKit Audio Module loaded.');
 }, 500);
 
 export { connectToLiveKit };
