@@ -7666,6 +7666,7 @@ function initializeTacticalDashboard2() {
     let commsMapInstance = null;
     let teamMarkers = {};
     let geoWatchId = null;
+    let isPurgingChannel = false;
 
     
       const rallyBtn = document.getElementById('geo-rally-btn');
@@ -7953,8 +7954,13 @@ function initializeTacticalDashboard2() {
 
             // Purge zombie channels before establishing a new link
             if (commsChannel) {
-                window.supabaseClient.removeChannel(commsChannel);
+                isPurgingChannel = true;
+                try {
+                    commsChannel.unsubscribe();
+                    window.supabaseClient.removeChannel(commsChannel);
+                } catch(e){}
                 commsChannel = null;
+                isPurgingChannel = false;
             }
 
         commsChannel = window.supabaseClient.channel(missionId, {
@@ -8426,11 +8432,12 @@ function initializeTacticalDashboard2() {
             try {
                 const dec = TacticalCrypto.decrypt(payload.payload.data);
                 if (dec && dec.user && dec.text && dec.user.id !== commsUser.id) {
+                    const cleanText = (dec.text.startsWith('"') || dec.text.startsWith('[')) ? dec.text : `"${dec.text}"`;
                     if (window.pushTacLog) {
-                        window.pushTacLog(`🎙️ [RADIO] ${dec.user.callsign}: "${dec.text}"`, 'SYS');
+                        window.pushTacLog(`🎙️ [RADIO] ${dec.user.callsign}: ${cleanText}`, 'SYS');
                     }
                     if (window.renderChatMessage) {
-                        window.renderChatMessage(dec.user, `🎙️ [RADIO] "${dec.text}"`, false);
+                        window.renderChatMessage(dec.user, `🎙️ [RADIO] ${cleanText}`, false);
                     }
                 }
             } catch (err) { console.error('Voice transcript RX error:', err); }
@@ -8559,6 +8566,8 @@ function initializeTacticalDashboard2() {
         // ── BULLETPROOF DISCONNECT ───────────────────────────────────────────
         function doDisconnect() {
             isIntentionalDisconnect = true;
+            isPurgingChannel = true;
+            if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
             // 1. Kill Heartbeat Timer
             if (window.squadHeartbeatInterval) {
@@ -8573,6 +8582,7 @@ function initializeTacticalDashboard2() {
                     commsChannel = null;
                 }
             } catch(e) { console.warn('[DISCONNECT] Supabase cleanup error:', e); }
+            isPurgingChannel = false;
 
             // 3. Kill all WebRTC peer connections
             try {
@@ -8645,8 +8655,10 @@ function initializeTacticalDashboard2() {
             window.pushTacLog("LINK SIGNAL RE-SYNCING...", "ALERT");
             try {
                 if (commsChannel) {
+                    isPurgingChannel = true;
                     try { window.supabaseClient.removeChannel(commsChannel); } catch(e){}
                     commsChannel = null;
+                    isPurgingChannel = false;
                 }
                 initSupabaseComms(window.currentTeamName, window.currentPasscode, () => {
                     isReconnecting = false;
@@ -8654,6 +8666,7 @@ function initializeTacticalDashboard2() {
                 });
             } catch(err) {
                 isReconnecting = false;
+                isPurgingChannel = false;
                 console.warn("Reconnect attempt error:", err);
             }
         }
@@ -8661,24 +8674,23 @@ function initializeTacticalDashboard2() {
         window.establishTacticalLink = reconnectComms;
 
         commsChannel.subscribe(async (status, err) => {
+            if (isPurgingChannel || isIntentionalDisconnect) return;
+
             const hexBadge = window.currentFreqHex ? ` [${window.currentFreqHex.slice(0, 4)}]` : '';
             if (diagSub) diagSub.textContent = `SUB: ${status}${hexBadge}`;
-            window.pushTacLog(`COMMS LINK: ${status}${hexBadge}`, status === 'SUBSCRIBED' ? "SUCCESS" : "ERROR");
-            
-            // Only reconnect on actual errors or timeouts — NEVER on 'CLOSED' (which happens when un-subscribing)
-            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                if (!isIntentionalDisconnect && !isReconnecting) {
-                    window.pushTacLog(`SIGNAL DROPPED (${status}). RECONNECTING IN 5s...`, "ALERT");
-                    if (reconnectTimer) clearTimeout(reconnectTimer);
-                    reconnectTimer = setTimeout(() => {
-                        reconnectComms();
-                    }, 5000);
-                }
-            }
 
             if (status === 'SUBSCRIBED') {
                 isReconnecting = false;
                 if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+                window.pushTacLog(`COMMS LINK: SUBSCRIBED${hexBadge}`, "SUCCESS");
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                if (!isIntentionalDisconnect && !isReconnecting) {
+                    window.pushTacLog(`COMMS LINK: SIGNAL DROPPED (${status}). RECONNECTING...`, "ALERT");
+                    if (reconnectTimer) clearTimeout(reconnectTimer);
+                    reconnectTimer = setTimeout(() => {
+                        reconnectComms();
+                    }, 2500);
+                }
             }
 
             if (status === 'SUBSCRIBED') {
@@ -9185,6 +9197,8 @@ function initializeTacticalDashboard2() {
         // Global release listeners so mouseup or touchend anywhere stops transmitting
         document.addEventListener('mouseup', () => { if (window.sfuStopPTT) window.sfuStopPTT(); });
         document.addEventListener('touchend', () => { if (window.sfuStopPTT) window.sfuStopPTT(); });
+        document.addEventListener('touchcancel', () => { if (window.sfuStopPTT) window.sfuStopPTT(); });
+        window.addEventListener('blur', () => { if (window.sfuStopPTT) window.sfuStopPTT(); });
     }
 
     // CHAT SEND

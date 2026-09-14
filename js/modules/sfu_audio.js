@@ -1,78 +1,107 @@
 // TACTICAL RANGE CARD V8 — LIVEKIT SFU ENGINE + VOICE TRANSCRIPT
 // js/modules/sfu_audio.js
-// Features: Pre-warmed audio, 0ms PTT, Speech-to-Text transcription to Audit Log & Chat,
-// anti-sticking PTT guard, and solid connection lock (no infinite loops).
+// Features: Pre-warmed audio, 0ms PTT, Speech-to-Text transcription with fallback to Audit Log & Chat,
+// anti-sticking PTT guard, mobile loudspeaker routing, and solid connection lock.
 
 let currentRoom = null;
 let currentFreq  = null;
 let localAudioTrack = null;
 let isConnecting = false;
 let isTalking = false;
+let pttWatchdogTimer = null;
+let pttStartTime = 0;
 
 // ─── SPEECH RECOGNITION (VOICE-TO-TEXT LOGGING) ──────────────────────────────
 const SpeechRecClass = window.SpeechRecognition || window.webkitSpeechRecognition;
 let activeRecognition = null;
 let transcriptBuffer = '';
+let interimBuffer = '';
 
 function startVoiceTranscription() {
     transcriptBuffer = '';
+    interimBuffer = '';
+    pttStartTime = Date.now();
     if (!SpeechRecClass) return;
     try {
         if (activeRecognition) {
             try { activeRecognition.abort(); } catch(e){}
+            activeRecognition = null;
         }
         activeRecognition = new SpeechRecClass();
         activeRecognition.continuous = true;
-        activeRecognition.interimResults = false;
+        activeRecognition.interimResults = true;
         activeRecognition.lang = 'en-US';
+        activeRecognition.maxAlternatives = 1;
+
         activeRecognition.onresult = function(event) {
+            let finalPart = '';
+            let currentInterim = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
-                    transcriptBuffer += event.results[i][0].transcript + ' ';
+                    finalPart += event.results[i][0].transcript + ' ';
+                } else {
+                    currentInterim += event.results[i][0].transcript;
                 }
             }
+            if (finalPart) transcriptBuffer += finalPart;
+            interimBuffer = currentInterim;
         };
-        activeRecognition.onerror = function(e) {};
+
+        activeRecognition.onerror = function(e) {
+            console.warn('[SPEECH-REC] Notice:', e.error);
+        };
         activeRecognition.start();
     } catch(err) {
-        console.warn('Speech recognition not available:', err);
+        console.warn('Speech recognition start note:', err);
     }
 }
 
 function stopAndBroadcastVoiceTranscription(callsign, role, freq) {
+    const durationSec = Math.max(1, Math.round((Date.now() - pttStartTime) / 1000));
     if (activeRecognition) {
         try { activeRecognition.stop(); } catch(e){}
     }
+
+    // Allow 400ms for browser speech engine to flush remaining results
     setTimeout(() => {
-        const text = transcriptBuffer.trim();
-        if (text && text.length > 0) {
-            // 1. Post to local Tactical System Audit Log
-            if (window.pushTacLog) {
-                window.pushTacLog(`🎙️ [RADIO] ${callsign}: "${text}"`, 'SUCCESS');
-            }
-            // 2. Render into Mission Chat
-            if (window.renderChatMessage && window.commsUser) {
-                window.renderChatMessage(window.commsUser, `🎙️ [RADIO] "${text}"`, true);
-            }
-            // 3. Broadcast to all teammates via Supabase Realtime
-            if (window.commsChannel && window.TacticalCrypto && window.commsUser) {
-                try {
-                    window.commsChannel.send({
-                        type: 'broadcast',
-                        event: 'voice_transcript',
-                        payload: {
-                            data: window.TacticalCrypto.encrypt({
-                                user: window.commsUser,
-                                text: text,
-                                freq: freq,
-                                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                            })
-                        }
-                    }).catch(() => {});
-                } catch(e){}
-            }
+        let text = (transcriptBuffer.trim() + ' ' + interimBuffer.trim()).trim();
+        text = text.replace(/\s+/g, ' ');
+
+        const isFallback = !text || text.length === 0;
+        const displayText = isFallback ? `[VOICE TRANSMIT ${durationSec}s]` : `"${text.toUpperCase()}"`;
+
+        // 1. Post to local Tactical System Audit Log
+        if (window.pushTacLog) {
+            window.pushTacLog(`🎙️ [RADIO] ${callsign}: ${displayText}`, 'SUCCESS');
         }
-    }, 250);
+
+        // 2. Render into Mission Chat
+        if (window.renderChatMessage && window.commsUser) {
+            window.renderChatMessage(window.commsUser, `🎙️ [RADIO] ${displayText}`, true);
+        }
+
+        // 3. Broadcast to all teammates via Supabase Realtime
+        if (window.commsChannel && window.TacticalCrypto && window.commsUser) {
+            try {
+                window.commsChannel.send({
+                    type: 'broadcast',
+                    event: 'voice_transcript',
+                    payload: {
+                        data: window.TacticalCrypto.encrypt({
+                            user: window.commsUser,
+                            text: displayText,
+                            freq: freq,
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        })
+                    }
+                }).catch(() => {});
+            } catch(e){}
+        }
+
+        transcriptBuffer = '';
+        interimBuffer = '';
+        activeRecognition = null;
+    }, 400);
 }
 
 // ─── TONES (Guaranteed AudioContext resumption) ───────────────────────────────
@@ -214,6 +243,37 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             document.body.appendChild(el);
             window.sfuAudioElements.push(el);
 
+            // Web Audio routing for mobile loud speakerphone playback
+            try {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!window.trcAudioCtx || window.trcAudioCtx.state === 'closed') {
+                    window.trcAudioCtx = new AC();
+                }
+                const ctx = window.trcAudioCtx;
+                if (ctx.state === 'suspended') ctx.resume().catch(function(){});
+
+                if (track.mediaStreamTrack) {
+                    const stream = new MediaStream([track.mediaStreamTrack]);
+                    const srcNode = ctx.createMediaStreamSource(stream);
+                    const gainNode = ctx.createGain();
+                    gainNode.gain.value = 1.0;
+                    srcNode.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    track._trcGainNode = gainNode;
+                }
+            } catch(webaudioErr) {
+                console.warn('[SFU] Web Audio routing fallback:', webaudioErr);
+            }
+
+            // Track mute / unmute events from remote
+            track.on('unmuted', function() {
+                if (room.startAudio) room.startAudio().catch(function(){});
+                if (window.trcAudioCtx && window.trcAudioCtx.state === 'suspended') {
+                    window.trcAudioCtx.resume().catch(function(){});
+                }
+                if (el.paused && !el.muted) el.play().catch(function(){});
+            });
+
             // Unlock audio playback immediately on mobile
             if (room.startAudio) room.startAudio().catch(function(){});
             var p = el.play();
@@ -233,7 +293,17 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
         });
 
         room.on(window.LivekitClient.RoomEvent.TrackUnsubscribed, function(track){
-            try { track.detach(); } catch(e){}
+            try {
+                var els = track.detach();
+                els.forEach(function(el) {
+                    try { el.remove(); } catch(e){}
+                    window.sfuAudioElements = (window.sfuAudioElements || []).filter(function(e){ return e !== el; });
+                });
+            } catch(e){}
+            if (track._trcGainNode) {
+                try { track._trcGainNode.disconnect(); } catch(e){}
+                track._trcGainNode = null;
+            }
         });
 
         // Channel-busy indicator
@@ -282,10 +352,17 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             if (isTalking) return;
             var btn      = document.getElementById('ptt-btn');
             var statusEl = document.getElementById('ptt-status');
+            var spk      = document.getElementById('ptt-active-speaker');
             if (btn && btn.dataset.busy === 'true') { playTone('error'); return; }
             
             isTalking = true;
-            if (btn) btn.dataset.talking = 'true';
+            if (btn) {
+                btn.dataset.talking = 'true';
+                btn.classList.add('border-emerald-500', 'bg-emerald-900/60');
+                btn.classList.remove('border-gray-800', 'bg-gray-900');
+            }
+            if (statusEl) { statusEl.innerText = 'TRANSMITTING'; statusEl.style.color = '#34d399'; }
+            if (spk) { spk.innerText = 'TX: ' + callsign; spk.style.color = '#34d399'; }
 
             playTone('permit');
             startVoiceTranscription();
@@ -293,6 +370,15 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             // Mute all incoming speakers while transmitting — prevents self-echo
             document.querySelectorAll('audio').forEach(function(el){ el.muted = true; });
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = true; });
+
+            // 15-second safety watchdog to prevent stuck transmissions
+            if (pttWatchdogTimer) clearTimeout(pttWatchdogTimer);
+            pttWatchdogTimer = setTimeout(function() {
+                if (isTalking && window.sfuStopPTT) {
+                    console.warn('[PTT] 15s Watchdog auto-released stuck transmission');
+                    window.sfuStopPTT();
+                }
+            }, 15000);
 
             try {
                 if (localAudioTrack) {
@@ -304,27 +390,52 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             } catch(e) {
                 console.error("LiveKit mic enable failed:", e);
                 isTalking = false;
-                if (btn) btn.dataset.talking = 'false';
+                if (btn) {
+                    btn.dataset.talking = 'false';
+                    btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');
+                    btn.classList.add('border-gray-800', 'bg-gray-900');
+                }
+                if (statusEl) { statusEl.innerText = 'STANDBY'; statusEl.style.color = ''; }
+                if (spk) { spk.innerText = ''; }
                 document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
+                (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
                 return;
             }
 
-            if (btn) {
-                btn.classList.add('border-emerald-500', 'bg-emerald-900/60');
-                btn.classList.remove('border-gray-800', 'bg-gray-900');
+            // CRITICAL RACE-CONDITION GUARD:
+            // If user released button while unmute was awaiting, mute immediately!
+            if (!isTalking) {
+                if (localAudioTrack) {
+                    try { await localAudioTrack.mute(); } catch(e){}
+                }
+                if (btn) {
+                    btn.dataset.talking = 'false';
+                    btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');
+                    btn.classList.add('border-gray-800', 'bg-gray-900');
+                }
+                if (statusEl) { statusEl.innerText = (btn && btn.dataset.busy === 'true') ? 'CHANNEL BUSY' : 'STANDBY'; statusEl.style.color = ''; }
+                if (spk) { spk.innerText = ''; }
+                document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
+                (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
             }
-            if (statusEl) { statusEl.innerText = 'TRANSMITTING'; statusEl.style.color = '#34d399'; }
-            var spk = document.getElementById('ptt-active-speaker');
-            if (spk) { spk.innerText = 'TX: ' + callsign; spk.style.color = '#34d399'; }
         };
 
         window.sfuStopPTT = async function() {
             if (!isTalking) return;
             isTalking = false;
+            if (pttWatchdogTimer) { clearTimeout(pttWatchdogTimer); pttWatchdogTimer = null; }
 
             var btn      = document.getElementById('ptt-btn');
             var statusEl = document.getElementById('ptt-status');
-            if (btn) btn.dataset.talking = 'false';
+            var spk      = document.getElementById('ptt-active-speaker');
+
+            if (btn) {
+                btn.dataset.talking = 'false';
+                btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');
+                btn.classList.add('border-gray-800', 'bg-gray-900');
+            }
+            if (statusEl) { statusEl.innerText = (btn && btn.dataset.busy === 'true') ? 'CHANNEL BUSY' : 'STANDBY'; statusEl.style.color = ''; }
+            if (spk) { spk.innerText = ''; }
 
             playTone('roger');
             stopAndBroadcastVoiceTranscription(callsign, role, currentFreq || 'ALPHA');
@@ -337,17 +448,9 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                 }
             } catch(e) {}
 
-            // Restore incoming speakers now that we're done transmitting
+            // Restore incoming speakers now that we are done transmitting
             document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
-
-            if (btn) {
-                btn.classList.remove('border-emerald-500', 'bg-emerald-900/60');
-                btn.classList.add('border-gray-800', 'bg-gray-900');
-            }
-            if (statusEl) { statusEl.innerText = (btn && btn.dataset.busy === 'true') ? 'CHANNEL BUSY' : 'STANDBY'; statusEl.style.color = ''; }
-            var spk = document.getElementById('ptt-active-speaker');
-            if (spk) { spk.innerText = ''; }
         };
 
     } catch (err) {
@@ -386,6 +489,7 @@ window._sfuDisconnect = async function() {
     window.sfuStopPTT = null;
     isTalking = false;
     isConnecting = false;
+    if (pttWatchdogTimer) { clearTimeout(pttWatchdogTimer); pttWatchdogTimer = null; }
 };
 
 // Dial change event wiring — only wired ONCE
