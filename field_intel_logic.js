@@ -1314,6 +1314,29 @@
         reader.readAsDataURL(file);
     };
 
+    window.closeReconModal = function() {
+        const modal = document.getElementById('officer-recon-modal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.closeAiKeyModal = function() {
+        const modal = document.getElementById('trc-ai-key-modal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Global Escape key listener to close modals
+    if (!window._trcModalEscBound) {
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const rm = document.getElementById('officer-recon-modal');
+                if (rm && rm.style.display !== 'none') rm.style.display = 'none';
+                const km = document.getElementById('trc-ai-key-modal');
+                if (km && km.style.display !== 'none') km.style.display = 'none';
+            }
+        });
+        window._trcModalEscBound = true;
+    }
+
     window.renderReconModal = function(title, analysisHtml, imageSrc, initialQuestion = '') {
         let modal = document.getElementById('officer-recon-modal');
         if (!modal) {
@@ -1321,7 +1344,14 @@
             modal.id = 'officer-recon-modal';
             document.body.appendChild(modal);
         }
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.88);z-index:2147483647 !important;display:flex;align-items:center;justify-content:center;padding:12px;';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100%;height:100dvh;background:rgba(0,0,0,0.92);z-index:2147483647 !important;display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:8px 8px 30px 8px;box-sizing:border-box;';
+
+        // Backdrop tap / click to dismiss modal
+        modal.onclick = function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
 
         const openAiKey = (localStorage.getItem('trc_openai_api_key') || '').trim();
         const geminiKey = (localStorage.getItem('trc_gemini_api_key') || '').trim();
@@ -1329,95 +1359,106 @@
         const currentProvider = (preferred === 'gemini' && geminiKey) ? 'GEMINI 3.6 FLASH' : ((preferred === 'openai' && openAiKey) ? 'OPENAI GPT-4O' : (geminiKey ? 'GEMINI 3.6 FLASH' : (openAiKey ? 'OPENAI GPT-4O' : 'TACTICAL ENGINE (OFFLINE)')));
 
         modal.innerHTML = `
-            <div class="bg-slate-950 border-2 border-cyan-400 rounded-2xl max-w-xl w-full p-3 sm:p-4 text-left shadow-[0_0_50px_rgba(6,182,212,0.5)] font-sans text-slate-100 space-y-3 relative max-h-[92vh] flex flex-col">
-                <!-- Header -->
-                <div class="flex items-center justify-between border-b border-slate-800 pb-2 shrink-0">
+            <div class="bg-slate-950 border-2 border-cyan-400 rounded-2xl max-w-xl w-full my-auto sm:my-3 font-sans text-slate-100 select-text" style="max-height: 92dvh; max-height: 92vh; height: 92dvh; height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 50px rgba(6,182,212,0.5);" onclick="event.stopPropagation()">
+                <!-- Sticky Header (Always pinned at top, never pushed off-screen) -->
+                <div class="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 p-3 sm:p-4 flex items-center justify-between shrink-0">
                     <div class="flex items-center gap-2">
-                        <span class="p-1 bg-cyan-950 border border-cyan-500/50 rounded-lg text-cyan-400">
+                        <span class="p-1.5 bg-cyan-950 border border-cyan-500/50 rounded-lg text-cyan-400">
                             <i data-lucide="brain" class="w-4 h-4 text-cyan-400"></i>
                         </span>
                         <div>
                             <span class="text-xs font-black text-cyan-300 uppercase tracking-widest block">${title}</span>
-                            <span id="recon-provider-badge" class="text-[8px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.2 rounded font-bold">${currentProvider}</span>
+                            <span id="recon-provider-badge" class="text-[8.5px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 rounded font-bold">${currentProvider}</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="window.promptConfigureAiKeys()" class="text-[9px] font-mono text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 border border-cyan-500/40 px-2 py-0.5 rounded cursor-pointer flex items-center gap-1">
-                            <i data-lucide="settings" class="w-3 h-3"></i> AI Keys
+                        <button type="button" onclick="window.promptConfigureAiKeys()" class="text-[10px] font-mono text-cyan-300 hover:text-white bg-cyan-950/80 border border-cyan-500/50 px-2.5 py-1.5 rounded-lg cursor-pointer flex items-center gap-1 active:scale-95 transition">
+                            <i data-lucide="settings" class="w-3.5 h-3.5"></i> AI Keys
                         </button>
-                        <button type="button" onclick="document.getElementById('officer-recon-modal').style.display='none'" class="text-slate-400 hover:text-white p-1 cursor-pointer">
-                            <i data-lucide="x" class="w-4 h-4"></i>
+                        <button type="button" onclick="window.closeReconModal()" class="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 cursor-pointer active:scale-95 transition" title="Close Window" aria-label="Close Recon Studio">
+                            <i data-lucide="x" class="w-5 h-5"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Image Preview & Interactive Prompt -->
-                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 space-y-2 shrink-0">
-                    <div class="flex items-start gap-2.5">
-                        ${imageSrc ? `<div class="w-20 h-20 shrink-0 rounded-lg overflow-hidden border border-cyan-500/50 bg-black shadow cursor-pointer" onclick="window.open('${imageSrc}')" title="Click to view full photo"><img src="${imageSrc}" class="w-full h-full object-cover"></div>` : ''}
-                        
-                        <div class="flex-1 space-y-1.5">
-                            <label class="block text-[9px] font-black uppercase text-cyan-400 tracking-wider">
-                                Ask AI Anything About This Photo:
-                            </label>
+                <!-- Single Unified Scrollable Body (Effortless touch-scrolling for entire report) -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3" style="-webkit-overflow-scrolling: touch; touch-action: pan-y;">
+                    <!-- Photo Preview & Interactive Prompt -->
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 space-y-2.5">
+                        <div class="flex items-start gap-2.5">
+                            ${imageSrc ? `<div class="shrink-0 rounded-lg overflow-hidden border border-cyan-500/50 bg-black shadow cursor-pointer active:scale-95 transition" style="width: 72px; height: 72px; min-width: 72px; min-height: 72px; max-width: 72px; max-height: 72px; flex-shrink: 0;" onclick="window.open('${imageSrc}')" title="Click to view full photo"><img src="${imageSrc}" style="width: 100%; height: 100%; object-fit: cover;"></div>` : ''}
                             
-                            <!-- Prompt Input Row -->
-                            <div class="flex items-center gap-1.5">
-                                <input type="text" id="recon-question-input" value="${initialQuestion}" onkeydown="if(event.key==='Enter') window.submitReconQuestion()" placeholder="e.g. Describe this object, explain damage, is this hazardous?" class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none font-mono">
+                            <div class="flex-1 space-y-1.5 min-w-0">
+                                <label class="block text-[9.5px] font-black uppercase text-cyan-400 tracking-wider">
+                                    Ask AI Anything About This Photo:
+                                </label>
                                 
-                                <button type="button" id="recon-question-mic-btn" onclick="window.toggleVoiceDictation('recon-question-input', 'recon-question-mic-btn')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 p-1.5 rounded cursor-pointer transition-colors shadow" title="Voice Dictate Question">
-                                    <i data-lucide="mic" class="w-3.5 h-3.5 text-cyan-400"></i>
-                                </button>
-                                
-                                <button type="button" onclick="window.submitReconQuestion()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs px-3 py-1.5 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow">
-                                    <i data-lucide="sparkles" class="w-3.5 h-3.5 text-slate-950"></i> ASK AI
-                                </button>
-                            </div>
+                                <!-- Prompt Input Row -->
+                                <div class="flex items-center gap-1.5">
+                                    <input type="text" id="recon-question-input" value="${initialQuestion}" onkeydown="if(event.key==='Enter') window.submitReconQuestion()" placeholder="e.g. Describe object, explain damage..." class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none font-mono">
+                                    
+                                    <button type="button" id="recon-question-mic-btn" onclick="window.toggleVoiceDictation('recon-question-input', 'recon-question-mic-btn')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 p-2 rounded-lg cursor-pointer transition-colors shadow shrink-0 active:scale-95" title="Voice Dictate Question">
+                                        <i data-lucide="mic" class="w-4 h-4 text-cyan-400"></i>
+                                    </button>
+                                    
+                                    <button type="button" onclick="window.submitReconQuestion()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs px-3 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow shrink-0 active:scale-95">
+                                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-slate-950"></i> ASK
+                                    </button>
+                                </div>
 
-                            <!-- Quick Suggestion Chips -->
-                            <div class="flex items-center gap-1 flex-wrap pt-0.5">
-                                <span class="text-[8px] font-mono text-slate-400 font-bold uppercase">QUICK:</span>
-                                <button type="button" onclick="window.setReconQuestionPrompt('Identify and describe what is in this photo, and explain what it is, its purpose, and any important details.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🔍 Identify & Explain</button>
-                                <button type="button" onclick="window.setReconQuestionPrompt('Identify any hazards, safety threats, or chemical/explosive dangers in this photo and explain how to mitigate them.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">⚠️ Hazards</button>
-                                <button type="button" onclick="window.setReconQuestionPrompt('What kind of animal, track, or plant is this? Explain its species, habitat, and whether it is dangerous or venomous.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🐾 Wildlife</button>
-                                <button type="button" onclick="window.setReconQuestionPrompt('Describe this vehicle or equipment, explain the visible damage, and what likely caused it.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🚗 Damage</button>
-                                <button type="button" onclick="window.setReconQuestionPrompt('Read and transcribe any text, serial numbers, labels, or markings visible in this photo and explain what they mean.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">📜 Markings</button>
+                                <!-- Quick Suggestion Chips -->
+                                <div class="flex items-center gap-1 flex-wrap pt-0.5">
+                                    <span class="text-[8px] font-mono text-slate-400 font-bold uppercase">QUICK:</span>
+                                    <button type="button" onclick="window.setReconQuestionPrompt('Identify and describe what is in this photo, and explain what it is, its purpose, and any important details.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8.5px] font-mono px-2 py-1 rounded border border-slate-700 active:scale-95">🔍 Identify</button>
+                                    <button type="button" onclick="window.setReconQuestionPrompt('Identify any hazards, safety threats, or chemical/explosive dangers in this photo and explain how to mitigate them.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8.5px] font-mono px-2 py-1 rounded border border-slate-700 active:scale-95">⚠️ Hazards</button>
+                                    <button type="button" onclick="window.setReconQuestionPrompt('What kind of animal, track, or plant is this? Explain its species, habitat, and whether it is dangerous or venomous.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8.5px] font-mono px-2 py-1 rounded border border-slate-700 active:scale-95">🐾 Wildlife</button>
+                                    <button type="button" onclick="window.setReconQuestionPrompt('Describe this vehicle or equipment, explain the visible damage, and what likely caused it.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8.5px] font-mono px-2 py-1 rounded border border-slate-700 active:scale-95">🚗 Damage</button>
+                                    <button type="button" onclick="window.setReconQuestionPrompt('Read and transcribe any text, serial numbers, labels, or markings visible in this photo and explain what they mean.')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8.5px] font-mono px-2 py-1 rounded border border-slate-700 active:scale-95">📜 Markings</button>
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- Photo Switcher Strip -->
+                        <div class="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-slate-800/80">
+                            <span class="text-[8px] font-mono text-slate-400 font-bold uppercase">PRESETS:</span>
+                            <button type="button" onclick="window.testVisualReconPreset('chemical')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🧪 Chem Drum</button>
+                            <button type="button" onclick="window.testVisualReconPreset('firearm')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🧪 Firearm</button>
+                            <button type="button" onclick="window.testVisualReconPreset('rollover')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🧪 Crash</button>
+                            <label class="bg-red-950 text-red-300 hover:bg-red-900 border border-red-500/50 text-[8px] font-mono px-2 py-0.5 rounded cursor-pointer flex items-center gap-1 active:scale-95">
+                                <i data-lucide="camera" class="w-3 h-3 text-red-400"></i> Live Camera
+                                <input type="file" accept="image/*" capture="environment" class="hidden" onchange="window.handleReconModalPhotoUpload(event)">
+                            </label>
+                            <label class="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 text-[8px] font-mono px-2 py-0.5 rounded cursor-pointer flex items-center gap-1 active:scale-95">
+                                <i data-lucide="image" class="w-3 h-3 text-cyan-400"></i> Choose File
+                                <input type="file" accept="image/*" class="hidden" onchange="window.handleReconModalPhotoUpload(event)">
+                            </label>
                         </div>
                     </div>
 
-                    <!-- Photo Switcher Strip -->
-                    <div class="flex items-center gap-1.5 flex-wrap pt-1.5 border-t border-slate-800/80">
-                        <span class="text-[8px] font-mono text-slate-400 font-bold uppercase">CHANGE PHOTO:</span>
-                        <button type="button" onclick="window.testVisualReconPreset('chemical')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🧪 Chem Drum</button>
-                        <button type="button" onclick="window.testVisualReconPreset('firearm')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🧪 Firearm</button>
-                        <button type="button" onclick="window.testVisualReconPreset('rollover')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700">🧪 Crash</button>
-                        <label class="bg-red-950 text-red-300 hover:bg-red-900 border border-red-500/50 text-[8px] font-mono px-1.5 py-0.5 rounded cursor-pointer flex items-center gap-1">
-                            <i data-lucide="camera" class="w-3 h-3 text-red-400"></i> Live Camera
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="window.handleReconModalPhotoUpload(event)">
-                        </label>
-                        <label class="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 text-[8px] font-mono px-1.5 py-0.5 rounded cursor-pointer flex items-center gap-1">
-                            <i data-lucide="image" class="w-3 h-3 text-cyan-400"></i> Choose File
-                            <input type="file" accept="image/*" class="hidden" onchange="window.handleReconModalPhotoUpload(event)">
-                        </label>
+                    <!-- AI Response / Explanation Box -->
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[9.5px] font-black uppercase text-cyan-400 tracking-wider flex items-center gap-1">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i> AI Description & Tactical Explanation:
+                            </label>
+                            <span class="text-[8px] font-mono text-slate-400">Touch & swipe down to read</span>
+                        </div>
+                        <div id="recon-response-content" class="text-xs font-mono text-slate-200 whitespace-pre-line leading-relaxed p-3.5 bg-slate-900/95 rounded-xl border border-slate-800 shadow-inner select-text min-h-[140px]" style="word-break: break-word; -webkit-overflow-scrolling: touch; touch-action: pan-y;">
+                            ${analysisHtml}
+                        </div>
                     </div>
                 </div>
 
-                <!-- AI Response / Explanation Box -->
-                <div id="recon-response-content" class="flex-1 text-[10px] font-mono text-slate-300 whitespace-pre-line leading-relaxed overflow-y-auto custom-scrollbar p-3 bg-slate-900/90 rounded-xl border border-slate-800 shadow-inner min-h-[160px]">
-                    ${analysisHtml}
-                </div>
-
-                <!-- Footer Actions -->
-                <div class="flex items-center justify-between pt-2 border-t border-slate-800 flex-wrap gap-2 shrink-0">
-                    <button type="button" onclick="window.promptConfigureAiKeys()" class="text-[8.5px] font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 underline cursor-pointer">
-                        <i data-lucide="settings" class="w-3 h-3"></i> Configure OpenAI / Gemini Keys
+                <!-- Sticky Footer Actions (Always pinned at bottom, never pushed off-screen) -->
+                <div class="sticky bottom-0 z-30 bg-slate-950/95 backdrop-blur border-t border-slate-800 p-3 flex items-center justify-between flex-wrap gap-2 shrink-0">
+                    <button type="button" onclick="window.promptConfigureAiKeys()" class="text-[9.5px] font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 underline cursor-pointer py-1">
+                        <i data-lucide="settings" class="w-3.5 h-3.5"></i> Setup Keys
                     </button>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="window.insertReconIntoSitrepNotes()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs px-3.5 py-1.5 rounded uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow">
-                            <i data-lucide="file-plus" class="w-3.5 h-3.5 text-slate-950"></i> INSERT INTO SITREP
+                        <button type="button" onclick="window.insertReconIntoSitrepNotes()" class="min-h-[42px] bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs px-3.5 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow active:scale-95 transition">
+                            <i data-lucide="file-plus" class="w-4 h-4 text-slate-950"></i> INSERT INTO SITREP
                         </button>
-                        <button type="button" onclick="document.getElementById('officer-recon-modal').style.display='none'" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3 py-1.5 rounded uppercase cursor-pointer">
+                        <button type="button" onclick="window.closeReconModal()" class="min-h-[42px] bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs px-4 py-2 rounded-lg uppercase cursor-pointer active:scale-95 transition">
                             CLOSE
                         </button>
                     </div>
@@ -1441,108 +1482,112 @@
             keyModal.id = 'trc-ai-key-modal';
             document.body.appendChild(keyModal);
         }
-        keyModal.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.92);z-index:2147483647 !important;display:flex;align-items:center;justify-content:center;padding:15px;';
+        keyModal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100%;height:100dvh;background:rgba(0,0,0,0.92);z-index:2147483647 !important;display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:8px 8px 30px 8px;box-sizing:border-box;';
+
+        // Backdrop tap / click to dismiss modal
+        keyModal.onclick = function(e) {
+            if (e.target === keyModal) {
+                keyModal.style.display = 'none';
+            }
+        };
 
         keyModal.innerHTML = `
-            <div class="bg-slate-950 border-2 border-cyan-400 rounded-2xl max-w-lg w-full p-4 text-left shadow-[0_0_50px_rgba(6,182,212,0.5)] font-sans text-slate-100 space-y-3.5 max-h-[92vh] overflow-y-auto custom-scrollbar">
-                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="bg-slate-950 border-2 border-cyan-400 rounded-2xl max-w-lg w-full my-auto sm:my-3 font-sans text-slate-100 select-text" style="max-height: 92dvh; max-height: 92vh; height: auto; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 50px rgba(6,182,212,0.5);" onclick="event.stopPropagation()">
+                <!-- Sticky Header -->
+                <div class="sticky top-0 z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 p-3 sm:p-4 flex items-center justify-between shrink-0">
                     <span class="text-xs font-black text-cyan-300 uppercase tracking-widest flex items-center gap-1.5">
-                        <i data-lucide="key" class="w-4 h-4 text-cyan-400"></i> AI PHOTO RECON PROVIDER SETUP
+                        <i data-lucide="key" class="w-4 h-4 text-cyan-400"></i> AI RECON & TRANSLATOR KEYS
                     </span>
-                    <button type="button" onclick="document.getElementById('trc-ai-key-modal').style.display='none'" class="text-slate-400 hover:text-white p-1 cursor-pointer">
-                        <i data-lucide="x" class="w-4 h-4"></i>
+                    <button type="button" onclick="window.closeAiKeyModal()" class="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 cursor-pointer active:scale-95 transition" title="Close Window" aria-label="Close API Keys Setup">
+                        <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
 
-                <!-- Test Feedback Banner -->
-                <div id="trc-key-test-feedback" class="hidden"></div>
-                <div class="p-4 overflow-y-auto custom-scrollbar space-y-3.5 flex-1">
+                <!-- Single Unified Scrollable Body (NO nested scroll trapping) -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-3.5" style="-webkit-overflow-scrolling: touch; touch-action: pan-y;">
                     <div class="text-[10px] text-slate-300 leading-relaxed font-mono bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
-                        Connect an OpenAI or Google Gemini developer key to describe and explain whatever you ask about any photo taken in the field, plus enable live AI language translation.
+                        Connect a Google Gemini or OpenAI developer key to power live AI photo descriptions and instant voice translation.
                     </div>
 
+                    <!-- Prominent Live Test Feedback Banner (Always at top of body, smoothly scrolled into view) -->
+                    <div id="trc-cfg-test-feedback" class="empty:hidden transition-all duration-200"></div>
+
                     <!-- 1. Google Gemini Key (Free & Recommended) -->
-                    <div class="space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-emerald-500/30 font-mono text-xs">
+                    <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-emerald-500/30 font-mono text-xs">
                         <div class="flex items-center justify-between flex-wrap gap-1">
                             <label class="text-[9.5px] font-black text-emerald-400 uppercase flex items-center gap-1">
-                                <span>1. Google Gemini API Key (Flash Vision)</span>
+                                <span>1. Google Gemini API Key</span>
                                 <span class="bg-emerald-950 text-emerald-300 text-[7.5px] px-1.5 py-0.5 rounded border border-emerald-500/40">100% FREE</span>
                             </label>
-                            <div class="flex items-center gap-1">
-                                <button type="button" onclick="window.testAiKey('gemini')" class="bg-emerald-900 hover:bg-emerald-800 text-emerald-200 border border-emerald-400 text-[8px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1 cursor-pointer shadow">
-                                    <i data-lucide="zap" class="w-2.5 h-2.5"></i> TEST KEY NOW
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="window.testAiKey('gemini')" class="min-h-[32px] bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-400 text-[9px] font-black px-2.5 py-1 rounded uppercase flex items-center gap-1 cursor-pointer shadow active:scale-95 transition">
+                                    <i data-lucide="zap" class="w-3 h-3 text-emerald-200"></i> TEST KEY NOW
                                 </button>
-                                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/60 text-[8px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1 no-underline transition-colors shadow">
-                                    <i data-lucide="external-link" class="w-2.5 h-2.5"></i> GET KEY (1-CLICK)
+                                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="min-h-[32px] bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/60 text-[9px] font-bold px-2 py-1 rounded uppercase flex items-center gap-1 no-underline transition-colors shadow active:scale-95">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> GET KEY
                                 </a>
                             </div>
                         </div>
-                        <input type="password" id="trc-cfg-gemini-key" value="${curGemini}" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white focus:border-emerald-400 focus:outline-none font-mono">
-                        <div class="text-[8px] text-slate-400 leading-normal space-y-0.5 pt-0.5">
-                            <div class="text-emerald-300 font-bold">📋 3 Quick Steps to get your Google Key:</div>
-                            <div>1. Click the button above or visit <span class="text-cyan-300">aistudio.google.com/apikey</span> (sign in with your Google account).</div>
-                            <div>2. Click <span class="text-white font-bold">"Create API key in new project"</span>.</div>
-                            <div>3. Click <span class="text-white font-bold">"Copy"</span> and paste the key (starts with <code class="text-emerald-400">AIzaSy...</code>) right here!</div>
-                            <div class="text-amber-300 font-semibold mt-1">⚠️ Note on $20/mo Gemini Advanced:</div>
-                            <div class="text-slate-400">Consumer subscriptions at gemini.google.com are for personal chat and do NOT automatically generate an API key. You must generate your free developer key at Google AI Studio (takes 30 seconds at <span class="text-cyan-300">aistudio.google.com/apikey</span>).</div>
+                        <input type="password" id="trc-cfg-gemini-key" value="${curGemini}" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-emerald-400 focus:outline-none font-mono">
+                        <div class="text-[8.5px] text-slate-400 leading-normal space-y-0.5 pt-0.5">
+                            <div class="text-emerald-300 font-bold">📋 Quick Steps to get your Free Google Key:</div>
+                            <div>1. Tap <span class="text-cyan-300 font-bold">GET KEY</span> or visit <span class="text-cyan-300">aistudio.google.com/apikey</span></div>
+                            <div>2. Click <span class="text-white font-bold">"Create API key in new project"</span> &rarr; Click <span class="text-white font-bold">"Copy"</span>.</div>
+                            <div>3. Paste the key (starts with <code class="text-emerald-400">AIzaSy...</code>) right above, then tap <span class="text-emerald-300 font-bold">TEST KEY NOW</span>!</div>
+                            <div class="text-amber-300 font-semibold mt-1">⚠️ Note on Gemini Advanced:</div>
+                            <div class="text-slate-400">Consumer subscriptions ($20/mo at gemini.google.com) do NOT create an API key. You must generate your free developer key at Google AI Studio (<span class="text-cyan-300">aistudio.google.com/apikey</span>).</div>
                         </div>
                     </div>
 
                     <!-- 2. OpenAI Key -->
-                    <div class="space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-cyan-500/30 font-mono text-xs">
+                    <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-cyan-500/30 font-mono text-xs">
                         <div class="flex items-center justify-between flex-wrap gap-1">
                             <label class="text-[9.5px] font-black text-cyan-400 uppercase flex items-center gap-1">
-                                <span>2. OpenAI API Key (GPT-4o-mini Vision)</span>
+                                <span>2. OpenAI API Key (GPT-4o)</span>
                             </label>
-                            <div class="flex items-center gap-1">
-                                <button type="button" onclick="window.testAiKey('openai')" class="bg-cyan-900 hover:bg-cyan-800 text-cyan-200 border border-cyan-400 text-[8px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1 cursor-pointer shadow">
-                                    <i data-lucide="zap" class="w-2.5 h-2.5"></i> TEST KEY NOW
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="window.testAiKey('openai')" class="min-h-[32px] bg-cyan-700 hover:bg-cyan-600 text-white border border-cyan-400 text-[9px] font-black px-2.5 py-1 rounded uppercase flex items-center gap-1 cursor-pointer shadow active:scale-95 transition">
+                                    <i data-lucide="zap" class="w-3 h-3 text-cyan-200"></i> TEST KEY NOW
                                 </button>
-                                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 text-[8px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1 no-underline transition-colors shadow">
-                                    <i data-lucide="external-link" class="w-2.5 h-2.5"></i> GET KEY
+                                <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="min-h-[32px] bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 text-[9px] font-bold px-2 py-1 rounded uppercase flex items-center gap-1 no-underline transition-colors shadow active:scale-95">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i> GET KEY
                                 </a>
                             </div>
                         </div>
-                        <input type="password" id="trc-cfg-openai-key" value="${curOpenAi}" placeholder="sk-proj-..." class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white focus:border-cyan-400 focus:outline-none font-mono">
-                        <div class="text-[8px] text-slate-400 leading-normal space-y-0.5 pt-0.5">
-                            <div class="text-cyan-300 font-bold">📋 3 Quick Steps to get your OpenAI Key:</div>
-                            <div>1. Sign in or create an account at <span class="text-cyan-300">platform.openai.com</span>.</div>
-                            <div>2. Go to <span class="text-white font-bold">API Keys</span> &rarr; Click <span class="text-white font-bold">"Create new secret key"</span>.</div>
-                            <div>3. Copy the key (starts with <code class="text-cyan-400">sk-proj-...</code>) and paste it right here!</div>
+                        <input type="password" id="trc-cfg-openai-key" value="${curOpenAi}" placeholder="sk-proj-..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none font-mono">
+                        <div class="text-[8.5px] text-slate-400 leading-normal space-y-0.5 pt-0.5">
+                            <div class="text-cyan-300 font-bold">📋 Quick Steps to get your OpenAI Key:</div>
+                            <div>1. Go to <span class="text-cyan-300">platform.openai.com/api-keys</span> &rarr; "Create new secret key".</div>
+                            <div>2. Paste the key (starts with <code class="text-cyan-400">sk-proj-...</code>) above and tap <span class="text-cyan-300 font-bold">TEST KEY NOW</span>!</div>
                         </div>
                     </div>
 
                     <!-- Provider Selector -->
-                    <div class="font-mono text-xs">
-                        <label class="block text-[9.5px] font-bold text-purple-400 uppercase mb-1">
+                    <div class="font-mono text-xs space-y-1">
+                        <label class="block text-[9.5px] font-bold text-purple-400 uppercase">
                             Active Vision Engine Provider
                         </label>
-                        <select id="trc-cfg-provider" class="w-full bg-slate-900 border border-purple-500/50 rounded p-1.5 text-xs text-purple-300 uppercase font-bold focus:outline-none">
+                        <select id="trc-cfg-provider" class="w-full bg-slate-900 border border-purple-500/50 rounded-lg p-2 text-xs text-purple-300 uppercase font-bold focus:outline-none">
                             <option value="gemini" ${curProvider === 'gemini' ? 'selected' : ''}>Google Gemini (Flash Vision - Recommended)</option>
                             <option value="openai" ${curProvider === 'openai' ? 'selected' : ''}>OpenAI (GPT-4o-mini Vision)</option>
                         </select>
                     </div>
 
                     <!-- Offline Fallback Notice -->
-                    <div class="text-[8px] font-mono text-slate-400 bg-slate-900/90 p-2 rounded border border-slate-800 flex items-start gap-1.5">
+                    <div class="text-[8px] font-mono text-slate-400 bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 flex items-start gap-1.5">
                         <i data-lucide="info" class="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5"></i>
-                        <span><b>OFFLINE FALLBACK:</b> If neither key is entered or if you lose internet connection in the field, the system automatically uses the internal offline tactical rule-engine.</span>
+                        <span><b>OFFLINE FALLBACK:</b> If neither key is entered or if you lose internet in the field, the system automatically runs the internal offline tactical rule-engine.</span>
                     </div>
-
-                    <!-- Live Test Feedback Slot -->
-                    <div id="trc-cfg-test-feedback" class="empty:hidden"></div>
                 </div>
 
-                <!-- Footer -->
-                <div class="p-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between flex-wrap gap-2">
-                    <button type="button" onclick="document.getElementById('trc-ai-key-modal').style.display='none'" class="text-[9.5px] font-mono text-slate-400 hover:text-white px-2 py-1">
-                        Cancel
+                <!-- Sticky Footer (Always pinned at bottom, never pushed off-screen) -->
+                <div class="sticky bottom-0 z-30 bg-slate-950/95 backdrop-blur border-t border-slate-800 p-3 flex items-center justify-between gap-2 shrink-0">
+                    <button type="button" onclick="window.closeAiKeyModal()" class="min-h-[42px] px-3.5 py-2 font-mono text-xs text-slate-300 hover:text-white bg-slate-800/90 hover:bg-slate-700 rounded-lg border border-slate-700 cursor-pointer active:scale-95 transition">
+                        CANCEL / RETURN
                     </button>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="window.saveAiKeyConfiguration()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-4 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                            <i data-lucide="save" class="w-3.5 h-3.5 text-slate-950"></i> SAVE KEYS
-                        </button>
-                    </div>
+                    <button type="button" onclick="window.saveAiKeyConfiguration()" class="min-h-[42px] bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs px-5 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.4)] active:scale-95 transition">
+                        <i data-lucide="save" class="w-4 h-4 text-slate-950"></i> SAVE KEYS
+                    </button>
                 </div>
             </div>
         `;
@@ -1551,25 +1596,24 @@
         if (window.lucide) window.lucide.createIcons();
     };
 
-    window.closeAiKeyModal = function() {
-        const modal = document.getElementById('trc-ai-key-modal');
-        if (modal) modal.style.display = 'none';
-    };
-
-    // Live Test for Gemini / OpenAI Key
+    // Live Test for Gemini / OpenAI Key with smooth auto-scroll to feedback
     window.testAiKey = async function(provider) {
         const feedbackEl = document.getElementById('trc-cfg-test-feedback');
         if (!feedbackEl) return;
 
+        const showFeedback = (cls, html) => {
+            feedbackEl.className = cls;
+            feedbackEl.innerHTML = html;
+            feedbackEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        };
+
         if (provider === 'gemini') {
             const inputKey = (document.getElementById('trc-cfg-gemini-key')?.value || '').trim().replace(/^["']|["']$/g, '');
             if (!inputKey) {
-                feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-amber-500/50 bg-amber-950/40 text-amber-300';
-                feedbackEl.innerHTML = '⚠️ <b>Please paste a Google Gemini API key first</b> into the box above before testing.';
+                showFeedback('text-[9px] font-mono p-3 rounded-lg border border-amber-500/60 bg-amber-950/60 text-amber-200', '⚠️ <b>Please paste a Google Gemini API key first</b> into the box above before testing.');
                 return;
             }
-            feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-cyan-500/50 bg-cyan-950/40 text-cyan-300 animate-pulse';
-            feedbackEl.innerHTML = '⏳ <b>Connecting to Google Gemini Flash servers...</b>';
+            showFeedback('text-[9px] font-mono p-3 rounded-lg border border-cyan-500/60 bg-cyan-950/60 text-cyan-300 animate-pulse', '⏳ <b>Connecting to Google Gemini Flash servers...</b>');
 
             try {
                 const models = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
@@ -1596,25 +1640,20 @@
                 }
 
                 if (connectedModel) {
-                    feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-emerald-500/60 bg-emerald-950/60 text-emerald-300';
-                    feedbackEl.innerHTML = `✅ <b>SUCCESS: Google Gemini (${connectedModel.toUpperCase()}) Connected!</b><br>Key is 100% active and working. Visual Recon & Two-Way Translator are ready.`;
+                    showFeedback('text-[9px] font-mono p-3 rounded-lg border border-emerald-500/60 bg-emerald-950/80 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.3)]', `✅ <b>SUCCESS: Google Gemini (${connectedModel.toUpperCase()}) Connected!</b><br>Key is 100% active and working. Visual Recon & Two-Way Translator are ready.`);
                 } else {
-                    feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-red-500/60 bg-red-950/60 text-red-300';
-                    feedbackEl.innerHTML = `❌ <b>GOOGLE REJECTED KEY:</b> "${lastErrMsg}"<br><span class="text-[8px] text-slate-300">Create a free key at <b>aistudio.google.com/apikey</b> (starts with AIzaSy...).</span>`;
+                    showFeedback('text-[9px] font-mono p-3 rounded-lg border border-red-500/60 bg-red-950/80 text-red-200', `❌ <b>GOOGLE REJECTED KEY:</b> "${lastErrMsg}"<br><span class="text-[8px] text-slate-300">Create a free key at <b>aistudio.google.com/apikey</b> (starts with AIzaSy...).</span>`);
                 }
             } catch(e) {
-                feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-red-500/60 bg-red-950/60 text-red-300';
-                feedbackEl.innerHTML = `❌ <b>NETWORK ERROR:</b> ${e.message}. Could not reach Google.`;
+                showFeedback('text-[9px] font-mono p-3 rounded-lg border border-red-500/60 bg-red-950/80 text-red-200', `❌ <b>NETWORK ERROR:</b> ${e.message}. Could not reach Google.`);
             }
         } else {
             const inputKey = (document.getElementById('trc-cfg-openai-key')?.value || '').trim().replace(/^["']|["']$/g, '');
             if (!inputKey) {
-                feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-amber-500/50 bg-amber-950/40 text-amber-300';
-                feedbackEl.innerHTML = '⚠️ <b>Please paste an OpenAI API key first</b> into the box above before testing.';
+                showFeedback('text-[9px] font-mono p-3 rounded-lg border border-amber-500/60 bg-amber-950/60 text-amber-200', '⚠️ <b>Please paste an OpenAI API key first</b> into the box above before testing.');
                 return;
             }
-            feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-cyan-500/50 bg-cyan-950/40 text-cyan-300 animate-pulse';
-            feedbackEl.innerHTML = '⏳ <b>Connecting to OpenAI GPT-4o-mini servers...</b>';
+            showFeedback('text-[9px] font-mono p-3 rounded-lg border border-cyan-500/60 bg-cyan-950/60 text-cyan-300 animate-pulse', '⏳ <b>Connecting to OpenAI GPT-4o servers...</b>');
 
             try {
                 const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -1631,16 +1670,13 @@
                 });
                 const data = await resp.json().catch(() => ({}));
                 if (resp.ok) {
-                    feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-emerald-500/60 bg-emerald-950/60 text-emerald-300';
-                    feedbackEl.innerHTML = `✅ <b>SUCCESS: OpenAI GPT-4o Connected!</b><br>Key is 100% active and working. Visual Recon & Two-Way Translator are ready.`;
+                    showFeedback('text-[9px] font-mono p-3 rounded-lg border border-emerald-500/60 bg-emerald-950/80 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.3)]', `✅ <b>SUCCESS: OpenAI GPT-4o Connected!</b><br>Key is 100% active and working. Visual Recon & Two-Way Translator are ready.`);
                 } else {
                     const errMsg = data?.error?.message || `HTTP ${resp.status} ${resp.statusText}`;
-                    feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-red-500/60 bg-red-950/60 text-red-300';
-                    feedbackEl.innerHTML = `❌ <b>OPENAI REJECTED KEY:</b> "${errMsg}"`;
+                    showFeedback('text-[9px] font-mono p-3 rounded-lg border border-red-500/60 bg-red-950/80 text-red-200', `❌ <b>OPENAI REJECTED KEY:</b> "${errMsg}"`);
                 }
             } catch(e) {
-                feedbackEl.className = 'text-[9px] font-mono p-2.5 rounded-lg border border-red-500/60 bg-red-950/60 text-red-300';
-                feedbackEl.innerHTML = `❌ <b>NETWORK ERROR:</b> ${e.message}. Could not reach OpenAI.`;
+                showFeedback('text-[9px] font-mono p-3 rounded-lg border border-red-500/60 bg-red-950/80 text-red-200', `❌ <b>NETWORK ERROR:</b> ${e.message}. Could not reach OpenAI.`);
             }
         }
     };
