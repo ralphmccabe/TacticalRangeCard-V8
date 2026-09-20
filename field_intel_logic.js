@@ -2218,7 +2218,20 @@
         });
     };
 
-    window.handleQuickFieldPhrase = function(englishText) {
+    const QUICK_FIELD_PHRASES = [
+        "Do you need medical attention or an ambulance?",
+        "Do you have your identification or driver's license with you?",
+        "Please remain calm and stay here. You are safe now, help is on the way.",
+        "Are you the registered owner of this vehicle?",
+        "May I see your vehicle registration and proof of insurance?",
+        "Can you tell me what happened here?"
+    ];
+
+    window.handleQuickFieldPhrase = function(phraseOrIndex) {
+        let englishText = phraseOrIndex;
+        if (typeof phraseOrIndex === 'number' && QUICK_FIELD_PHRASES[phraseOrIndex]) {
+            englishText = QUICK_FIELD_PHRASES[phraseOrIndex];
+        }
         const srcEl = document.getElementById('field-trans-src-text');
         if (srcEl) {
             srcEl.value = englishText;

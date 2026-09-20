@@ -14,11 +14,46 @@ let isDrawingOfficerCanvas = false;
 let currentOfficerDrawTool = 'draw';
 
 window.clearOfficerForm = function() {
-    // Re-initialize the studio completely to generate a new unique ID
-    if (typeof window.openOfficerCardStudio === 'function') {
-        window.openOfficerCardStudio(null);
+    officerRosterParties = [];
+    officerFirstAidList = [];
+    officerScenePhotos = [];
+    window.officerScenePhotos = [];
+    officerHazmatList = [];
+    window.lastSceneGpsData = null;
+    
+    // Clear sketch canvas if open
+    if (typeof window.clearOfficerCanvas === 'function') {
+        window.clearOfficerCanvas();
     }
-    if (window.pushTacLog) window.pushTacLog("OFFICER FORM CLEARED", "SYS");
+    
+    // Re-render the form completely clean with a fresh ID
+    if (typeof window.renderOfficerForm === 'function') {
+        window.renderOfficerForm(null);
+    }
+    
+    // Reset field inputs
+    const idsToReset = [
+        'officer-unit-callsign', 'officer-cad-number', 'officer-incident-notes',
+        'officer-tac-comms', 'officer-backup-units', 'officer-ems-hospital',
+        'field-trans-src-text'
+    ];
+    idsToReset.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const counter = document.getElementById('officer-incident-notes-counter');
+    if (counter) counter.textContent = '0 / 1000';
+    const tgt = document.getElementById('field-trans-tgt-text');
+    if (tgt) tgt.textContent = 'Translation will spell out here and pronounce out loud...';
+
+    // Clear GPS banner slot
+    const gpsBanner = document.getElementById('officer-scene-gps-banner-slot');
+    if (gpsBanner) gpsBanner.innerHTML = '';
+    const manualCoords = document.getElementById('officer-manual-coords-input');
+    if (manualCoords) manualCoords.value = '';
+
+    if (window.pushTacLog) window.pushTacLog("OFFICER FORM CLEARED TO FRESH STATE", "SYS");
+    if (window.showToast) window.showToast("Officer form reset to clean state.");
 };
 
 // Render Officer Form in Operators Workstation
@@ -426,12 +461,12 @@ window.renderOfficerForm = function(cardData = null) {
                         <i data-lucide="zap" class="w-3 h-3 text-amber-400"></i> QUICK FIELD & EMERGENCY PHRASES (TAP TO TRANSLATE & SPEAK):
                     </div>
                     <div class="flex flex-wrap gap-1.5">
-                        <button type="button" onclick="window.handleQuickFieldPhrase('Do you need medical attention or an ambulance?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🚑 Need Medical / Ambulance?</button>
-                        <button type="button" onclick="window.handleQuickFieldPhrase('Do you have your identification or driver\'s license with you?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🪪 ID / Driver's License?</button>
-                        <button type="button" onclick="window.handleQuickFieldPhrase('Please remain calm and stay here. You are safe now, help is on the way.')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🛑 Calm Down / Help On The Way</button>
-                        <button type="button" onclick="window.handleQuickFieldPhrase('Are you the registered owner of this vehicle?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🚗 Vehicle Owner?</button>
-                        <button type="button" onclick="window.handleQuickFieldPhrase('May I see your vehicle registration and proof of insurance?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">📄 Registration & Insurance?</button>
-                        <button type="button" onclick="window.handleQuickFieldPhrase('Can you tell me what happened here?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">❓ What Happened Here?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase(0)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🚑 Need Medical / Ambulance?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase(1)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🪪 ID / Driver's License?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase(2)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🛑 Calm Down / Help On The Way</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase(3)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🚗 Vehicle Owner?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase(4)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">📄 Registration & Insurance?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase(5)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">❓ What Happened Here?</button>
                     </div>
                 </div>
             </div>
