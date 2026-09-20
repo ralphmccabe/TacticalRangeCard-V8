@@ -5,7 +5,9 @@
 
 let officerRosterParties = [];
 let officerFirstAidList = [];
-let officerScenePhotos = [];
+window.officerScenePhotos = window.officerScenePhotos || [];
+let officerScenePhotos = window.officerScenePhotos;
+let officerHazmatList = [];
 let officerCanvas = null;
 let officerCtx = null;
 let isDrawingOfficerCanvas = false;
@@ -27,6 +29,9 @@ window.renderOfficerForm = function(cardData = null) {
     officerRosterParties = (cardData && cardData.data && cardData.data.parties) ? cardData.data.parties : [];
     officerFirstAidList = (cardData && cardData.data && cardData.data.firstAid) ? cardData.data.firstAid : [];
     officerScenePhotos = (cardData && cardData.data && cardData.data.scenePhotos) ? cardData.data.scenePhotos : [];
+    window.officerScenePhotos = officerScenePhotos;
+    officerHazmatList = (cardData && cardData.data && cardData.data.hazmat) ? cardData.data.hazmat : [];
+    window.lastSceneGpsData = (cardData && cardData.data && cardData.data.sceneGps) ? cardData.data.sceneGps : null;
     
     const id = cardData ? cardData.id : Date.now();
     const unitCallsign = (cardData && cardData.data) ? cardData.data.unitCallsign || '' : '';
@@ -132,6 +137,31 @@ window.renderOfficerForm = function(cardData = null) {
                         <option value="QUESTIONS" ${incidentType === 'QUESTIONS' ? 'selected' : ''}>🗺️ QUESTIONS</option>
                     </select>
                 </div>
+                <div class="col-span-1 sm:col-span-4 pt-2 border-t border-slate-800/80 space-y-2">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="window.pinSceneGpsAndFindHospital()" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/60 text-emerald-300 font-black text-[9.5px] px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i> PIN SCENE GPS & FIND ER/LZ
+                            </button>
+                            <button type="button" onclick="window.testSceneGpsSimulation()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-2 py-1.5 rounded border border-slate-700 cursor-pointer" title="Test GPS Simulation (Austin, TX)">🧪 TEST GPS</button>
+                        </div>
+                        
+                        <!-- Civilian GPS & Google Maps Coordinate Input Field -->
+                        <div class="flex items-center gap-1.5 flex-1 max-w-sm sm:justify-end">
+                            <span class="text-[9px] font-mono text-cyan-400 font-bold uppercase shrink-0">CIVILIAN GPS / MAPS:</span>
+                            <input type="text" id="officer-manual-coords-input" placeholder="e.g. 30.267200, -97.743100" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-mono text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none" title="Enter or paste decimal coordinates or Google Maps link">
+                            <button type="button" onclick="window.applyManualCivilianCoords()" class="bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider shrink-0 cursor-pointer shadow" title="Resolve and Set Location from Coordinates">
+                                📍 SET
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-[8.5px] font-mono text-slate-400 flex-wrap gap-1">
+                        <span>AUTO-RESOLVES STREET ADDRESS • DECIMAL GPS FOR GOOGLE MAPS • MGRS MILITARY LZ GRID • NEAREST ER</span>
+                        <span class="text-cyan-400 font-bold">100% COPY-PASTE READY FOR CIVILIANS & FIRST RESPONDERS</span>
+                    </div>
+                </div>
+                <!-- DEDICATED REAL-TIME SCENE GPS & HOSPITAL BANNER SLOT -->
+                <div id="officer-scene-gps-banner-slot" class="col-span-1 sm:col-span-4 empty:hidden"></div>
             </div>
 
             <!-- SECTION 2: MULTI-PARTY REGISTRY (PARTIES INVOLVED) -->
@@ -165,6 +195,29 @@ window.renderOfficerForm = function(cardData = null) {
                 </div>
             </div>
 
+            <!-- SECTION 2.7: HAZMAT & CARGO PLACARD REGISTRY -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 sm:p-3 mb-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2 flex-wrap gap-2">
+                    <span class="text-[10px] font-black text-red-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 text-red-500"></i> HAZMAT & CARGO PLACARDS (ERG 2024)
+                    </span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <input type="text" id="officer-hazmat-un-input" placeholder="4-DIGIT UN #" maxlength="4" class="w-24 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-white uppercase font-mono font-bold focus:border-red-500 focus:outline-none">
+                        <button type="button" onclick="window.addOfficerHazmatFromInput()" class="bg-red-950 text-red-300 hover:bg-red-900 border border-red-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Placard
+                        </button>
+                        <div class="flex items-center gap-1 ml-1">
+                            <button type="button" onclick="window.addOfficerHazmatPlacard('1203')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700" title="Add UN 1203 Gasoline">🧪 1203 GAS</button>
+                            <button type="button" onclick="window.addOfficerHazmatPlacard('1075')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700" title="Add UN 1075 Propane">🧪 1075 PROP</button>
+                            <button type="button" onclick="window.addOfficerHazmatPlacard('1005')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-0.5 rounded border border-slate-700" title="Add UN 1005 Ammonia">🧪 1005 AMM</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="officer-hazmat-container" class="space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar p-0.5">
+                    <!-- HazMat Placard Rows rendered dynamically -->
+                </div>
+            </div>
+
             <!-- SECTION 3A: SCENE DIAGRAM / CRIME SCENE SKETCHPAD -->
             <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 sm:p-3 mb-3">
                 <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2 flex-wrap gap-2">
@@ -195,18 +248,191 @@ window.renderOfficerForm = function(cardData = null) {
                         <i data-lucide="camera" class="w-4 h-4 text-cyan-400"></i> REAL SCENE EVIDENCE PHOTOS (<span id="officer-photo-count">0/5</span>)
                     </span>
                     <div class="flex items-center gap-1.5 flex-wrap">
-                        <label class="bg-red-950 text-red-300 hover:bg-red-900 border border-red-500/60 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors shadow">
+                        <button type="button" onclick="window.runVisualReconFromEvidence(0)" class="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow" title="Open AI Visual Explainer: Describe & Explain Whatever is Asked">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i> OPEN AI RECON
+                        </button>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="window.addTestEvidencePhoto('chemical')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-1 rounded border border-slate-700 cursor-pointer" title="Attach Chem Drum Photo & Analyze with AI">🧪 CHEM</button>
+                            <button type="button" onclick="window.addTestEvidencePhoto('firearm')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-1 rounded border border-slate-700 cursor-pointer" title="Attach Firearm Photo & Analyze with AI">🧪 GUN</button>
+                            <button type="button" onclick="window.addTestEvidencePhoto('rollover')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[8px] font-mono px-1.5 py-1 rounded border border-slate-700 cursor-pointer" title="Attach Crash Photo & Analyze with AI">🧪 CRASH</button>
+                        </div>
+                        <button type="button" onclick="document.getElementById('officer-camera-input').click()" class="bg-red-950 text-red-300 hover:bg-red-900 border border-red-500/60 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors shadow">
                             <i data-lucide="camera" class="w-3.5 h-3.5 text-red-400 animate-pulse"></i> Take Live Photo
-                            <input type="file" accept="image/*" capture="environment" id="officer-camera-input" class="hidden" onchange="window.handleOfficerPhotoUpload(event)">
-                        </label>
-                        <label class="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors shadow">
+                        </button>
+                        <input type="file" accept="image/*" capture="environment" id="officer-camera-input" class="hidden" onchange="window.handleOfficerPhotoUpload(event)">
+                        
+                        <button type="button" onclick="document.getElementById('officer-photo-input').click()" class="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors shadow">
                             <i data-lucide="image" class="w-3.5 h-3.5 text-cyan-400"></i> Gallery / Files
-                            <input type="file" accept="image/*" multiple id="officer-photo-input" class="hidden" onchange="window.handleOfficerPhotoUpload(event)">
-                        </label>
+                        </button>
+                        <input type="file" accept="image/*" multiple id="officer-photo-input" class="hidden" onchange="window.handleOfficerPhotoUpload(event)">
                     </div>
                 </div>
-                <div id="officer-photos-container" class="flex items-center justify-center gap-2 overflow-x-auto p-1 custom-scrollbar min-h-[60px] flex-wrap sm:flex-nowrap">
+                <div id="officer-photos-container" class="flex items-center justify-start gap-2 overflow-x-auto p-1 custom-scrollbar min-h-[70px] flex-wrap sm:flex-nowrap">
                     <!-- Rendered photo thumbnails -->
+                </div>
+            </div>
+
+            <!-- SECTION 3C: TACTICAL TWO-WAY FIELD VOICE & SPEECH TRANSLATOR -->
+            <div id="field-translator-section" class="bg-slate-900/90 border border-slate-800 rounded-lg p-2.5 sm:p-3 mb-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2.5 flex-wrap gap-2">
+                    <div class="flex items-center gap-1.5">
+                        <span class="p-1 bg-emerald-950/80 border border-emerald-500/50 rounded text-emerald-400">
+                            <i data-lucide="languages" class="w-3.5 h-3.5"></i>
+                        </span>
+                        <span class="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                            TWO-WAY FIELD VOICE & SPEECH TRANSLATOR
+                        </span>
+                        <span id="field-trans-engine-badge" class="text-[8px] font-mono bg-slate-950 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 rounded font-bold">
+                            AI SPEECH SYNTH
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <button type="button" onclick="window.swapFieldTranslatorLanguages()" class="bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/50 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow transition-colors" title="Swap Speaker 1 and Speaker 2 Languages">
+                            <i data-lucide="arrow-left-right" class="w-3 h-3 text-cyan-400"></i> SWAP ⇄
+                        </button>
+                        <button type="button" id="field-trans-auto-speak-btn" onclick="window.toggleFieldTranslatorAutoSpeak()" class="bg-emerald-950 text-emerald-300 border border-emerald-500/50 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow" title="Toggle Auto-Pronounce Translation">
+                            <i data-lucide="volume-2" class="w-3 h-3 text-emerald-400"></i> AUTO-VOICE: ON
+                        </button>
+                        <button type="button" onclick="window.insertFieldTranslationToSitrep()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow" title="Insert this dialogue exchange into Sitrep Master Notes">
+                            <i data-lucide="file-plus" class="w-3 h-3 text-cyan-400"></i> INSERT SITREP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dual Speaker Columns (Side by Side on sm+, Stacked on Mobile) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-2.5">
+                    <!-- Left: Speaker 1 (You / Officer / Hunter) -->
+                    <div class="bg-slate-950/80 border border-cyan-500/30 rounded-lg p-2.5 flex flex-col justify-between shadow-inner">
+                        <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                            <div class="flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                                <span class="text-[9px] font-black text-cyan-300 uppercase tracking-wider">YOU (SPEAKER 1)</span>
+                            </div>
+                            <select id="field-trans-lang1" onchange="window.handleFieldTranslatorLangChange()" class="bg-slate-900 border border-cyan-500/40 text-cyan-300 text-[9px] font-bold rounded px-1.5 py-0.5 focus:outline-none cursor-pointer font-mono">
+                                <option value="en-US" selected>English (US)</option>
+                                <option value="es-ES">Spanish (Español)</option>
+                                <option value="zh-CN">Chinese Mandarin (中文)</option>
+                                <option value="hi-IN">Hindi (हिन्दी)</option>
+                                <option value="ar-SA">Arabic (العربية)</option>
+                                <option value="fr-FR">French (Français)</option>
+                                <option value="pt-BR">Portuguese (Português)</option>
+                                <option value="ru-RU">Russian (Русский)</option>
+                                <option value="de-DE">German (Deutsch)</option>
+                                <option value="ja-JP">Japanese (日本語)</option>
+                                <option value="vi-VN">Vietnamese (Tiếng Việt)</option>
+                                <option value="ko-KR">Korean (한국어)</option>
+                                <option value="it-IT">Italian (Italiano)</option>
+                                <option value="tl-PH">Tagalog (Filipino)</option>
+                                <option value="uk-UA">Ukrainian (Українська)</option>
+                                <option value="pl-PL">Polish (Polski)</option>
+                                <option value="nl-NL">Dutch (Nederlands)</option>
+                                <option value="tr-TR">Turkish (Türkçe)</option>
+                                <option value="fa-IR">Persian (فارسی)</option>
+                                <option value="th-TH">Thai (ไทย)</option>
+                                <option value="he-IL">Hebrew (עברית)</option>
+                                <option value="el-GR">Greek (Ελληνικά)</option>
+                                <option value="id-ID">Indonesian (Bahasa Indonesia)</option>
+                                <option value="ro-RO">Romanian (Română)</option>
+                                <option value="ur-PK">Urdu (اردو)</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <button type="button" id="field-trans-mic1" onclick="window.startFieldVoiceInput(1)" class="w-full bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all">
+                                <i data-lucide="mic" class="w-4 h-4 text-cyan-400"></i>
+                                <span>TAP TO TALK (ENGLISH)</span>
+                            </button>
+                        </div>
+                        <textarea id="field-trans-src-text" rows="3" placeholder="Speak with the mic or type here in English..." class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white font-sans focus:border-cyan-400 focus:outline-none resize-none custom-scrollbar mb-2"></textarea>
+                        <div class="flex items-center justify-between text-[8px] font-mono text-slate-400">
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="window.speakFieldText(document.getElementById('field-trans-src-text').value, document.getElementById('field-trans-lang1').value)" class="bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer">
+                                    <i data-lucide="volume-2" class="w-2.5 h-2.5"></i> Play
+                                </button>
+                                <button type="button" onclick="window.copyFieldTranslatorText('field-trans-src-text')" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer">
+                                    <i data-lucide="copy" class="w-2.5 h-2.5"></i> Copy
+                                </button>
+                                <button type="button" onclick="document.getElementById('field-trans-src-text').value=''" class="text-slate-500 hover:text-slate-300 px-1 cursor-pointer">Clear</button>
+                            </div>
+                            <button type="button" onclick="window.executeFieldTranslation()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-[9px] px-2.5 py-0.5 rounded uppercase tracking-wider cursor-pointer shadow">
+                                Translate ➔
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Speaker 2 (Customer / Citizen / Witness) -->
+                    <div class="bg-slate-950/80 border border-emerald-500/30 rounded-lg p-2.5 flex flex-col justify-between shadow-inner">
+                        <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                            <div class="flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span class="text-[9px] font-black text-emerald-300 uppercase tracking-wider">CUSTOMER / CITIZEN (SPEAKER 2)</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-[8px] font-mono text-slate-400">Translate to:</span>
+                                <select id="field-trans-lang2" onchange="window.handleFieldTranslatorLangChange()" class="bg-slate-900 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold rounded px-1.5 py-0.5 focus:outline-none cursor-pointer font-mono">
+                                    <option value="en-US">English (US)</option>
+                                    <option value="es-ES" selected>Spanish (Español)</option>
+                                    <option value="zh-CN">Chinese Mandarin (中文)</option>
+                                    <option value="hi-IN">Hindi (हिन्दी)</option>
+                                    <option value="ar-SA">Arabic (العربية)</option>
+                                    <option value="fr-FR">French (Français)</option>
+                                    <option value="pt-BR">Portuguese (Português)</option>
+                                    <option value="ru-RU">Russian (Русский)</option>
+                                    <option value="de-DE">German (Deutsch)</option>
+                                    <option value="ja-JP">Japanese (日本語)</option>
+                                    <option value="vi-VN">Vietnamese (Tiếng Việt)</option>
+                                    <option value="ko-KR">Korean (한국어)</option>
+                                    <option value="it-IT">Italian (Italiano)</option>
+                                    <option value="tl-PH">Tagalog (Filipino)</option>
+                                    <option value="uk-UA">Ukrainian (Українська)</option>
+                                    <option value="pl-PL">Polish (Polski)</option>
+                                    <option value="nl-NL">Dutch (Nederlands)</option>
+                                    <option value="tr-TR">Turkish (Türkçe)</option>
+                                    <option value="fa-IR">Persian (فارسی)</option>
+                                    <option value="th-TH">Thai (ไทย)</option>
+                                    <option value="he-IL">Hebrew (עברית)</option>
+                                    <option value="el-GR">Greek (Ελληνικά)</option>
+                                    <option value="id-ID">Indonesian (Bahasa Indonesia)</option>
+                                    <option value="ro-RO">Romanian (Română)</option>
+                                    <option value="ur-PK">Urdu (اردو)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <button type="button" id="field-trans-mic2" onclick="window.startFieldVoiceInput(2)" class="w-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/60 font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all">
+                                <i data-lucide="mic" class="w-4 h-4 text-emerald-400"></i>
+                                <span>TAP FOR CUSTOMER TO TALK (SPANISH)</span>
+                            </button>
+                        </div>
+                        <div id="field-trans-tgt-text" class="w-full bg-slate-900 border border-emerald-500/40 rounded p-2 text-xs text-emerald-300 font-sans min-h-[70px] max-h-[120px] overflow-y-auto custom-scrollbar whitespace-pre-line mb-2 select-text shadow-inner">
+                            Translation will spell out here and pronounce out loud...
+                        </div>
+                        <div class="flex items-center justify-between text-[8px] font-mono text-slate-400">
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="window.speakFieldText(document.getElementById('field-trans-tgt-text').innerText, document.getElementById('field-trans-lang2').value)" class="bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/50 px-2 py-0.5 rounded font-black flex items-center gap-1 cursor-pointer">
+                                    <i data-lucide="volume-2" class="w-2.5 h-2.5 text-emerald-400"></i> PRONOUNCE OUT LOUD
+                                </button>
+                                <button type="button" onclick="window.copyFieldTranslatorText('field-trans-tgt-text')" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer">
+                                    <i data-lucide="copy" class="w-2.5 h-2.5"></i> Copy
+                                </button>
+                            </div>
+                            <span id="field-trans-status-msg" class="text-[7.5px] text-slate-500 italic">Ready for speech</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1-Tap Quick Emergency & Job Field Phrases -->
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-lg p-2">
+                    <div class="text-[8.5px] font-black text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <i data-lucide="zap" class="w-3 h-3 text-amber-400"></i> QUICK FIELD & EMERGENCY PHRASES (TAP TO TRANSLATE & SPEAK):
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button type="button" onclick="window.handleQuickFieldPhrase('Do you need medical attention or an ambulance?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🚑 Need Medical / Ambulance?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase('Do you have your identification or driver\'s license with you?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🪪 ID / Driver's License?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase('Please remain calm and stay here. You are safe now, help is on the way.')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🛑 Calm Down / Help On The Way</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase('Are you the registered owner of this vehicle?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">🚗 Vehicle Owner?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase('May I see your vehicle registration and proof of insurance?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">📄 Registration & Insurance?</button>
+                        <button type="button" onclick="window.handleQuickFieldPhrase('Can you tell me what happened here?')" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-cyan-400 text-[8.5px] font-mono px-2 py-1 rounded cursor-pointer transition-colors shadow">❓ What Happened Here?</button>
+                    </div>
                 </div>
             </div>
 
@@ -229,7 +455,12 @@ window.renderOfficerForm = function(cardData = null) {
             <div class="mb-4">
                 <div class="flex justify-between items-end mb-1">
                     <label class="block text-[9px] font-black uppercase text-cyan-400 tracking-wider">Master SITREP Summary & Observations</label>
-                    <span id="officer-incident-notes-counter" class="text-[9px] font-mono text-slate-400">${incidentNotes.length} / 1000</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="officer-dictate-btn" onclick="window.toggleVoiceDictation('officer-incident-notes', 'officer-dictate-btn')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2.5 py-0.5 rounded flex items-center gap-1 cursor-pointer transition-colors shadow" title="Toggle Hands-Free Voice Dictation">
+                            <i data-lucide="mic" class="w-3.5 h-3.5 text-cyan-400"></i> <span class="text-[9px] font-black">DICTATE</span>
+                        </button>
+                        <span id="officer-incident-notes-counter" class="text-[9px] font-mono text-slate-400">${incidentNotes.length} / 1000</span>
+                    </div>
                 </div>
                 <textarea id="officer-incident-notes" maxlength="1000" oninput="document.getElementById('officer-incident-notes-counter').textContent = this.value.length + ' / 1000'" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-100 placeholder:text-slate-400 h-16 focus:border-cyan-400 focus:outline-none custom-scrollbar" placeholder="Enter incident summary, suspect flight path, witness remarks, or initial investigation findings...">${incidentNotes}</textarea>
             </div>
@@ -240,10 +471,15 @@ window.renderOfficerForm = function(cardData = null) {
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i> CLEAR FORM
                 </button>
                 <div class="flex items-center gap-2 flex-wrap">
-                    <button type="button" onclick="window.saveOfficerCardToWorkstation('${id}')" style="background-color: #06b6d4 !important; color: #000000 !important;" class="hover:brightness-110 font-black font-black text-xs px-4 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer">
-                        <i data-lucide="save" class="w-4 h-4"></i> SAVE TO WORKSTATION
+                    <button type="button" onclick="window.saveOfficerCardToWorkstation('${id}')" style="background-color: #06b6d4 !important; color: #000000 !important;" class="hover:brightness-110 font-black text-xs px-3.5 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer">
+                        <i data-lucide="save" class="w-4 h-4"></i> SAVE WORKSTATION
                     </button>
-
+                    <button type="button" onclick="window.saveOfficerCardToVault('${id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.4)] cursor-pointer">
+                        <i data-lucide="folder-lock" class="w-4 h-4 text-slate-950"></i> INTEL VAULT
+                    </button>
+                    <button type="button" onclick="window.blogOfficerCardToWire('${id}')" class="bg-purple-600 hover:bg-purple-500 text-white font-black text-xs px-3.5 py-2 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_15px_rgba(168,85,247,0.4)] cursor-pointer">
+                        <i data-lucide="radio" class="w-4 h-4 text-white"></i> TRANSMIT COMMS
+                    </button>
                 </div>
             </div>
 
@@ -255,7 +491,16 @@ window.renderOfficerForm = function(cardData = null) {
     // Populate dynamic lists
     window.renderOfficerPartyRows();
     window.renderOfficerFirstAidRows();
+    window.renderOfficerHazmatRows();
     window.renderOfficerPhotoThumbnails();
+    if (typeof window.initFieldTranslator === 'function') {
+        window.initFieldTranslator();
+    }
+
+    // Render existing Scene GPS Banner if available
+    if (window.lastSceneGpsData && typeof window.renderSceneGpsBanner === 'function') {
+        window.renderSceneGpsBanner(window.lastSceneGpsData);
+    }
 
     // Init sketchpad canvas
     setTimeout(() => {
@@ -269,6 +514,7 @@ window.handleOfficerPhotoUpload = function(e) {
     const files = Array.from(inputEl.files || []);
     if (files.length === 0) return;
 
+    officerScenePhotos = window.officerScenePhotos || officerScenePhotos || [];
     let remainingSlots = 5 - officerScenePhotos.length;
     if (remainingSlots <= 0) {
         alert("Maximum 5 Scene Evidence Photos allowed per card.");
@@ -283,6 +529,7 @@ window.handleOfficerPhotoUpload = function(e) {
         const reader = new FileReader();
         reader.onload = (ev) => {
             officerScenePhotos.push(ev.target.result);
+            window.officerScenePhotos = officerScenePhotos;
             loadedCount++;
             if (loadedCount === filesToProcess.length) {
                 window.renderOfficerPhotoThumbnails();
@@ -294,8 +541,16 @@ window.handleOfficerPhotoUpload = function(e) {
 };
 
 window.removeOfficerPhoto = function(idx) {
+    officerScenePhotos = window.officerScenePhotos || officerScenePhotos || [];
     officerScenePhotos.splice(idx, 1);
+    window.officerScenePhotos = officerScenePhotos;
     window.renderOfficerPhotoThumbnails();
+};
+
+window.addTestEvidencePhoto = function(presetType) {
+    if (typeof window.testVisualReconPreset === 'function') {
+        window.testVisualReconPreset(presetType);
+    }
 };
 
 window.renderOfficerPhotoThumbnails = function() {
@@ -303,18 +558,33 @@ window.renderOfficerPhotoThumbnails = function() {
     const countSpan = document.getElementById('officer-photo-count');
     if (!container) return;
 
+    officerScenePhotos = window.officerScenePhotos || officerScenePhotos || [];
+    window.officerScenePhotos = officerScenePhotos;
+
     if (countSpan) countSpan.textContent = `${officerScenePhotos.length}/5`;
 
     if (!officerScenePhotos || officerScenePhotos.length === 0) {
-        container.innerHTML = `<span class="text-[10px] text-slate-400 italic p-1">No real scene photos attached yet. Tap "Take Live Photo" or "Gallery" to capture evidence.</span>`;
+        container.innerHTML = `
+            <div class="w-full text-center py-2.5 px-3 border border-dashed border-slate-700 rounded-lg bg-slate-950/60 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-inner">
+                <span class="text-[10px] text-slate-400 italic">No real scene photos attached yet. Tap camera, gallery, or attach a test photo:</span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" onclick="window.addTestEvidencePhoto('chemical')" class="bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 text-[9px] px-2 py-1 rounded font-mono cursor-pointer shadow">🧪 Chem Drum</button>
+                    <button type="button" onclick="window.addTestEvidencePhoto('firearm')" class="bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 text-[9px] px-2 py-1 rounded font-mono cursor-pointer shadow">🧪 Firearm</button>
+                    <button type="button" onclick="window.addTestEvidencePhoto('rollover')" class="bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/40 text-[9px] px-2 py-1 rounded font-mono cursor-pointer shadow">🧪 Crash</button>
+                </div>
+            </div>`;
+        if (window.lucide) window.lucide.createIcons();
         return;
     }
 
     container.innerHTML = officerScenePhotos.map((img, idx) => `
-        <div class="relative w-20 h-20 rounded border border-cyan-500/50 overflow-hidden bg-slate-950 shrink-0 group shadow-md flex items-center justify-center">
-            <img src="${img}" class="w-full h-full object-cover rounded">
-            <button type="button" onclick="window.removeOfficerPhoto(${idx})" class="absolute top-0.5 right-0.5 bg-red-600 hover:bg-red-500 text-white rounded-full p-0.5 shadow z-10" title="Remove Photo">
+        <div class="relative w-20 h-20 rounded border-2 border-cyan-500/70 overflow-hidden bg-slate-950 shrink-0 group shadow-md flex items-center justify-center">
+            <img src="${img}" class="w-full h-full object-cover rounded cursor-pointer transition-transform hover:scale-105" onclick="window.runVisualReconFromEvidence(${idx})" title="Click to analyze with Open AI">
+            <button type="button" onclick="window.removeOfficerPhoto(${idx}); event.stopPropagation();" class="absolute top-0.5 right-0.5 bg-red-600/90 hover:bg-red-500 text-white rounded-full p-0.5 shadow z-20 cursor-pointer" title="Remove Photo">
                 <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+            <button type="button" onclick="window.runVisualReconFromEvidence(${idx}); event.stopPropagation();" class="absolute bottom-0 inset-x-0 bg-cyan-950/95 hover:bg-cyan-900 text-cyan-300 text-[8px] font-black py-0.5 text-center flex items-center justify-center gap-0.5 z-10 uppercase border-t border-cyan-500/60 cursor-pointer shadow" title="Analyze with Open AI">
+                <i data-lucide="sparkles" class="w-2.5 h-2.5 text-cyan-400"></i> AI RECON
             </button>
         </div>
     `).join('');
@@ -322,13 +592,12 @@ window.renderOfficerPhotoThumbnails = function() {
     if (window.lucide) window.lucide.createIcons();
 };
 
-// Render Multi-Party Roster Rows
+// Render Multi-Party Roster Rows with Field Intel (DL & VIN Decoders)
 window.renderOfficerPartyRows = function() {
     const container = document.getElementById('officer-parties-container');
     if (!container) return;
 
     if (!officerRosterParties || officerRosterParties.length === 0) {
-        // Default 1 row
         officerRosterParties = [{
             role: 'SUSPECT',
             name: '',
@@ -337,60 +606,143 @@ window.renderOfficerPartyRows = function() {
             license: '',
             vehicle: '',
             plate: '',
-            status: 'DETAINED'
+            status: 'DETAINED',
+            dlData: null,
+            vehicleData: null
         }];
     }
 
-    container.innerHTML = officerRosterParties.map((p, idx) => `
-        <div class="bg-slate-950 border border-slate-800 rounded p-2 grid grid-cols-1 sm:grid-cols-6 gap-2 items-center relative">
-            <div>
-                <span class="text-[8px] text-purple-400 font-bold uppercase block">Party Role</span>
-                <select onchange="window.updateOfficerParty(${idx}, 'role', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-purple-300 font-bold uppercase">
-                    <option value="SUSPECT" ${p.role === 'SUSPECT' ? 'selected' : ''}>SUSPECT</option>
-                    <option value="DRIVER" ${p.role === 'DRIVER' ? 'selected' : ''}>DRIVER</option>
-                    <option value="VICTIM" ${p.role === 'VICTIM' ? 'selected' : ''}>VICTIM</option>
-                    <option value="WITNESS" ${p.role === 'WITNESS' ? 'selected' : ''}>WITNESS</option>
-                    <option value="REPORTING PARTY" ${p.role === 'REPORTING PARTY' ? 'selected' : ''}>REPORTING PARTY</option>
-                </select>
-            </div>
+    container.innerHTML = officerRosterParties.map((p, idx) => {
+        const vData = p.vehicleData;
+        const dlData = p.dlData;
 
-            <div>
-                <span class="text-[8px] text-slate-400 font-bold uppercase block">Full Name / Alias</span>
-                <input type="text" maxlength="20" value="${p.name || ''}" onchange="window.updateOfficerParty(${idx}, 'name', this.value)" placeholder="Name" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white uppercase">
-            </div>
+        // Vehicle Thumbnail Card (if decoded or available)
+        let vehiclePreviewHtml = '';
+        if (vData) {
+            const hasPhoto = !!vData.photoUrl;
+            const previewMedia = hasPhoto 
+                ? `<img src="${vData.photoUrl}" class="w-full h-full object-cover rounded" alt="${vData.year} ${vData.make}">`
+                : (window.getVehicleSilhouetteSvg ? window.getVehicleSilhouetteSvg(vData.bodyClass) : '<div class="text-[9px] text-cyan-400">VEHICLE</div>');
 
-            <div>
-                <span class="text-[8px] text-slate-400 font-bold uppercase block">Phone / Contact</span>
-                <input type="text" maxlength="20" value="${p.phone || ''}" onchange="window.updateOfficerParty(${idx}, 'phone', this.value)" placeholder="Phone" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white">
-            </div>
+            const isStolen = vData.stolenStatus && vData.stolenStatus.includes('STOLEN');
+            const theftBadge = isStolen 
+                ? `<span class="bg-red-600 text-white font-black px-2 py-0.5 rounded text-[8px] animate-pulse shadow">🚨 STOLEN VEHICLE ALERT</span>`
+                : `<span class="bg-emerald-950 text-emerald-300 border border-emerald-500/60 font-black px-2 py-0.5 rounded text-[8px]">✓ NICB: CLEAR (NO STOLEN RECORD)</span>`;
 
-            <div>
-                <span class="text-[8px] text-slate-400 font-bold uppercase block">DL # / State</span>
-                <input type="text" maxlength="20" value="${p.license || ''}" onchange="window.updateOfficerParty(${idx}, 'license', this.value)" placeholder="DL Number" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white uppercase font-mono">
-            </div>
+            vehiclePreviewHtml = `
+                <div class="bg-slate-900/95 border-2 border-cyan-500/70 rounded-lg p-2.5 mt-1.5 flex flex-col sm:flex-row items-center gap-3 shadow-lg">
+                    <div class="w-28 h-18 sm:w-32 sm:h-20 shrink-0 bg-slate-950 rounded border border-slate-700 overflow-hidden flex items-center justify-center p-0.5 shadow-inner">
+                        ${previewMedia}
+                    </div>
+                    <div class="flex-1 text-left space-y-1 w-full">
+                        <div class="flex items-center justify-between flex-wrap gap-1 border-b border-slate-800 pb-1">
+                            <span class="text-xs font-black text-cyan-300 uppercase tracking-wide">${vData.year} ${vData.make} ${vData.model} ${vData.trim || ''}</span>
+                            ${theftBadge}
+                        </div>
+                        <div class="text-[9.5px] font-mono text-slate-300 grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-0.5">
+                            <div><span class="text-slate-400 font-bold">BODY:</span> ${vData.bodyClass || 'SEDAN'}</div>
+                            <div><span class="text-slate-400 font-bold">DRIVE:</span> ${vData.driveType || '2WD'}</div>
+                            <div><span class="text-slate-400 font-bold">ENGINE:</span> ${vData.displacementL || ''} ${vData.engineCylinders ? vData.engineCylinders + '-CYL' : ''}</div>
+                            <div><span class="text-slate-400 font-bold">ORIGIN:</span> ${vData.plantCountry || 'USA'}</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="window.clearOfficerPartyVehicleIntel(${idx})" class="text-slate-400 hover:text-red-400 text-xs p-1" title="Clear Vehicle Intel">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+        }
 
-            <div>
-                <span class="text-[8px] text-slate-400 font-bold uppercase block">Vehicle & Plate</span>
-                <input type="text" maxlength="20" value="${p.vehicle || ''}" onchange="window.updateOfficerParty(${idx}, 'vehicle', this.value)" placeholder="Make/Model/Plate" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white uppercase">
-            </div>
+        // Driver License Data Chip (if decoded from barcode)
+        let dlChipHtml = '';
+        if (dlData) {
+            dlChipHtml = `
+                <div class="bg-purple-950/70 border border-purple-500/60 rounded p-1.5 text-[9px] font-mono text-purple-200 flex items-center justify-between flex-wrap gap-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span>🪪 <b>${dlData.fullName}</b></span>
+                        <span>DOB: <b>${dlData.dob || 'N/A'}</b> (AGE ${dlData.age || 'N/A'})</span>
+                        <span>SEX: <b>${dlData.sex || 'N/A'}</b></span>
+                        <span>ADDR: <b>${dlData.address || 'N/A'}</b></span>
+                    </div>
+                    <button type="button" onclick="window.clearOfficerPartyDLIntel(${idx})" class="text-purple-300 hover:text-red-400 text-[9px]" title="Clear ID Intel">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            `;
+        }
 
-            <div class="flex items-center justify-between gap-1">
-                <div class="flex-1">
-                    <span class="text-[8px] text-amber-400 font-bold uppercase block">Status</span>
-                    <select onchange="window.updateOfficerParty(${idx}, 'status', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[9px] text-amber-300 font-bold uppercase">
-                        <option value="UNINJURED" ${p.status === 'UNINJURED' ? 'selected' : ''}>UNINJURED</option>
-                        <option value="EMS TRANSPORTED" ${p.status === 'EMS TRANSPORTED' ? 'selected' : ''}>EMS TRANSPORTED</option>
-                        <option value="DETAINED" ${p.status === 'DETAINED' ? 'selected' : ''}>DETAINED</option>
-                        <option value="GOA (FLED)" ${p.status === 'GOA (FLED)' ? 'selected' : ''}>G.O.A. (FLED)</option>
-                    </select>
+        return `
+            <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 space-y-2 relative shadow-md">
+                <!-- Row Header: Role, Status, and Delete -->
+                <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] text-purple-400 font-black uppercase tracking-wider">Party Role:</span>
+                        <select onchange="window.updateOfficerParty(${idx}, 'role', this.value)" class="bg-slate-900 border border-purple-500/50 rounded px-2 py-0.5 text-[10px] text-purple-300 font-black uppercase focus:outline-none">
+                            <option value="SUSPECT" ${p.role === 'SUSPECT' ? 'selected' : ''}>SUSPECT</option>
+                            <option value="DRIVER" ${p.role === 'DRIVER' ? 'selected' : ''}>DRIVER</option>
+                            <option value="VICTIM" ${p.role === 'VICTIM' ? 'selected' : ''}>VICTIM</option>
+                            <option value="WITNESS" ${p.role === 'WITNESS' ? 'selected' : ''}>WITNESS</option>
+                            <option value="REPORTING PARTY" ${p.role === 'REPORTING PARTY' ? 'selected' : ''}>REPORTING PARTY</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] text-amber-400 font-black uppercase tracking-wider">Status:</span>
+                        <select onchange="window.updateOfficerParty(${idx}, 'status', this.value)" class="bg-slate-900 border border-amber-500/50 rounded px-2 py-0.5 text-[9.5px] text-amber-300 font-black uppercase focus:outline-none">
+                            <option value="UNINJURED" ${p.status === 'UNINJURED' ? 'selected' : ''}>UNINJURED</option>
+                            <option value="EMS TRANSPORTED" ${p.status === 'EMS TRANSPORTED' ? 'selected' : ''}>EMS TRANSPORTED</option>
+                            <option value="DETAINED" ${p.status === 'DETAINED' ? 'selected' : ''}>DETAINED</option>
+                            <option value="GOA (FLED)" ${p.status === 'GOA (FLED)' ? 'selected' : ''}>G.O.A. (FLED)</option>
+                        </select>
+                        <button type="button" onclick="window.removeOfficerPartyRow(${idx})" class="text-red-400 hover:text-red-300 p-1 hover:bg-red-950/40 rounded transition-colors" title="Remove Party">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <button type="button" onclick="window.removeOfficerPartyRow(${idx})" class="text-red-400 hover:text-red-300 p-1 mt-3" title="Remove Party">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
+                <!-- Input Fields Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div>
+                        <div class="flex justify-between items-center mb-0.5">
+                            <span class="text-[8px] text-slate-400 font-bold uppercase">Full Name / Alias</span>
+                            <div class="flex gap-1">
+                                <button type="button" onclick="window.scanOfficerPartyDL(${idx})" class="text-[7.5px] bg-purple-950 text-purple-300 hover:bg-purple-900 border border-purple-500/50 px-1.5 py-0.2 rounded font-black uppercase flex items-center gap-0.5 cursor-pointer" title="Scan Driver License Barcode"><i data-lucide="camera" class="w-2.5 h-2.5"></i> SCAN ID</button>
+                                <button type="button" onclick="window.testOfficerPartyDL(${idx})" class="text-[7.5px] bg-slate-800 text-slate-300 hover:bg-slate-700 px-1 py-0.2 rounded font-mono cursor-pointer" title="Load Sample Test DL">🧪 TEST</button>
+                            </div>
+                        </div>
+                        <input type="text" maxlength="30" value="${p.name || ''}" onchange="window.updateOfficerParty(${idx}, 'name', this.value)" placeholder="NAME" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-bold focus:border-cyan-400 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <span class="text-[8px] text-slate-400 font-bold uppercase block mb-0.5">Phone / Contact</span>
+                        <input type="text" maxlength="25" value="${p.phone || ''}" onchange="window.updateOfficerParty(${idx}, 'phone', this.value)" placeholder="PHONE" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white focus:border-cyan-400 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <span class="text-[8px] text-slate-400 font-bold uppercase block mb-0.5">DL # / State</span>
+                        <input type="text" maxlength="25" value="${p.license || ''}" onchange="window.updateOfficerParty(${idx}, 'license', this.value)" placeholder="DL NUMBER" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-mono focus:border-cyan-400 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-0.5">
+                            <span class="text-[8px] text-slate-400 font-bold uppercase">Vehicle & Plate / VIN</span>
+                            <div class="flex gap-1">
+                                <button type="button" onclick="window.decodeOfficerPartyVIN(${idx})" class="text-[7.5px] bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 px-1.5 py-0.2 rounded font-black uppercase flex items-center gap-0.5 cursor-pointer" title="Decode VIN Specs & Stock Photo"><i data-lucide="search" class="w-2.5 h-2.5"></i> DECODE</button>
+                                <button type="button" onclick="window.scanOfficerPartyVIN(${idx})" class="text-[7.5px] bg-slate-800 text-cyan-300 hover:bg-slate-700 px-1 py-0.2 rounded font-black cursor-pointer" title="Scan Barcode"><i data-lucide="camera" class="w-2.5 h-2.5"></i></button>
+                                <button type="button" onclick="window.testOfficerPartyVIN(${idx})" class="text-[7.5px] bg-slate-800 text-slate-300 hover:bg-slate-700 px-1 py-0.2 rounded font-mono cursor-pointer" title="Load Sample Test VIN">🧪 TEST</button>
+                            </div>
+                        </div>
+                        <input type="text" maxlength="40" value="${p.vehicle || ''}" onchange="window.updateOfficerParty(${idx}, 'vehicle', this.value)" placeholder="MAKE/MODEL/PLATE OR VIN" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-bold focus:border-cyan-400 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Driver License Decoded Chip -->
+                ${dlChipHtml}
+
+                <!-- Vehicle Thumbnail & Intelligence Pop-up Card -->
+                ${vehiclePreviewHtml}
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     if (window.lucide) window.lucide.createIcons();
 };
@@ -404,7 +756,9 @@ window.addOfficerPartyRow = function() {
         license: '',
         vehicle: '',
         plate: '',
-        status: 'UNINJURED'
+        status: 'UNINJURED',
+        dlData: null,
+        vehicleData: null
     });
     window.renderOfficerPartyRows();
 };
@@ -420,6 +774,188 @@ window.updateOfficerParty = function(idx, key, val) {
     }
 };
 
+window.clearOfficerPartyVehicleIntel = function(idx) {
+    if (officerRosterParties[idx]) {
+        officerRosterParties[idx].vehicleData = null;
+        window.renderOfficerPartyRows();
+    }
+};
+
+window.clearOfficerPartyDLIntel = function(idx) {
+    if (officerRosterParties[idx]) {
+        officerRosterParties[idx].dlData = null;
+        window.renderOfficerPartyRows();
+    }
+};
+
+// Driver License Barcode Scanner Trigger
+window.scanOfficerPartyDL = function(idx) {
+    if (!window.launchIntelScanner) {
+        alert("Field Intel Scanner module not initialized.");
+        return;
+    }
+    window.launchIntelScanner('driver license', (raw) => {
+        const dl = window.parseAAMVABarcode ? window.parseAAMVABarcode(raw) : null;
+        if (dl && officerRosterParties[idx]) {
+            officerRosterParties[idx].name = dl.fullName;
+            officerRosterParties[idx].license = `${dl.state ? dl.state + ' ' : ''}${dl.licenseNumber}`;
+            officerRosterParties[idx].dlData = dl;
+            window.renderOfficerPartyRows();
+            if (window.pushTacLog) window.pushTacLog(`DRIVER LICENSE DECODED: ${dl.fullName}`, "SUCCESS");
+        } else {
+            alert("Could not extract AAMVA driver license fields from barcode.");
+        }
+    });
+};
+
+// Sample Driver License Simulation (For Fast PC Testing)
+window.testOfficerPartyDL = function(idx) {
+    const sampleRaw = `@\n\x1e\rANSI 636000080002DL00410287ZA03280012DLDAQD98765432\nDCSSMITH\nDACMARCUS\nDADWAYNE\nDBB19850624\nDBC1\nDAYBLU\nDAU072 in\nDAG104 CYBERPUNK BLVD\nDAIAUSTIN\nDAJTX\nDAK78701\nDBA20290624\n`;
+    const dl = window.parseAAMVABarcode ? window.parseAAMVABarcode(sampleRaw) : null;
+    if (dl && officerRosterParties[idx]) {
+        officerRosterParties[idx].name = dl.fullName;
+        officerRosterParties[idx].license = `${dl.state} ${dl.licenseNumber}`;
+        officerRosterParties[idx].dlData = dl;
+        window.renderOfficerPartyRows();
+        if (window.pushTacLog) window.pushTacLog(`TEST DL LOADED: ${dl.fullName} (TX)`, "SUCCESS");
+    }
+};
+
+// VIN Barcode Scanner Trigger
+window.scanOfficerPartyVIN = function(idx) {
+    if (!window.launchIntelScanner) {
+        alert("Field Intel Scanner module not initialized.");
+        return;
+    }
+    window.launchIntelScanner('vehicle vin', (raw) => {
+        window.decodeOfficerPartyVIN(idx, raw);
+    });
+};
+
+// Sample Vehicle VIN Simulation (For Fast Testing)
+window.testOfficerPartyVIN = async function(idx) {
+    const sampleVin = '5TDZA3EH3MS000001';
+    if (officerRosterParties[idx]) {
+        officerRosterParties[idx].vehicle = sampleVin;
+    }
+    await window.decodeOfficerPartyVIN(idx, sampleVin);
+    if (window.pushTacLog) window.pushTacLog(`TEST VIN LOADED: ${sampleVin}`, "SUCCESS");
+};
+
+// Vehicle VIN Specs Decoder (Calls NHTSA & queries photo/silhouette)
+window.decodeOfficerPartyVIN = async function(idx, overrideVin = null) {
+    let targetVin = overrideVin ? overrideVin.trim() : (officerRosterParties[idx]?.vehicle || '').trim();
+    // Check if input contains a 17-character VIN pattern
+    const vinMatch = targetVin.match(/[A-HJ-NPR-Z0-9]{17}/i);
+    let vinToQuery = vinMatch ? vinMatch[0].toUpperCase() : '';
+
+    if (!vinToQuery) {
+        vinToQuery = prompt("Enter 17-Character Vehicle VIN (e.g. 5TDZA3EH3MS000001):");
+        if (!vinToQuery) return;
+        vinToQuery = vinToQuery.trim().toUpperCase();
+    }
+
+    if (window.pushTacLog) window.pushTacLog(`QUERYING NHTSA VEHICLE SPECS FOR VIN ${vinToQuery}...`, "SYS");
+
+    if (!window.decodeVehicleVin) {
+        alert("Vehicle decoder function not loaded.");
+        return;
+    }
+
+    const res = await window.decodeVehicleVin(vinToQuery);
+    if (res.error) {
+        alert(`VIN Decode Notice: ${res.error}`);
+        return;
+    }
+
+    if (officerRosterParties[idx]) {
+        officerRosterParties[idx].vehicle = `${res.year} ${res.make} ${res.model} / ${res.vin.substring(11)}`;
+        officerRosterParties[idx].vehicleData = res;
+        window.renderOfficerPartyRows();
+        if (window.pushTacLog) window.pushTacLog(`VEHICLE DECODED: ${res.year} ${res.make} ${res.model} (${res.bodyClass})`, "SUCCESS");
+    }
+};
+
+// Sample VIN Simulation (For Fast PC Testing)
+window.testOfficerPartyVIN = function(idx) {
+    // Real Toyota 4Runner / Highlander AWD sample VIN
+    const sampleVin = '5TDZA3EH3MS000001';
+    window.decodeOfficerPartyVIN(idx, sampleVin);
+};
+
+// Render HazMat ERG Placards
+window.renderOfficerHazmatRows = function() {
+    const container = document.getElementById('officer-hazmat-container');
+    if (!container) return;
+
+    if (!officerHazmatList || officerHazmatList.length === 0) {
+        container.innerHTML = `<div class="text-[10px] text-slate-400 italic text-center py-2">No HazMat placards recorded. Enter a 4-digit UN number or tap a test button if hazardous cargo/spill is present.</div>`;
+        return;
+    }
+
+    container.innerHTML = officerHazmatList.map((haz, idx) => {
+        const diamondSvg = window.renderHazMatDiamondSvg ? window.renderHazMatDiamondSvg(haz, 95) : '';
+        return `
+            <div class="bg-slate-950 border-2 border-red-500/60 rounded-xl p-3 flex flex-col sm:flex-row items-center gap-3 relative shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+                <!-- Diamond Graphic -->
+                <div class="shrink-0 flex items-center justify-center p-1">
+                    ${diamondSvg}
+                </div>
+                <!-- Details -->
+                <div class="flex-1 space-y-1 text-left w-full">
+                    <div class="flex items-center justify-between flex-wrap gap-1 border-b border-slate-800 pb-1">
+                        <div>
+                            <span class="text-xs font-black text-red-400 uppercase tracking-wide">UN ${haz.unCode}: ${haz.name}</span>
+                            <span class="ml-2 text-[9px] bg-red-950 text-red-300 border border-red-800 px-1.5 py-0.5 rounded font-mono font-bold">CLASS ${haz.hazardClass} • GUIDE #${haz.guide}</span>
+                        </div>
+                        <button type="button" onclick="window.removeOfficerHazmatPlacard(${idx})" class="text-slate-400 hover:text-red-400 p-1" title="Remove Placard">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[9.5px] text-slate-300 pt-1">
+                        <div><span class="text-amber-400 font-bold">ISOLATION:</span> ${haz.isolation}</div>
+                        <div><span class="text-red-400 font-bold">EVACUATION:</span> ${haz.evacFire || haz.evacSpill}</div>
+                        <div><span class="text-cyan-400 font-bold">PROTECTIVE GEAR:</span> ${haz.ppe}</div>
+                        <div><span class="text-emerald-400 font-bold">FIRE ACTION:</span> ${haz.fire}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (window.lucide) window.lucide.createIcons();
+};
+
+window.addOfficerHazmatFromInput = function() {
+    const input = document.getElementById('officer-hazmat-un-input');
+    const val = input ? input.value.trim() : '';
+    if (!val) {
+        alert("Enter a 4-digit UN Placard Number (e.g. 1203 for Gasoline).");
+        return;
+    }
+    window.addOfficerHazmatPlacard(val);
+    if (input) input.value = '';
+};
+
+window.addOfficerHazmatPlacard = function(unCode) {
+    if (!window.lookupHazMatPlacard) {
+        alert("HazMat lookup module not initialized.");
+        return;
+    }
+    const haz = window.lookupHazMatPlacard(unCode);
+    if (haz) {
+        officerHazmatList.push(haz);
+        window.renderOfficerHazmatRows();
+        if (window.pushTacLog) window.pushTacLog(`HAZMAT PLACARD ADDED: UN ${haz.unCode} (${haz.name})`, "WARNING");
+    }
+};
+
+window.removeOfficerHazmatPlacard = function(idx) {
+    officerHazmatList.splice(idx, 1);
+    window.renderOfficerHazmatRows();
+};
+
+// Render First Aid Rows with Animal/K9 Microchip & Tag Scanner
 window.renderOfficerFirstAidRows = function() {
     const container = document.getElementById('officer-firstaid-container');
     if (!container) return;
@@ -429,42 +965,86 @@ window.renderOfficerFirstAidRows = function() {
         return;
     }
 
-    container.innerHTML = officerFirstAidList.map((p, idx) => `
-        <div class="bg-slate-950 border border-slate-800 rounded p-2 grid grid-cols-1 sm:grid-cols-2 gap-2 items-center relative">
-            <div>
-                <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Patient Type</label>
-                <select onchange="window.updateOfficerFirstAid(${idx}, 'faType', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white uppercase font-bold">
-                    <option value="HUMAN" ${p.faType === 'HUMAN' ? 'selected' : ''}>HUMAN PATIENT</option>
-                    <option value="K9/ANIMAL" ${p.faType === 'K9/ANIMAL' ? 'selected' : ''}>K9 / ANIMAL</option>
-                </select>
+    container.innerHTML = officerFirstAidList.map((p, idx) => {
+        const isAnimal = p.faType === 'K9/ANIMAL';
+        const animalScannerHtml = isAnimal ? `
+            <div class="flex items-center gap-1.5 mt-1">
+                <button type="button" onclick="window.scanOfficerPetTag(${idx})" class="text-[8px] bg-pink-950 text-pink-300 hover:bg-pink-900 border border-pink-500/50 px-2 py-0.5 rounded font-black uppercase flex items-center gap-1 cursor-pointer">
+                    <i data-lucide="qr-code" class="w-3 h-3"></i> SCAN PET TAG / CHIP
+                </button>
+                <button type="button" onclick="window.testOfficerPetChip(${idx})" class="text-[8px] bg-slate-800 text-slate-300 hover:bg-slate-700 px-1.5 py-0.5 rounded font-mono cursor-pointer" title="Simulate 15-Digit Microchip Scan">
+                    🧪 TEST CHIP
+                </button>
             </div>
-            <div>
-                <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Patient Name / Tag ID</label>
-                <input type="text" value="${p.faName}" onchange="window.updateOfficerFirstAid(${idx}, 'faName', this.value)" placeholder="e.g. Officer Smith" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white font-mono">
+        ` : '';
+
+        return `
+            <div class="bg-slate-950 border border-slate-800 rounded p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 items-center relative shadow">
+                <div>
+                    <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Patient Type</label>
+                    <select onchange="window.updateOfficerFirstAid(${idx}, 'faType', this.value); window.renderOfficerFirstAidRows();" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white uppercase font-bold">
+                        <option value="HUMAN" ${p.faType === 'HUMAN' ? 'selected' : ''}>HUMAN PATIENT</option>
+                        <option value="K9/ANIMAL" ${p.faType === 'K9/ANIMAL' ? 'selected' : ''}>K9 / ANIMAL / LIVESTOCK</option>
+                    </select>
+                    ${animalScannerHtml}
+                </div>
+                <div>
+                    <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Patient Name / Tag / Chip ID</label>
+                    <input type="text" value="${p.faName || ''}" onchange="window.updateOfficerFirstAid(${idx}, 'faName', this.value)" placeholder="${isAnimal ? 'e.g. K9 Thor / Chip #9851410...' : 'e.g. Officer Smith'}" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white font-mono font-bold">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Chief Complaint & Vitals (HR/RR/Temp)</label>
+                    <input type="text" value="${p.faVitals || ''}" onchange="window.updateOfficerFirstAid(${idx}, 'faVitals', this.value)" placeholder="e.g. Laceration, Heat Stress, Dehydration" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white">
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Treatment / Registry & Owner Info</label>
+                    <textarea onchange="window.updateOfficerFirstAid(${idx}, 'faTreatment', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white h-12 custom-scrollbar" placeholder="Enter wound treatment or owner recovery contact...">${p.faTreatment || ''}</textarea>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Evacuation / Vet Transport Status</label>
+                    <select onchange="window.updateOfficerFirstAid(${idx}, 'faEvac', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white uppercase font-bold">
+                        <option value="NONE" ${p.faEvac === 'NONE' ? 'selected' : ''}>NO EVAC REQUIRED</option>
+                        <option value="ROUTINE" ${p.faEvac === 'ROUTINE' ? 'selected' : ''}>ROUTINE (NON-EMERGENCY)</option>
+                        <option value="PRIORITY" ${p.faEvac === 'PRIORITY' ? 'selected' : ''}>PRIORITY EVAC</option>
+                        <option value="URGENT" ${p.faEvac === 'URGENT' ? 'selected' : ''}>URGENT / VET HOSPITAL REQUIRED</option>
+                    </select>
+                </div>
+                <button type="button" onclick="window.removeOfficerFirstAidRow(${idx})" class="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center bg-red-950 text-red-400 rounded hover:bg-red-900" title="Remove Patient">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
             </div>
-            <div class="sm:col-span-2">
-                <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Chief Complaint & Vitals (HR/RR/Temp)</label>
-                <input type="text" value="${p.faVitals}" onchange="window.updateOfficerFirstAid(${idx}, 'faVitals', this.value)" placeholder="e.g. GSW Right Leg" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white">
-            </div>
-            <div class="sm:col-span-2">
-                <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Treatment / Meds Given / Tourniquet</label>
-                <textarea onchange="window.updateOfficerFirstAid(${idx}, 'faTreatment', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white h-12 custom-scrollbar">${p.faTreatment}</textarea>
-            </div>
-            <div class="sm:col-span-2">
-                <label class="block text-[8px] font-black uppercase text-pink-400/80 tracking-wider mb-0.5">Evacuation Status</label>
-                <select onchange="window.updateOfficerFirstAid(${idx}, 'faEvac', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-white uppercase font-bold">
-                    <option value="NONE" ${p.faEvac === 'NONE' ? 'selected' : ''}>NO EVAC REQUIRED</option>
-                    <option value="ROUTINE" ${p.faEvac === 'ROUTINE' ? 'selected' : ''}>ROUTINE (NON-EMERGENCY)</option>
-                    <option value="PRIORITY" ${p.faEvac === 'PRIORITY' ? 'selected' : ''}>PRIORITY EVAC</option>
-                    <option value="URGENT" ${p.faEvac === 'URGENT' ? 'selected' : ''}>URGENT / MEDEVAC REQUIRED</option>
-                </select>
-            </div>
-            <button type="button" onclick="window.removeOfficerFirstAidRow(${idx})" class="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-950 text-red-500 rounded hover:bg-red-900">
-                <i data-lucide="x" class="w-3 h-3"></i>
-            </button>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+
     if (window.lucide) window.lucide.createIcons();
+};
+
+window.scanOfficerPetTag = function(idx) {
+    if (!window.launchIntelScanner) {
+        alert("Scanner module not initialized.");
+        return;
+    }
+    window.launchIntelScanner('pet tag / microchip barcode', (raw) => {
+        const tag = window.decodePetLivestockTag ? window.decodePetLivestockTag(raw) : null;
+        if (tag && officerFirstAidList[idx]) {
+            officerFirstAidList[idx].faName = `${tag.animalType}: ${tag.formatted}`;
+            officerFirstAidList[idx].faTreatment = `REGISTRY: ${tag.registryName}\nCONTACT: ${tag.registryContact}`;
+            window.renderOfficerFirstAidRows();
+            if (window.pushTacLog) window.pushTacLog(`PET TAG DECODED: ${tag.registryName}`, "SUCCESS");
+        }
+    });
+};
+
+window.testOfficerPetChip = function(idx) {
+    const sampleChip = '985141002345678';
+    const tag = window.decodePetLivestockTag ? window.decodePetLivestockTag(sampleChip) : null;
+    if (tag && officerFirstAidList[idx]) {
+        officerFirstAidList[idx].faName = `CANINE: ${tag.formatted}`;
+        officerFirstAidList[idx].faVitals = 'NORMAL VITALS (HR 90, TEMP 101.5 F)';
+        officerFirstAidList[idx].faTreatment = `REGISTRY: ${tag.registryName}\nRECOVERY LINE: ${tag.registryContact}`;
+        window.renderOfficerFirstAidRows();
+        if (window.pushTacLog) window.pushTacLog(`TEST PET MICROCHIP LOADED (${tag.registryName})`, "SUCCESS");
+    }
 };
 
 window.addOfficerFirstAidRow = function() {
@@ -814,8 +1394,10 @@ window.collectOfficerCardData = function(id = null) {
             incidentNotes: document.getElementById('officer-incident-notes')?.value || '',
             parties: officerRosterParties || [],
             firstAid: officerFirstAidList || [],
+            hazmat: officerHazmatList || [],
             scenePhotos: officerScenePhotos || [],
-            sketchImage: sketchImage
+            sketchImage: sketchImage,
+            sceneGps: window.lastSceneGpsData || null
         }
     };
 };
@@ -1022,7 +1604,15 @@ window.blogOfficerCardToWire = async function(id) {
 window.sendOfficerCardToComms = window.blogOfficerCardToWire;
 
 // Generate Rendered Master Vertical Card HTML (Tall Cyber Navy & Gold Theme)
+window.lastRenderedOfficerCard = null;
+window.reworkCurrentOfficerCard = function() {
+    if (window.lastRenderedOfficerCard && typeof window.openWorkstationForm === 'function') {
+        window.openWorkstationForm('officer', window.lastRenderedOfficerCard);
+    }
+};
+
 window.generateOfficerCardHTML = function(card) {
+    window.lastRenderedOfficerCard = card;
     const data = card.data || (card.workstationData ? card.workstationData.data : card);
     const parties = data.parties || [];
     const photos = data.scenePhotos || [];
@@ -1035,19 +1625,38 @@ window.generateOfficerCardHTML = function(card) {
     }
 
     // Party Roster HTML
-    const partiesHtml = parties.map(p => `
-        <div style="background-color: #020617; border: 1px solid #1e293b;" class="p-2.5 rounded-lg text-xs space-y-1">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-1">
-                <span style="color: #c084fc;" class="font-black uppercase text-[10.5px] tracking-wide">${p.role || 'PARTY'}: ${p.name || 'UNKNOWN'}</span>
-                <span style="color: #fbbf24;" class="font-mono text-[9px] font-black uppercase bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/40">${p.status || 'UNINJURED'}</span>
+    const partiesHtml = parties.map(p => {
+        const vData = p.vehicleData;
+        let vPreview = '';
+        if (vData) {
+            const previewImg = vData.photoUrl 
+                ? `<img src="${vData.photoUrl}" style="width: 70px; height: 46px; object-fit: cover; border-radius: 4px; border: 1px solid #0284c7;">`
+                : (window.getVehicleSilhouetteSvg ? `<div style="width: 70px; height: 46px;">${window.getVehicleSilhouetteSvg(vData.bodyClass, '#38bdf8')}</div>` : '');
+            vPreview = `
+                <div style="background-color: #0b1329; border: 1px solid #0284c7; padding: 4px; border-radius: 6px; display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                    ${previewImg}
+                    <div style="font-size: 9px; line-height: 1.2;">
+                        <div style="color: #38bdf8; font-weight: bold;">${vData.year} ${vData.make} ${vData.model} (${vData.bodyClass || 'SEDAN'})</div>
+                        <div style="color: #94a3b8;">${vData.driveType || '2WD'} • ${vData.displacementL || ''} • ${vData.stolenStatus || 'CLEAR'}</div>
+                    </div>
+                </div>
+            `;
+        }
+        return `
+            <div style="background-color: #020617; border: 1px solid #1e293b;" class="p-2.5 rounded-lg text-xs space-y-1">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-1">
+                    <span style="color: #c084fc;" class="font-black uppercase text-[10.5px] tracking-wide">${p.role || 'PARTY'}: ${p.name || 'UNKNOWN'}</span>
+                    <span style="color: #fbbf24;" class="font-mono text-[9px] font-black uppercase bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/40">${p.status || 'UNINJURED'}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-300 pt-1">
+                    <div><span class="text-slate-400 font-bold">PHONE:</span> ${p.phone || '--'}</div>
+                    <div><span class="text-slate-400 font-bold">DL #:</span> ${p.license || '--'}</div>
+                    <div class="col-span-2"><span class="text-slate-400 font-bold">VEHICLE / PLATE:</span> ${p.vehicle || '--'}</div>
+                </div>
+                ${vPreview}
             </div>
-            <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-300 pt-1">
-                <div><span class="text-slate-400 font-bold">PHONE:</span> ${p.phone || '--'}</div>
-                <div><span class="text-slate-400 font-bold">DL #:</span> ${p.license || '--'}</div>
-                <div class="col-span-2"><span class="text-slate-400 font-bold">VEHICLE / PLATE:</span> ${p.vehicle || '--'}</div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     // Real Scene Photos Grid HTML (Up to 5 photos)
     const photosHtml = photos.length > 0 ? `
@@ -1096,6 +1705,22 @@ window.generateOfficerCardHTML = function(card) {
                     <span class="text-xs font-mono text-cyan-400 font-bold">${data.tacComms || 'UNSPECIFIED'}</span>
                 </div>
             </div>
+
+            <!-- Scene Location & Medevac LZ if recorded -->
+            ${data.sceneGps ? `
+            <div style="background-color: #022c22; border: 1px solid #059669;" class="p-2.5 rounded-lg text-xs font-mono space-y-1">
+                <div class="flex justify-between items-center text-emerald-300 font-bold border-b border-emerald-900 pb-1">
+                    <span class="flex items-center gap-1.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i> SCENE LOCATION & MEDEVAC LZ</span>
+                    <span class="text-[9px] text-emerald-400">MGRS: ${data.sceneGps.mgrs || 'N/A'}</span>
+                </div>
+                <div class="text-[10px] text-slate-100 pt-0.5 space-y-0.5">
+                    <div><span class="text-emerald-400 font-bold">ADDRESS:</span> ${data.sceneGps.streetLocation || 'N/A'}</div>
+                    <div><span class="text-cyan-300 font-bold">CIVILIAN GPS:</span> ${Number(data.sceneGps.lat).toFixed(6)}, ${Number(data.sceneGps.lon).toFixed(6)} (<a href="https://www.google.com/maps?q=${Number(data.sceneGps.lat).toFixed(6)},${Number(data.sceneGps.lon).toFixed(6)}" target="_blank" class="text-cyan-400 underline font-bold">GOOGLE MAPS LINK</a>)</div>
+                    <div><span class="text-amber-400 font-bold">ER / TRAUMA:</span> ${data.sceneGps.hospital ? (data.sceneGps.hospital.fullString || data.sceneGps.hospital.name) : (data.emsHospital || 'N/A')}</div>
+                    <div><span class="text-cyan-400 font-bold">MEDEVAC LZ:</span> ${data.sceneGps.medevacLz?.dimensions || '100x100 FT'} • ${data.sceneGps.medevacLz?.slope || '< 5°'} • ${data.sceneGps.medevacLz?.approach || 'APPROACH INTO WIND'}</div>
+                </div>
+            </div>
+            ` : ''}
 
             <!-- Crime Scene Layout Diagram (Slot 6) -->
             ${data.sketchImage ? `
@@ -1146,6 +1771,28 @@ window.generateOfficerCardHTML = function(card) {
             </div>
             ` : ''}
 
+            <!-- HazMat Cargo Placards Snapshot -->
+            ${(data.hazmat && data.hazmat.length > 0) ? `
+            <div class="space-y-1.5 mt-2">
+                <div class="text-[9.5px] font-black text-red-400 uppercase tracking-wider flex items-center gap-1">
+                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-500"></i> HazMat Cargo Placards (${data.hazmat.length})
+                </div>
+                <div class="space-y-2">
+                    ${data.hazmat.map(hz => `
+                    <div style="background-color: #0f172a; border: 1px solid #7f1d1d; border-left: 4px solid #ef4444;" class="p-2.5 rounded-lg text-xs space-y-1.5 flex items-center gap-3">
+                        <div class="shrink-0">${window.renderHazMatDiamondSvg ? window.renderHazMatDiamondSvg(hz, 70) : ''}</div>
+                        <div class="space-y-0.5 text-slate-300 flex-1">
+                            <div class="text-[10.5px] font-black text-red-400 uppercase">UN ${hz.unCode}: ${hz.name}</div>
+                            <div class="text-[9px] font-mono text-slate-400">CLASS ${hz.hazardClass} • GUIDE #${hz.guide}</div>
+                            <div class="text-[9px] text-amber-300"><span class="font-bold">ISOLATION:</span> ${hz.isolation}</div>
+                            <div class="text-[9px] text-slate-300"><span class="font-bold">PPE:</span> ${hz.ppe}</div>
+                        </div>
+                    </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+
             <!-- Backup Units & Hospital Transport -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
                 <div style="background-color: #0f172a; border: 1px solid #1e293b;" class="p-2 rounded">
@@ -1169,7 +1816,7 @@ window.generateOfficerCardHTML = function(card) {
             <!-- Rework Card Action -->
             <div class="border-t border-slate-800 pt-3 flex justify-between items-center">
                 <span class="text-[9px] font-mono text-slate-400">${new Date(card.timestamp || Date.now()).toLocaleString()}</span>
-                <button type="button" onclick="if(window.openWorkstationForm) window.openWorkstationForm('officer', ${JSON.stringify(card).replace(/"/g, '&quot;')})" class="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 text-[10.5px] font-black px-3.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow transition-colors cursor-pointer">
+                <button type="button" onclick="window.reworkCurrentOfficerCard()" class="bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-500/50 text-[10.5px] font-black px-3.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow transition-colors cursor-pointer">
                     <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> REWORK THIS SITREP
                 </button>
             </div>

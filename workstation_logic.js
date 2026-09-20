@@ -2075,6 +2075,10 @@ window.transmitCurrentCaseFileToComms = async function() {
 };
 
 function initWorkstation() {
+    // Prevent wiping active forms (Officer Card, Master Op, etc.) if already open
+    if (document.getElementById('officer-form-wrapper') || document.getElementById('master-op-form-wrapper') || document.querySelector('.ws-active-card-form')) {
+        return;
+    }
     if (typeof window.renderWorkstationMenu === 'function') {
         window.renderWorkstationMenu();
     }
