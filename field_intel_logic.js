@@ -420,8 +420,55 @@
     };
 
     // -------------------------------------------------------------------------
-    // 7. HANDS-FREE VOICE DICTATION (SPEECH-TO-TEXT)
+    // 7. HANDS-FREE VOICE DICTATION & SPEECH DEDUPLICATION
     // -------------------------------------------------------------------------
+    window.dedupeSpeechPhrases = function(str) {
+        if (!str || typeof str !== 'string') return '';
+        let cleaned = str.trim();
+        
+        // 1. Normalize excessive punctuation, repeated exclamation/question marks, and artifacts
+        cleaned = cleaned.replace(/[>~^]+/g, ' ')
+                         .replace(/!{2,}/g, '!')
+                         .replace(/\?{2,}/g, '?')
+                         .replace(/\.{2,}/g, '.')
+                         .replace(/\s+/g, ' ')
+                         .trim();
+
+        // 2. Glued phrase collapse (e.g. "how are youhow are you")
+        for (let len = Math.floor(cleaned.length / 2); len >= 4; len--) {
+            for (let start = 0; start <= cleaned.length - len * 2; start++) {
+                const sub = cleaned.slice(start, start + len);
+                if (sub.includes(' ') && cleaned.slice(start + len, start + len * 2).toLowerCase() === sub.toLowerCase()) {
+                    cleaned = cleaned.slice(0, start + len) + cleaned.slice(start + len * 2);
+                    len = Math.floor(cleaned.length / 2) + 1;
+                    break;
+                }
+            }
+        }
+
+        // 3. Repeated word & n-gram phrase deduplication (e.g. "how are you how are you" -> "how are you", "bien bien bien" -> "bien")
+        let words = cleaned.split(/\s+/);
+        let changed = true;
+        while (changed && words.length > 1) {
+            changed = false;
+            const n = words.length;
+            for (let win = Math.floor(n / 2); win >= 1; win--) {
+                for (let i = 0; i <= n - win * 2; i++) {
+                    const phrase1 = words.slice(i, i + win).map(w => w.replace(/[.,?!:;]/g, '').toLowerCase()).join(' ');
+                    const phrase2 = words.slice(i + win, i + win * 2).map(w => w.replace(/[.,?!:;]/g, '').toLowerCase()).join(' ');
+                    if (phrase1 && phrase1 === phrase2) {
+                        words.splice(i + win, win);
+                        changed = true;
+                        break;
+                    }
+                }
+                if (changed) break;
+            }
+        }
+
+        return words.join(' ').trim();
+    };
+
     window.isVoiceDictating = false;
     let voiceRecognitionInstance = null;
 
@@ -474,10 +521,25 @@
             };
 
             voiceRecognitionInstance.onresult = function(event) {
-                let currentSessionText = '';
+                let fullFinal = '';
+                let lastSegment = '';
+                let interim = '';
                 for (let i = 0; i < event.results.length; ++i) {
-                    currentSessionText += event.results[i][0].transcript;
+                    const res = event.results[i];
+                    const text = (res[0]?.transcript || '').trim();
+                    if (!text) continue;
+                    const cleanText = text.replace(/^[.,?!:;\s]+|[.,?!:;\s]+$/g, '').toLowerCase();
+                    const cleanLast = lastSegment.replace(/^[.,?!:;\s]+|[.,?!:;\s]+$/g, '').toLowerCase();
+                    if (res.isFinal) {
+                        if (cleanText === cleanLast) continue;
+                        fullFinal = (fullFinal ? fullFinal + ' ' : '') + text;
+                        lastSegment = text;
+                    } else {
+                        if (cleanText !== cleanLast) interim = text;
+                    }
                 }
+                let currentSessionText = (fullFinal ? fullFinal + (interim ? ' ' + interim : '') : interim).trim();
+                if (window.dedupeSpeechPhrases) currentSessionText = window.dedupeSpeechPhrases(currentSessionText);
                 if (textarea) {
                     textarea.value = (priorText + currentSessionText).trim();
                     const counter = document.getElementById('officer-incident-notes-counter');
@@ -1846,6 +1908,136 @@
             "id-ID": "Bisakah Anda menceritakan apa yang terjadi di sini?",
             "ro-RO": "Îmi puteți spune ce s-a întâmplat aici?",
             "ur-PK": "کیا آپ مجھے بتا سکتے ہیں کہ یہاں کیا ہوا تھا؟"
+        },
+        "How are you?": {
+            "es-ES": "¿Cómo está usted?",
+            "zh-CN": "你好吗？",
+            "hi-IN": "आप कैसे हैं?",
+            "ar-SA": "كيف حالك؟",
+            "fr-FR": "Comment allez-vous ?",
+            "pt-BR": "Como você está?",
+            "ru-RU": "Как ваши дела?",
+            "de-DE": "Wie geht es Ihnen?",
+            "ja-JP": "お元気ですか？",
+            "vi-VN": "Bạn có khỏe không?",
+            "ko-KR": "어떻게 지내십니까?",
+            "it-IT": "Come sta?",
+            "tl-PH": "Kumusta ka?",
+            "uk-UA": "Як ваші справи?",
+            "pl-PL": "Jak się masz?",
+            "nl-NL": "Hoe gaat het met u?",
+            "tr-TR": "Nasılsınız?",
+            "fa-IR": "حال شما چطور است؟",
+            "th-TH": "คุณเป็นอย่างไรบ้าง?",
+            "he-IL": "מה שלומך?",
+            "el-GR": "Πώς είστε;",
+            "id-ID": "Bagaimana kabar Anda?",
+            "ro-RO": "Ce mai faceți?",
+            "ur-PK": "آپ کیسے ہیں؟"
+        },
+        "Good": {
+            "es-ES": "Bien",
+            "zh-CN": "很好",
+            "hi-IN": "अच्छा",
+            "ar-SA": "جيد",
+            "fr-FR": "Bien",
+            "pt-BR": "Bem",
+            "ru-RU": "Хорошо",
+            "de-DE": "Gut",
+            "ja-JP": "良い",
+            "vi-VN": "Tốt",
+            "ko-KR": "좋습니다",
+            "it-IT": "Bene",
+            "tl-PH": "Mabuti",
+            "uk-UA": "Добре",
+            "pl-PL": "Dobrze",
+            "nl-NL": "Goed",
+            "tr-TR": "İyi",
+            "fa-IR": "خوب",
+            "th-TH": "ดี",
+            "he-IL": "טוב",
+            "el-GR": "Καλά",
+            "id-ID": "Baik",
+            "ro-RO": "Bine",
+            "ur-PK": "اچھا"
+        },
+        "Hello": {
+            "es-ES": "Hola",
+            "zh-CN": "你好",
+            "hi-IN": "नमस्ते",
+            "ar-SA": "مرحبا",
+            "fr-FR": "Bonjour",
+            "pt-BR": "Olá",
+            "ru-RU": "Здравствуйте",
+            "de-DE": "Hallo",
+            "ja-JP": "こんにちは",
+            "vi-VN": "Xin chào",
+            "ko-KR": "안녕하세요",
+            "it-IT": "Ciao",
+            "tl-PH": "Halo",
+            "uk-UA": "Привіт",
+            "pl-PL": "Dzień dobry",
+            "nl-NL": "Hallo",
+            "tr-TR": "Merhaba",
+            "fa-IR": "سلام",
+            "th-TH": "สวัสดี",
+            "he-IL": "שלום",
+            "el-GR": "Γεια σας",
+            "id-ID": "Halo",
+            "ro-RO": "Bună ziua",
+            "ur-PK": "ہیلو"
+        },
+        "Yes": {
+            "es-ES": "Sí",
+            "zh-CN": "是",
+            "hi-IN": "हाँ",
+            "ar-SA": "نعم",
+            "fr-FR": "Oui",
+            "pt-BR": "Sim",
+            "ru-RU": "Да",
+            "de-DE": "Ja",
+            "ja-JP": "はい",
+            "vi-VN": "Vâng",
+            "ko-KR": "예",
+            "it-IT": "Sì",
+            "tl-PH": "Oo",
+            "uk-UA": "Так",
+            "pl-PL": "Tak",
+            "nl-NL": "Ja",
+            "tr-TR": "Evet",
+            "fa-IR": "بله",
+            "th-TH": "ใช่",
+            "he-IL": "כן",
+            "el-GR": "Ναι",
+            "id-ID": "Ya",
+            "ro-RO": "Da",
+            "ur-PK": "ہاں"
+        },
+        "No": {
+            "es-ES": "No",
+            "zh-CN": "不",
+            "hi-IN": "नहीं",
+            "ar-SA": "لا",
+            "fr-FR": "Non",
+            "pt-BR": "Não",
+            "ru-RU": "Нет",
+            "de-DE": "Nein",
+            "ja-JP": "いいえ",
+            "vi-VN": "Không",
+            "ko-KR": "아니요",
+            "it-IT": "No",
+            "tl-PH": "Hindi",
+            "uk-UA": "Ні",
+            "pl-PL": "Nie",
+            "nl-NL": "Nee",
+            "tr-TR": "Hayır",
+            "fa-IR": "خیر",
+            "th-TH": "ไม่",
+            "he-IL": "לא",
+            "el-GR": "Όχι",
+            "id-ID": "Tidak",
+            "ro-RO": "Nu",
+            "ur-PK": "نہیں"
         }
     };
 
@@ -2168,14 +2360,36 @@
         };
 
         recognition.onresult = (event) => {
+            let fullFinal = '';
+            let lastSegment = '';
             let interim = '';
-            let final = '';
+
             for (let i = 0; i < event.results.length; ++i) {
                 const res = event.results[i];
-                if (res.isFinal) final += res[0].transcript + ' ';
-                else interim += res[0].transcript;
+                const text = (res[0]?.transcript || '').trim();
+                if (!text) continue;
+
+                const cleanText = text.replace(/^[.,?!:;\s]+|[.,?!:;\s]+$/g, '').toLowerCase();
+                const cleanLast = lastSegment.replace(/^[.,?!:;\s]+|[.,?!:;\s]+$/g, '').toLowerCase();
+
+                if (res.isFinal) {
+                    if (cleanText === cleanLast) {
+                        continue;
+                    }
+                    fullFinal = (fullFinal ? fullFinal + ' ' : '') + text;
+                    lastSegment = text;
+                } else {
+                    if (cleanText !== cleanLast) {
+                        interim = text;
+                    }
+                }
             }
-            const full = (final + interim).trim();
+
+            let full = (fullFinal ? fullFinal + (interim ? ' ' + interim : '') : interim).trim();
+            if (window.dedupeSpeechPhrases) {
+                full = window.dedupeSpeechPhrases(full);
+            }
+
             if (full) {
                 state.hasReceivedSpeech = true;
                 state.lastSpokenText = full;
@@ -2257,7 +2471,12 @@
         const statusMsg = document.getElementById('field-trans-status-msg');
 
         if (speakerNum === 1) {
-            const srcText = document.getElementById('field-trans-src-text')?.value?.trim();
+            let srcText = document.getElementById('field-trans-src-text')?.value?.trim();
+            if (window.dedupeSpeechPhrases && srcText) {
+                srcText = window.dedupeSpeechPhrases(srcText);
+                const srcEl = document.getElementById('field-trans-src-text');
+                if (srcEl) srcEl.value = srcText;
+            }
             if (srcText && state.hasReceivedSpeech) {
                 if (statusMsg) statusMsg.textContent = 'Translating speech...';
                 window.executeFieldTranslation(srcText);
@@ -2265,7 +2484,12 @@
                 if (statusMsg) statusMsg.textContent = 'No voice detected. Tap mic to try again.';
             }
         } else if (speakerNum === 2) {
-            const customerText = state.lastSpokenText?.trim();
+            let customerText = state.lastSpokenText?.trim();
+            if (window.dedupeSpeechPhrases && customerText) {
+                customerText = window.dedupeSpeechPhrases(customerText);
+                const tgtEl = document.getElementById('field-trans-tgt-text');
+                if (tgtEl) tgtEl.textContent = customerText;
+            }
             if (customerText && customerText !== 'Translation will spell out here and pronounce out loud...' && state.hasReceivedSpeech) {
                 if (statusMsg) statusMsg.textContent = 'Translating customer back to English...';
                 window.executeReverseTranslation(customerText);
@@ -2403,7 +2627,13 @@ Return ONLY a raw JSON object with NO markdown code fences or backticks, formatt
         const lang2Select = document.getElementById('field-trans-lang2');
         const statusMsg = document.getElementById('field-trans-status-msg');
 
-        const text = manualSourceText !== null ? manualSourceText : (srcEl?.value || '');
+        let text = manualSourceText !== null ? manualSourceText : (srcEl?.value || '');
+        if (window.dedupeSpeechPhrases) {
+            text = window.dedupeSpeechPhrases(text);
+        }
+        if (srcEl && srcEl.value !== text) {
+            srcEl.value = text;
+        }
         if (!text.trim()) {
             if (tgtEl) tgtEl.textContent = 'Translation will spell out here and pronounce out loud...';
             return;
@@ -2435,15 +2665,20 @@ Return ONLY a raw JSON object with NO markdown code fences or backticks, formatt
         const srcEl = document.getElementById('field-trans-src-text');
         const statusMsg = document.getElementById('field-trans-status-msg');
 
+        let cleanSpoke = (spokeText || '').trim();
+        if (window.dedupeSpeechPhrases) {
+            cleanSpoke = window.dedupeSpeechPhrases(cleanSpoke);
+        }
+
         const srcLang = lang2Select ? lang2Select.value : 'es-ES';
         const tgtLang = lang1Select ? lang1Select.value : 'en-US';
 
         if (srcEl) {
-            srcEl.value = `[Customer Spoke: "${spokeText}"] - Translating...`;
+            srcEl.value = `[Customer Spoke: "${cleanSpoke}"] - Translating...`;
         }
         if (statusMsg) statusMsg.textContent = 'Translating customer back to English...';
 
-        const translation = await window.translateTextWithAiOrOffline(spokeText, srcLang, tgtLang);
+        const translation = await window.translateTextWithAiOrOffline(cleanSpoke, srcLang, tgtLang);
 
         if (srcEl) {
             srcEl.value = translation;
@@ -2457,15 +2692,27 @@ Return ONLY a raw JSON object with NO markdown code fences or backticks, formatt
 
     window.translateTextWithAiOrOffline = async function(text, srcLang, tgtLang) {
         if (!text || !text.trim()) return "";
-        const cleanText = text.trim();
+        let cleanText = text.trim();
+        if (window.dedupeSpeechPhrases) {
+            cleanText = window.dedupeSpeechPhrases(cleanText);
+        }
+
+        const norm = (s) => (s || '').toLowerCase().replace(/^[¿¡.,?!:;\s]+|[.,?!:;\s]+$/g, '').trim();
+        const normClean = norm(cleanText);
 
         // 1. Direct Emergency Tactical Phrase Dictionary Lookup (Instant 0ms, 100% Offline)
         if (TACTICAL_PHRASE_DICTIONARY[cleanText] && TACTICAL_PHRASE_DICTIONARY[cleanText][tgtLang]) {
             return TACTICAL_PHRASE_DICTIONARY[cleanText][tgtLang];
         }
-        // Reverse dictionary lookup
+        // Case and punctuation tolerant forward lookup
         for (const [engPhrase, transMap] of Object.entries(TACTICAL_PHRASE_DICTIONARY)) {
-            if (transMap[srcLang] === cleanText && (tgtLang === 'en-US' || tgtLang === 'en')) {
+            if (norm(engPhrase) === normClean && transMap[tgtLang]) {
+                return transMap[tgtLang];
+            }
+        }
+        // Reverse dictionary lookup (tolerant to case and punctuation)
+        for (const [engPhrase, transMap] of Object.entries(TACTICAL_PHRASE_DICTIONARY)) {
+            if ((transMap[srcLang] === cleanText || norm(transMap[srcLang]) === normClean) && (tgtLang === 'en-US' || tgtLang === 'en')) {
                 return engPhrase;
             }
         }
