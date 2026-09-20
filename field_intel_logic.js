@@ -1673,9 +1673,20 @@
         lang1: 'en-US',
         lang2: 'es-ES',
         autoSpeak: true,
+        voiceMode: localStorage.getItem('trc_field_trans_voice_mode') || 'auto', // 'auto', 'browser', 'gemini'
         isListening1: false,
         isListening2: false,
-        recognition: null
+        activeSpeaker: null,
+        recognition: null,
+        mediaRecorder: null,
+        mediaStream: null,
+        audioChunks: [],
+        audioMimeType: 'audio/webm',
+        timerInterval: null,
+        secondsElapsed: 0,
+        hasReceivedSpeech: false,
+        hasPermissionError: false,
+        lastSpokenText: ''
     };
 
     // Common Emergency & Tactical Phrases Dictionary (100% Client-Side Offline Instant Match - Top 25 Languages)
@@ -1840,6 +1851,7 @@
 
     window.initFieldTranslator = function() {
         window.updateFieldTranslatorButtonLabels();
+        window.updateFieldTranslatorVoiceModeBadge();
         const geminiKey = localStorage.getItem('trc_gemini_api_key');
         const openAiKey = localStorage.getItem('trc_openai_api_key');
         const badge = document.getElementById('field-trans-engine-badge');
@@ -1847,6 +1859,43 @@
             if (geminiKey) badge.textContent = 'GEMINI FLASH AI';
             else if (openAiKey) badge.textContent = 'OPENAI GPT-4O';
             else badge.textContent = 'TACTICAL DICT / WEB';
+        }
+    };
+
+    window.toggleFieldTranslatorVoiceMode = function() {
+        const modes = ['auto', 'browser', 'gemini'];
+        const current = window.fieldTranslatorState.voiceMode || 'auto';
+        const next = modes[(modes.indexOf(current) + 1) % modes.length];
+        window.fieldTranslatorState.voiceMode = next;
+        localStorage.setItem('trc_field_trans_voice_mode', next);
+        window.updateFieldTranslatorVoiceModeBadge();
+        if (window.showToast) {
+            const labels = {
+                auto: 'Auto Mic Engine (Browser / Gemini AI Fallback)',
+                browser: 'Native Browser Web Speech (Instant)',
+                gemini: 'Google Gemini Multimodal Audio (Universal / High-Precision)'
+            };
+            window.showToast(`Voice Mic: ${labels[next]}`, 'info');
+        }
+    };
+
+    window.updateFieldTranslatorVoiceModeBadge = function() {
+        const mode = window.fieldTranslatorState.voiceMode || 'auto';
+        const labelEl = document.getElementById('field-trans-voice-mode-label');
+        const btn = document.getElementById('field-trans-voice-mode-btn');
+        if (labelEl) {
+            if (mode === 'auto') labelEl.textContent = 'MIC: AUTO';
+            else if (mode === 'browser') labelEl.textContent = 'MIC: BROWSER';
+            else if (mode === 'gemini') labelEl.textContent = 'MIC: GEMINI AI';
+        }
+        if (btn) {
+            if (mode === 'gemini') {
+                btn.className = "bg-amber-950/90 text-amber-300 border border-amber-500/60 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow transition-colors";
+            } else if (mode === 'browser') {
+                btn.className = "bg-cyan-950/90 text-cyan-300 border border-cyan-500/60 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow transition-colors";
+            } else {
+                btn.className = "bg-slate-900 text-slate-300 border border-slate-700 hover:border-cyan-400 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow transition-colors";
+            }
         }
     };
 
@@ -1860,9 +1909,11 @@
         const l2Name = (l2?.options[l2.selectedIndex]?.text || 'Spanish').split(' ')[0].toUpperCase();
 
         if (mic1 && !window.fieldTranslatorState.isListening1) {
+            mic1.className = "w-full bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all";
             mic1.innerHTML = `<i data-lucide="mic" class="w-4 h-4 text-cyan-400"></i> <span>TAP TO TALK (${l1Name})</span>`;
         }
         if (mic2 && !window.fieldTranslatorState.isListening2) {
+            mic2.className = "w-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/60 font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all";
             mic2.innerHTML = `<i data-lucide="mic" class="w-4 h-4 text-emerald-400"></i> <span>TAP FOR CUSTOMER TO TALK (${l2Name})</span>`;
         }
         if (window.lucide) window.lucide.createIcons();
@@ -1891,93 +1942,434 @@
         }
     };
 
-    window.startFieldVoiceInput = function(speakerNum) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("Speech recognition is not supported in this browser. Please type directly into the text box.");
-            return;
-        }
-
+    window.startFieldVoiceInput = async function(speakerNum) {
         const state = window.fieldTranslatorState;
 
-        // If already listening on this speaker, stop it
-        if ((speakerNum === 1 && state.isListening1) || (speakerNum === 2 && state.isListening2)) {
-            if (state.recognition) {
-                try { state.recognition.stop(); } catch(e) {}
-            }
+        // 1. If currently listening on this speaker, tap to finish and translate
+        if (state.activeSpeaker === speakerNum) {
+            window.stopFieldVoiceInput(true);
             return;
         }
 
-        // If listening on the other speaker, stop that first
-        if (state.recognition) {
-            try { state.recognition.stop(); } catch(e) {}
+        // 2. If listening on the other speaker, stop that speaker first
+        if (state.activeSpeaker !== null) {
+            window.stopFieldVoiceInput(false);
+        }
+
+        // 3. Determine engine
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let effectiveMode = state.voiceMode || 'auto';
+
+        const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isIosRestricted = isIos && (!window.webkitSpeechRecognition || navigator.standalone || window.matchMedia('(display-mode: standalone)').matches);
+
+        if (effectiveMode === 'auto') {
+            if (SpeechRec && !isIosRestricted) {
+                effectiveMode = 'browser';
+            } else {
+                effectiveMode = 'gemini';
+            }
         }
 
         const langSelect = document.getElementById(speakerNum === 1 ? 'field-trans-lang1' : 'field-trans-lang2');
         const langCode = langSelect ? langSelect.value : (speakerNum === 1 ? 'en-US' : 'es-ES');
+        const srcLang = document.getElementById('field-trans-lang1')?.value || 'en-US';
+        const tgtLang = document.getElementById('field-trans-lang2')?.value || 'es-ES';
+
+        if (effectiveMode === 'gemini') {
+            window.startGeminiAudioInput(speakerNum, langCode, srcLang, tgtLang);
+        } else {
+            window.startWebSpeechInput(speakerNum, langCode);
+        }
+    };
+
+    window.startGeminiAudioInput = async function(speakerNum, langCode, srcLang, tgtLang) {
+        const state = window.fieldTranslatorState;
+        const statusMsg = document.getElementById('field-trans-status-msg');
         const micBtn = document.getElementById(speakerNum === 1 ? 'field-trans-mic1' : 'field-trans-mic2');
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = langCode;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (statusMsg) statusMsg.textContent = '⚠️ Microphone hardware not accessible in this browser.';
+            if (window.showToast) window.showToast('Microphone not accessible. Ensure HTTPS or check permissions.', 'alert');
+            return;
+        }
 
-        recognition.onstart = () => {
+        // Release old stream if present
+        if (window.activeMicStream) {
+            try { window.activeMicStream.getTracks().forEach(t => t.stop()); window.activeMicStream = null; } catch(e) {}
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            state.mediaStream = stream;
+
+            let mimeType = 'audio/webm';
+            if (window.MediaRecorder) {
+                if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+                    else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
+                    else if (MediaRecorder.isTypeSupported('audio/ogg')) mimeType = 'audio/ogg';
+                    else mimeType = '';
+                }
+            }
+            state.audioMimeType = mimeType;
+
+            const options = mimeType ? { mimeType } : undefined;
+            const mediaRecorder = new MediaRecorder(stream, options);
+            state.mediaRecorder = mediaRecorder;
+            state.audioChunks = [];
+            state.activeSpeaker = speakerNum;
             if (speakerNum === 1) state.isListening1 = true;
             else state.isListening2 = true;
+            state.secondsElapsed = 0;
+            state.hasReceivedSpeech = true;
+            state.hasPermissionError = false;
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                    state.audioChunks.push(e.data);
+                }
+            };
+
+            mediaRecorder.onstart = () => {
+                if (micBtn) {
+                    micBtn.className = "w-full bg-red-600 text-white font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow animate-pulse border-2 border-red-400";
+                    micBtn.innerHTML = `<i data-lucide="mic" class="w-4 h-4 text-white animate-spin"></i> <span id="field-trans-timer-${speakerNum}">🔴 [0:00] RECORDING (AI)... TAP TO FINISH</span>`;
+                    if (window.lucide) window.lucide.createIcons();
+                }
+                if (statusMsg) statusMsg.textContent = `🔴 Recording audio for Gemini AI (${langCode}). Speak clearly, tap button when done.`;
+
+                if (speakerNum === 2) {
+                    const tgtEl = document.getElementById('field-trans-tgt-text');
+                    if (tgtEl) tgtEl.innerHTML = '<span class="text-amber-400 animate-pulse">🎙️ [RECORDING CUSTOMER AUDIO... SPEAK NOW, TAP TO TRANSLATE]</span>';
+                }
+
+                if (state.timerInterval) clearInterval(state.timerInterval);
+                state.timerInterval = setInterval(() => {
+                    state.secondsElapsed++;
+                    const m = Math.floor(state.secondsElapsed / 60);
+                    const s = String(state.secondsElapsed % 60).padStart(2, '0');
+                    const timerSpan = document.getElementById(`field-trans-timer-${speakerNum}`);
+                    if (timerSpan) {
+                        timerSpan.textContent = `🔴 [${m}:${s}] RECORDING (AI)... TAP TO FINISH`;
+                    }
+                    if (state.secondsElapsed >= 25) {
+                        window.stopFieldVoiceInput(true);
+                    }
+                }, 1000);
+            };
+
+            mediaRecorder.onstop = async () => {
+                const chunks = state.audioChunks;
+                state.audioChunks = [];
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                    state.mediaStream = null;
+                }
+                if (chunks.length > 0) {
+                    const audioBlob = new Blob(chunks, { type: state.audioMimeType || 'audio/webm' });
+                    window.translateAudioWithGemini(audioBlob, srcLang, tgtLang, speakerNum);
+                }
+            };
+
+            mediaRecorder.start(250);
+        } catch(err) {
+            console.error("Failed to start MediaRecorder:", err);
+            if (statusMsg) statusMsg.textContent = `⚠️ Mic error: ${err.message || 'Permission denied'}`;
+            if (window.showToast) window.showToast('Microphone access blocked. Allow mic in browser settings.', 'alert');
+            window.stopFieldVoiceInput(false);
+        }
+    };
+
+    window.startWebSpeechInput = async function(speakerNum, langCode) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const state = window.fieldTranslatorState;
+        const micBtn = document.getElementById(speakerNum === 1 ? 'field-trans-mic1' : 'field-trans-mic2');
+        const statusMsg = document.getElementById('field-trans-status-msg');
+
+        if (!SpeechRecognition) {
+            const srcLang = document.getElementById('field-trans-lang1')?.value || 'en-US';
+            const tgtLang = document.getElementById('field-trans-lang2')?.value || 'es-ES';
+            window.startGeminiAudioInput(speakerNum, langCode, srcLang, tgtLang);
+            return;
+        }
+
+        // Release old comms stream if present
+        if (window.activeMicStream) {
+            try { window.activeMicStream.getTracks().forEach(t => t.stop()); window.activeMicStream = null; } catch(e) {}
+        }
+
+        // Prime mic permission on mobile
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const probeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                probeStream.getTracks().forEach(t => t.stop());
+            } catch(probeErr) {
+                if (probeErr.name === 'NotAllowedError' || probeErr.name === 'PermissionDeniedError') {
+                    state.hasPermissionError = true;
+                    if (statusMsg) statusMsg.textContent = '⚠️ Mic permission blocked. Tap lock icon in address bar to allow.';
+                    if (window.showToast) window.showToast('Microphone blocked. Please allow mic in browser settings.', 'alert');
+                    return;
+                }
+            }
+        }
+
+        let recognition;
+        try {
+            recognition = new SpeechRecognition();
+        } catch(initErr) {
+            console.warn("SpeechRecognition constructor failed, falling back to Gemini audio:", initErr);
+            const srcLang = document.getElementById('field-trans-lang1')?.value || 'en-US';
+            const tgtLang = document.getElementById('field-trans-lang2')?.value || 'es-ES';
+            window.startGeminiAudioInput(speakerNum, langCode, srcLang, tgtLang);
+            return;
+        }
+
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = langCode;
+        recognition.maxAlternatives = 1;
+
+        state.recognition = recognition;
+        state.activeSpeaker = speakerNum;
+        if (speakerNum === 1) state.isListening1 = true;
+        else state.isListening2 = true;
+        state.secondsElapsed = 0;
+        state.hasReceivedSpeech = false;
+        state.hasPermissionError = false;
+        state.lastSpokenText = '';
+
+        recognition.onstart = () => {
             if (micBtn) {
-                micBtn.className = "w-full bg-red-600 text-white font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow animate-pulse";
-                micBtn.innerHTML = `<i data-lucide="mic" class="w-4 h-4 animate-spin"></i> <span>LISTENING... TAP TO FINISH</span>`;
+                micBtn.className = "w-full bg-red-600 text-white font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow animate-pulse border-2 border-red-400";
+                micBtn.innerHTML = `<i data-lucide="mic" class="w-4 h-4 text-white animate-spin"></i> <span id="field-trans-timer-${speakerNum}">🔴 [0:00] LISTENING... TAP TO FINISH</span>`;
                 if (window.lucide) window.lucide.createIcons();
             }
-            const statusMsg = document.getElementById('field-trans-status-msg');
-            if (statusMsg) statusMsg.textContent = `Listening (${langCode})...`;
+            if (statusMsg) statusMsg.textContent = `🎙️ Listening (${langCode})... Speak clearly, tap button when finished.`;
+
+            if (speakerNum === 2) {
+                const tgtEl = document.getElementById('field-trans-tgt-text');
+                if (tgtEl) tgtEl.innerHTML = '<span class="text-amber-400 animate-pulse">🎙️ [LISTENING TO CUSTOMER... SPEAK NOW, TAP TO FINISH]</span>';
+            }
+
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.secondsElapsed++;
+                const m = Math.floor(state.secondsElapsed / 60);
+                const s = String(state.secondsElapsed % 60).padStart(2, '0');
+                const timerSpan = document.getElementById(`field-trans-timer-${speakerNum}`);
+                if (timerSpan) {
+                    timerSpan.textContent = `🔴 [${m}:${s}] LISTENING... TAP TO FINISH`;
+                }
+                if (state.secondsElapsed >= 25) {
+                    window.stopFieldVoiceInput(true);
+                }
+            }, 1000);
         };
 
         recognition.onresult = (event) => {
-            let transcript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                transcript += event.results[i][0].transcript;
+            let interim = '';
+            let final = '';
+            for (let i = 0; i < event.results.length; ++i) {
+                const res = event.results[i];
+                if (res.isFinal) final += res[0].transcript + ' ';
+                else interim += res[0].transcript;
             }
-            if (speakerNum === 1) {
-                const srcEl = document.getElementById('field-trans-src-text');
-                if (srcEl) srcEl.value = transcript;
-            } else {
-                const tgtEl = document.getElementById('field-trans-tgt-text');
-                if (tgtEl) tgtEl.textContent = transcript;
+            const full = (final + interim).trim();
+            if (full) {
+                state.hasReceivedSpeech = true;
+                state.lastSpokenText = full;
+                if (speakerNum === 1) {
+                    const srcEl = document.getElementById('field-trans-src-text');
+                    if (srcEl) srcEl.value = full;
+                } else {
+                    const tgtEl = document.getElementById('field-trans-tgt-text');
+                    if (tgtEl) tgtEl.textContent = full;
+                }
             }
         };
 
         recognition.onerror = (event) => {
             console.warn("Speech recognition error:", event.error);
-            const statusMsg = document.getElementById('field-trans-status-msg');
-            if (statusMsg) statusMsg.textContent = `Mic status: ${event.error}`;
-        };
-
-        recognition.onend = () => {
-            state.isListening1 = false;
-            state.isListening2 = false;
-            state.recognition = null;
-            window.updateFieldTranslatorButtonLabels();
-
-            const statusMsg = document.getElementById('field-trans-status-msg');
-            if (statusMsg) statusMsg.textContent = 'Translating speech...';
-
-            if (speakerNum === 1) {
-                window.executeFieldTranslation();
-            } else {
-                const spokeText = document.getElementById('field-trans-tgt-text')?.innerText || '';
-                if (spokeText.trim()) {
-                    window.executeReverseTranslation(spokeText.trim());
+            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                state.hasPermissionError = true;
+                if (statusMsg) statusMsg.textContent = '⚠️ Mic permission denied in browser settings.';
+                if (window.showToast) window.showToast('Microphone access blocked. Allow mic in browser settings.', 'alert');
+                window.stopFieldVoiceInput(false);
+            } else if (event.error === 'no-speech') {
+                if (statusMsg && !state.hasReceivedSpeech) {
+                    statusMsg.textContent = 'Listening... (Speak clearly into device mic)';
                 }
+            } else if (event.error === 'audio-capture') {
+                state.hasPermissionError = true;
+                if (statusMsg) statusMsg.textContent = '⚠️ Mic hardware unavailable or in use by another app.';
+                window.stopFieldVoiceInput(false);
+            } else {
+                if (statusMsg) statusMsg.textContent = `Mic status: ${event.error}`;
             }
         };
 
-        state.recognition = recognition;
+        recognition.onend = () => {
+            if (state.activeSpeaker === speakerNum) {
+                window.stopFieldVoiceInput(true);
+            }
+        };
+
         try {
             recognition.start();
-        } catch(e) {
-            console.warn("Could not start speech recognition:", e);
+        } catch(startErr) {
+            console.warn("Could not start Web Speech Recognition:", startErr);
+            const srcLang = document.getElementById('field-trans-lang1')?.value || 'en-US';
+            const tgtLang = document.getElementById('field-trans-lang2')?.value || 'es-ES';
+            window.startGeminiAudioInput(speakerNum, langCode, srcLang, tgtLang);
+        }
+    };
+
+    window.stopFieldVoiceInput = function(shouldTranslate = true) {
+        const state = window.fieldTranslatorState;
+        if (state.timerInterval) {
+            clearInterval(state.timerInterval);
+            state.timerInterval = null;
+        }
+
+        const speakerNum = state.activeSpeaker;
+        state.isListening1 = false;
+        state.isListening2 = false;
+        state.activeSpeaker = null;
+
+        if (state.recognition) {
+            try { state.recognition.stop(); } catch(e) {}
+            state.recognition = null;
+        }
+
+        if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+            try { state.mediaRecorder.stop(); } catch(e) {}
+        }
+        if (state.mediaStream) {
+            try { state.mediaStream.getTracks().forEach(t => t.stop()); } catch(e) {}
+            state.mediaStream = null;
+        }
+
+        window.updateFieldTranslatorButtonLabels();
+
+        if (!shouldTranslate || state.hasPermissionError) return;
+
+        const statusMsg = document.getElementById('field-trans-status-msg');
+
+        if (speakerNum === 1) {
+            const srcText = document.getElementById('field-trans-src-text')?.value?.trim();
+            if (srcText && state.hasReceivedSpeech) {
+                if (statusMsg) statusMsg.textContent = 'Translating speech...';
+                window.executeFieldTranslation(srcText);
+            } else {
+                if (statusMsg) statusMsg.textContent = 'No voice detected. Tap mic to try again.';
+            }
+        } else if (speakerNum === 2) {
+            const customerText = state.lastSpokenText?.trim();
+            if (customerText && customerText !== 'Translation will spell out here and pronounce out loud...' && state.hasReceivedSpeech) {
+                if (statusMsg) statusMsg.textContent = 'Translating customer back to English...';
+                window.executeReverseTranslation(customerText);
+            } else {
+                const tgtEl = document.getElementById('field-trans-tgt-text');
+                if (tgtEl) tgtEl.textContent = 'Translation will spell out here and pronounce out loud...';
+                if (statusMsg) statusMsg.textContent = 'No customer voice detected. Tap mic to try again.';
+            }
+        }
+    };
+
+    window.translateAudioWithGemini = async function(audioBlob, srcLang, tgtLang, speakerNum) {
+        const geminiKey = (localStorage.getItem('trc_gemini_api_key') || '').trim().replace(/^["']|["']$/g, '');
+        const statusMsg = document.getElementById('field-trans-status-msg');
+        const srcEl = document.getElementById('field-trans-src-text');
+        const tgtEl = document.getElementById('field-trans-tgt-text');
+
+        if (!geminiKey) {
+            if (statusMsg) statusMsg.innerHTML = '⚠️ <a href="javascript:void(0)" onclick="window.promptConfigureAiKeys()" class="underline text-amber-300">Gemini Key needed for AI Voice. Tap to connect key.</a>';
+            if (window.showToast) window.showToast('Connect your Google Gemini key under "⚙️ AI Keys" for mobile voice input', 'alert');
+            return;
+        }
+
+        if (statusMsg) statusMsg.textContent = '⏳ Google Gemini Flash interpreting audio speech...';
+        if (speakerNum === 1 && tgtEl) tgtEl.innerHTML = `<span class="animate-pulse text-cyan-300">⏳ AI interpreting speech to ${tgtLang}...</span>`;
+        if (speakerNum === 2 && srcEl) srcEl.value = `[Listening to customer audio - AI translating to English...]`;
+
+        try {
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const b64 = reader.result.split(',')[1];
+                    resolve(b64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(audioBlob);
+            });
+
+            const mimeType = (audioBlob.type || '').split(';')[0] || 'audio/webm';
+            const models = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+            let lastError = null;
+
+            const promptText = `You are a high-speed emergency tactical interpreter.
+Listen carefully to this audio recording.
+The speaker was prompted for language code: "${speakerNum === 1 ? srcLang : tgtLang}".
+Translate the spoken message into language code: "${speakerNum === 1 ? tgtLang : srcLang}".
+Return ONLY a raw JSON object with NO markdown code fences or backticks, formatted exactly as:
+{"transcript": "accurate transcription in original language", "translation": "accurate translation into target language"}`;
+
+            for (const model of models) {
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                role: 'user',
+                                parts: [
+                                    { inlineData: { mimeType: mimeType, data: base64Data } },
+                                    { text: promptText }
+                                ]
+                            }]
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (data.error) {
+                        lastError = data.error.message;
+                        continue;
+                    }
+
+                    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const parsed = JSON.parse(cleanJson);
+
+                    if (parsed.transcript && parsed.translation) {
+                        if (speakerNum === 1) {
+                            if (srcEl) srcEl.value = parsed.transcript;
+                            if (tgtEl) tgtEl.textContent = parsed.translation;
+                            if (statusMsg) statusMsg.textContent = 'Voice translated with Gemini Flash AI!';
+                            if (window.fieldTranslatorState.autoSpeak) {
+                                window.speakFieldText(parsed.translation, tgtLang);
+                            }
+                        } else {
+                            if (tgtEl) tgtEl.textContent = parsed.transcript;
+                            if (srcEl) srcEl.value = parsed.translation;
+                            if (statusMsg) statusMsg.textContent = 'Customer speech translated with Gemini Flash AI!';
+                            if (window.fieldTranslatorState.autoSpeak) {
+                                window.speakFieldText(parsed.translation, srcLang);
+                            }
+                        }
+                        if (window.pushTacLog) window.pushTacLog(`TRANSLATED AUDIO: "${parsed.transcript}" -> "${parsed.translation}"`, "SUCCESS");
+                        return;
+                    }
+                } catch(e) {
+                    lastError = e.message;
+                }
+            }
+
+            if (statusMsg) statusMsg.textContent = `AI Voice Error: ${lastError || 'Could not interpret audio'}`;
+        } catch(outerErr) {
+            console.error("Gemini audio processing error:", outerErr);
+            if (statusMsg) statusMsg.textContent = `AI Audio Error: ${outerErr.message}`;
         }
     };
 

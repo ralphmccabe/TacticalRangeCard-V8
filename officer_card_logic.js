@@ -328,6 +328,9 @@ window.renderOfficerForm = function(cardData = null) {
                         <button type="button" id="field-trans-auto-speak-btn" onclick="window.toggleFieldTranslatorAutoSpeak()" class="bg-emerald-950 text-emerald-300 border border-emerald-500/50 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow" title="Toggle Auto-Pronounce Translation">
                             <i data-lucide="volume-2" class="w-3 h-3 text-emerald-400"></i> AUTO-VOICE: ON
                         </button>
+                        <button type="button" id="field-trans-voice-mode-btn" onclick="window.toggleFieldTranslatorVoiceMode()" class="bg-slate-950 text-cyan-300 border border-slate-700 hover:border-cyan-400 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow transition-colors" title="Toggle Voice Engine (Auto / Browser Web Speech / Gemini AI Audio)">
+                            <i data-lucide="mic" class="w-3 h-3 text-amber-400"></i> <span id="field-trans-voice-mode-label">MIC: AUTO</span>
+                        </button>
                         <button type="button" onclick="window.insertFieldTranslationToSitrep()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 text-[9px] font-black px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 cursor-pointer shadow" title="Insert this dialogue exchange into Sitrep Master Notes">
                             <i data-lucide="file-plus" class="w-3 h-3 text-cyan-400"></i> INSERT SITREP
                         </button>
@@ -372,7 +375,7 @@ window.renderOfficerForm = function(cardData = null) {
                             </select>
                         </div>
                         <div class="mb-2">
-                            <button type="button" id="field-trans-mic1" onclick="window.startFieldVoiceInput(1)" class="w-full bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all">
+                            <button type="button" id="field-trans-mic1" onclick="window.startFieldVoiceInput(1)" class="w-full bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/60 font-black text-xs py-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all active:scale-[0.98]" style="touch-action: manipulation;">
                                 <i data-lucide="mic" class="w-4 h-4 text-cyan-400"></i>
                                 <span>TAP TO TALK (ENGLISH)</span>
                             </button>
@@ -433,7 +436,7 @@ window.renderOfficerForm = function(cardData = null) {
                             </div>
                         </div>
                         <div class="mb-2">
-                            <button type="button" id="field-trans-mic2" onclick="window.startFieldVoiceInput(2)" class="w-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/60 font-black text-xs py-2 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all">
+                            <button type="button" id="field-trans-mic2" onclick="window.startFieldVoiceInput(2)" class="w-full bg-emerald-950/90 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/60 font-black text-xs py-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all active:scale-[0.98]" style="touch-action: manipulation;">
                                 <i data-lucide="mic" class="w-4 h-4 text-emerald-400"></i>
                                 <span>TAP FOR CUSTOMER TO TALK (SPANISH)</span>
                             </button>
@@ -450,7 +453,7 @@ window.renderOfficerForm = function(cardData = null) {
                                     <i data-lucide="copy" class="w-2.5 h-2.5"></i> Copy
                                 </button>
                             </div>
-                            <span id="field-trans-status-msg" class="text-[7.5px] text-slate-500 italic">Ready for speech</span>
+                            <span id="field-trans-status-msg" class="text-[7.5px] text-slate-400 font-mono select-none">Ready for speech</span>
                         </div>
                     </div>
                 </div>
