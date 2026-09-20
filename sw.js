@@ -1,29 +1,32 @@
-/* TRC-VERSION - v8.28 */
-const CACHE_NAME = 'trc-v8.28';
+/* TRC-VERSION - v8.29 */
+const CACHE_NAME = 'trc-v8.29';
 const ASSETS = [
     './',
-    './index.html?v=8.28',
-    './style.css?v=118',
-    './trc_core.js?v=8.12',
-    './js/modules/sfu_audio.js?v=8.12',
-    './field_intel_logic.js?v=8.28',
-    './blog_logic.js?v=8.0.0.0',
+    './index.html?v=8.29',
+    './style.css?v=8.29',
+    './trc_core.js?v=8.29',
+    './js/modules/sfu_audio.js?v=8.29',
+    './field_intel_logic.js?v=8.29',
+    './blog_logic.js?v=8.29',
     './manifest.json',
     './icon-512.png',
     './icon-192.png',
     './splash-page.jpg',
-    './workstation_logic.js?v=8.28',
-    './officer_card_logic.js?v=8.28',
-    './gametag_logic.js?v=8.0.0.0',
-    './bolo_logic.js?v=8.0.0.0',
-    './license_logic.js?v=8.0.0.0',
-    './tailwind.css?v=1.1',
+    './workstation_logic.js?v=8.29',
+    './officer_card_logic.js?v=8.29',
+    './gametag_logic.js?v=8.29',
+    './bolo_logic.js?v=8.29',
+    './license_logic.js?v=8.29',
+    './tailwind.css?v=8.29',
     './lucide.min.js?v=1.5',
     './html2canvas.min.js?v=1.5',
-    './idb_helper.js?v=1.6',
+    './idb_helper.js?v=8.29',
     './lib/supabase.min.js',
-    './master_op_card_logic.js?v=8.0.0.0',
-    './supply_depot_logic.js?v=8.0.0.0'
+    './master_op_card_logic.js?v=8.29',
+    './supply_depot_logic.js?v=8.29',
+    './lib/leaflet.css',
+    './lib/leaflet.js',
+    './lib/Sortable.min.js'
 ];
 
 self.addEventListener('install', event => {

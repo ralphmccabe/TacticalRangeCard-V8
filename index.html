@@ -62,8 +62,6 @@ try {
 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
-
     
 
     <title>Tactical Range Card</title>
@@ -122,37 +120,23 @@ try {
 
     <!-- TAILWIND CSS -->
 
-    <link rel="stylesheet" href="tailwind.css?v=7.27.47">
+    <link rel="stylesheet" href="tailwind.css?v=8.29">
 
     <!-- Leaflet CSS: non-render-blocking (map styles not needed for first paint) -->
 
-    <!-- LOCAL LIBS: CDN references removed to eliminate Edge Tracking Prevention warnings -->
+    <link rel="stylesheet" href="lib/leaflet.css" media="print" onload="this.media='all'">
 
-    <link rel="stylesheet" href="lib/leaflet.css">
+    <noscript><link rel="stylesheet" href="lib/leaflet.css"></noscript>
 
-    <script src="lib/leaflet.js" defer></script>
+    <!-- DEFER GOOGLE FONTS (Eliminates Service Worker preload mismatch warning) -->
 
-    <script src="lib/Sortable.min.js" defer></script>
-
-    <!-- tesseract: lazy-loaded on first OCR scan only â€â€ not needed at startup -->
-
-
-
-    <!-- DEFER GOOGLE FONTS -->
-
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" media="print" onload="this.media='all'">
 
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap"></noscript>
 
-    
-
-
-
-    
-
     <!-- CUSTOM CSS -->
 
-    <link rel="stylesheet" href="style.css?v=7.27.47">
+    <link rel="stylesheet" href="style.css?v=8.29">
 
 
 
@@ -254,7 +238,7 @@ try {
 
     </script>
 
-    <script src="idb_helper.js?v=7.27.47" defer></script>
+    <script src="idb_helper.js?v=8.29" defer></script>
 
     <script src="lib/crypto-js.min.js" defer></script>
 
@@ -2627,44 +2611,44 @@ try {
 
                             <div class="grid grid-cols-2 gap-3 mt-3">
                                 <div>
-                                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Make & Model</label>
-                                    <input type="text" id="bolo-veh-make" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold" placeholder="e.g. Ford F-150">
+                                    <label for="bolo-veh-make" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Make & Model</label>
+                                    <input type="text" id="bolo-veh-make" aria-label="Make & Model" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold" placeholder="e.g. Ford F-150">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Year & Color</label>
-                                    <input type="text" id="bolo-veh-color" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold" placeholder="e.g. 2018 Black">
+                                    <label for="bolo-veh-color" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Year & Color</label>
+                                    <input type="text" id="bolo-veh-color" aria-label="Year & Color" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold" placeholder="e.g. 2018 Black">
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3 mt-3">
                                 <div>
-                                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">License Plate</label>
-                                    <input type="text" id="bolo-veh-plate" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold font-mono text-amber-400 uppercase tracking-widest" placeholder="e.g. ABC-1234">
+                                    <label for="bolo-veh-plate" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">License Plate</label>
+                                    <input type="text" id="bolo-veh-plate" aria-label="License Plate" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold font-mono text-amber-400 uppercase tracking-widest" placeholder="e.g. ABC-1234">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">State / Region</label>
-                                    <input type="text" id="bolo-veh-state" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold uppercase" placeholder="e.g. Texas">
+                                    <label for="bolo-veh-state" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">State / Region</label>
+                                    <input type="text" id="bolo-veh-state" aria-label="State / Region" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold uppercase" placeholder="e.g. Texas">
                                 </div>
                             </div>
 
                             <div class="mt-3">
-                                <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">VIN (Vehicle Identification Number)</label>
-                                <input type="text" id="bolo-veh-vin" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold font-mono tracking-widest uppercase" placeholder="17-Digit VIN">
+                                <label for="bolo-veh-vin" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">VIN (Vehicle Identification Number)</label>
+                                <input type="text" id="bolo-veh-vin" aria-label="VIN (Vehicle Identification Number)" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold font-mono tracking-widest uppercase" placeholder="17-Digit VIN">
                             </div>
 
                             <div class="mt-3">
-                                <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Distinguishing Features / Damage</label>
-                                <input type="text" id="bolo-veh-features" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold" placeholder="e.g. Cracked windshield, Punisher sticker on back">
+                                <label for="bolo-veh-features" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Distinguishing Features / Damage</label>
+                                <input type="text" id="bolo-veh-features" aria-label="Distinguishing Features / Damage" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold" placeholder="e.g. Cracked windshield, Punisher sticker on back">
                             </div>
                             
                             <div class="grid grid-cols-2 gap-3 mt-3">
                                 <div>
-                                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Owner / Registered To</label>
-                                    <input type="text" id="bolo-veh-owner" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold uppercase" placeholder="e.g. John Doe">
+                                    <label for="bolo-veh-owner" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Owner / Registered To</label>
+                                    <input type="text" id="bolo-veh-owner" aria-label="Owner / Registered To" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold uppercase" placeholder="e.g. John Doe">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Reason / Status</label>
-                                    <input type="text" id="bolo-veh-reason" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold uppercase" placeholder="e.g. STOLEN, FLEEING">
+                                    <label for="bolo-veh-reason" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 block">Reason / Status</label>
+                                    <input type="text" id="bolo-veh-reason" aria-label="Reason / Status" class="w-full bg-black border border-gray-700 text-white rounded p-2 text-xs font-bold uppercase" placeholder="e.g. STOLEN, FLEEING">
                                 </div>
                             </div>
 
@@ -6307,7 +6291,7 @@ try {
 
                         </div>
 
-                        <div class="flex flex-col md:flex-row items-stretch md:items-end gap-3 w-full max-w-4xl bg-black/40 p-3 rounded border border-emerald-900/20">
+                        <form onsubmit="event.preventDefault(); return false;" class="flex flex-col md:flex-row items-stretch md:items-end gap-3 w-full max-w-4xl bg-black/40 p-3 rounded border border-emerald-900/20">
 
                             <div class="flex-1 space-y-1">
     <div class="text-[7px] text-gray-400 uppercase font-black ml-1 flex justify-between">
@@ -6330,9 +6314,9 @@ try {
 
                                 <div class="text-[7px] text-emerald-500 uppercase font-black ml-1">Mission Code</div>
 
-                                <label for="comms-passcode" class="sr-only">MIN 10: 5L+2N+3S</label><input type="password" id="comms-passcode" class="w-full bg-black border border-emerald-500/50 rounded px-2 py-2 text-[10px] text-emerald-400 focus:border-emerald-400 outline-none uppercase placeholder-gray-800 text-center font-black tracking-widest" placeholder="MIN 10: 5L+2N+3S" aria-label="MIN 10: 5L+2N+3S">
+                                <label for="comms-passcode" class="sr-only">MIN 10: 5L+2N+3S</label><input type="password" id="comms-passcode" autocomplete="current-password" class="w-full bg-black border border-emerald-500/50 rounded px-2 py-2 text-[10px] text-emerald-400 focus:border-emerald-400 outline-none uppercase placeholder-gray-800 text-center font-black tracking-widest" placeholder="MIN 10: 5L+2N+3S" aria-label="MIN 10: 5L+2N+3S">
 
-                                <span class="text-[6px] text-gray-600 font-mono uppercase tracking-wider block text-center mt-0.5">5 letters Ã‚Â· 2 numbers Ã‚Â· 3 special chars</span>
+                                <span class="text-[6px] text-gray-600 font-mono uppercase tracking-wider block text-center mt-0.5">5 letters · 2 numbers · 3 special chars</span>
 
                             </div>
 
@@ -6358,7 +6342,7 @@ try {
 
                             </button>
 
-                        </div>
+                        </form>
 
                     </div>
 
@@ -6400,8 +6384,8 @@ try {
 
                         <div class="flex flex-col bg-black/20 p-2 overflow-hidden">
                             <div class="w-full mb-3 pb-2 border-b border-gray-800">
-                                <label class="text-[7px] text-gray-400 uppercase font-bold tracking-widest mb-1 block">Active Channel</label>
-                                <select id="live-freq" class="w-full bg-slate-900 border border-slate-700 text-emerald-400 px-2 py-1.5 rounded font-mono text-[9px] focus:outline-none font-bold shadow-inner uppercase cursor-pointer text-center tracking-widest">
+                                <label for="live-freq" class="text-[7px] text-gray-400 uppercase font-bold tracking-widest mb-1 block">Active Channel</label>
+                                <select id="live-freq" aria-label="Active Channel" class="w-full bg-slate-900 border border-slate-700 text-emerald-400 px-2 py-1.5 rounded font-mono text-[9px] focus:outline-none font-bold shadow-inner uppercase cursor-pointer text-center tracking-widest">
                                     <option value="ALPHA">CH-1: ALPHA</option>
                                     <option value="BRAVO">CH-2: BRAVO</option>
                                     <option value="COMMAND">CH-3: COMMAND</option>
@@ -6758,25 +6742,20 @@ try {
 
 
 
-    <!-- MAIN SCRIPT -->
+    <!-- UTILITY & MAPPING SCRIPTS (Deferred) -->
+    <script src="lib/leaflet.js" defer></script>
+    <script src="lib/Sortable.min.js" defer></script>
 
-    <script src="./trc_core.js?v=8.12" defer></script>
-
-    <script src="./workstation_logic.js?v=8.28" defer></script>
-
-    <script src="./field_intel_logic.js?v=8.28" defer></script>
-
-    <script src="./officer_card_logic.js?v=8.28" defer></script>
-
-    <script src="./gametag_logic.js?v=7.27.49.01" defer></script>
-
-    <script src="./bolo_logic.js?v=7.27.49.01" defer></script>
-
-    <script src="./license_logic.js?v=7.27.49.01" defer></script>
-
-    <script src="./master_op_card_logic.js?v=7.27.49.01" defer></script>
-
-    <script src="./supply_depot_logic.js?v=7.27.49.01" defer></script>
+    <!-- MAIN SCRIPTS -->
+    <script src="./trc_core.js?v=8.29" defer></script>
+    <script src="./workstation_logic.js?v=8.29" defer></script>
+    <script src="./field_intel_logic.js?v=8.29" defer></script>
+    <script src="./officer_card_logic.js?v=8.29" defer></script>
+    <script src="./gametag_logic.js?v=8.29" defer></script>
+    <script src="./bolo_logic.js?v=8.29" defer></script>
+    <script src="./license_logic.js?v=8.29" defer></script>
+    <script src="./master_op_card_logic.js?v=8.29" defer></script>
+    <script src="./supply_depot_logic.js?v=8.29" defer></script>
 
     
 
@@ -7940,7 +7919,8 @@ try {
     </div>
     <!-- Title -->
     <div class="px-3 py-2 border-b border-slate-800">
-        <input type="text" id="wb-title" placeholder="Name this board (e.g. SECTOR 4 SKETCH)" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono uppercase" maxlength="50">
+        <label for="wb-title" class="sr-only">Whiteboard Name</label>
+        <input type="text" id="wb-title" aria-label="Whiteboard Name" placeholder="Name this board (e.g. SECTOR 4 SKETCH)" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono uppercase" maxlength="50">
     </div>
     <!-- Canvas -->
     <div class="relative bg-slate-900 mx-3 mt-2 rounded-lg border border-slate-700 overflow-hidden" style="height: 260px;">
@@ -7977,7 +7957,8 @@ try {
     </div>
     <!-- Quick Notes -->
     <div class="px-3 py-2 border-b border-slate-800">
-        <textarea id="wb-notes" rows="2" placeholder="Quick notes / annotations..." class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-[10px] text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono resize-none"></textarea>
+        <label for="wb-notes" class="sr-only">Whiteboard Notes</label>
+        <textarea id="wb-notes" aria-label="Whiteboard Notes" rows="2" placeholder="Quick notes / annotations..." class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-[10px] text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 font-mono resize-none"></textarea>
     </div>
     <!-- Action Buttons -->
     <div class="px-3 py-2 flex items-center gap-2">
@@ -8873,7 +8854,7 @@ try {
             </div>
             
             <!-- Scrollable Form Body -->
-            <div class="p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar flex-1 max-h-[calc(92vh-130px)]">
+            <form onsubmit="event.preventDefault(); return false;" class="p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar flex-1 max-h-[calc(92vh-130px)]">
                 <div class="flex flex-wrap sm:flex-nowrap gap-3">
                     <div class="flex-1 min-w-[120px]">
                         <label for="post-author" class="block text-[11px] font-black uppercase tracking-widest mb-1.5 text-emerald-400">Callsign / Handle (Max 20)</label>
@@ -8899,7 +8880,7 @@ try {
                         <label for="post-creator-pin" class="block text-[11px] font-black uppercase tracking-widest mb-1.5 text-amber-400 flex items-center gap-1" title="4-Digit Creator PIN to lock edit &amp; delete permissions">
                             <i data-lucide="lock" class="w-3 h-3 text-amber-400"></i> PIN
                         </label>
-                        <input aria-label="4-digit creator security PIN" type="password" id="post-creator-pin" maxlength="4" placeholder="1234" inputmode="numeric" class="w-full bg-slate-950 border-2 border-amber-500/60 rounded p-2.5 text-sm font-mono text-center font-black text-amber-300 tracking-widest focus:outline-none focus:border-amber-400" title="4-Digit Creator PIN to prevent anyone else from editing or deleting your post">
+                        <input aria-label="4-digit creator security PIN" type="password" id="post-creator-pin" autocomplete="new-password" maxlength="4" placeholder="1234" inputmode="numeric" class="w-full bg-slate-950 border-2 border-amber-500/60 rounded p-2.5 text-sm font-mono text-center font-black text-amber-300 tracking-widest focus:outline-none focus:border-amber-400" title="4-Digit Creator PIN to prevent anyone else from editing or deleting your post">
                     </div>
                 </div>
 
@@ -9065,7 +9046,7 @@ try {
                     </div>
                 </div>
 
-            </div>
+            </form>
             
             <!-- Form Footer -->
             <div class="p-3.5 px-4 border-t border-slate-800 bg-slate-950 shrink-0 z-20 flex gap-2">
@@ -9090,9 +9071,9 @@ try {
         </div>
     </div>
 
-    <script src="lib/supabase.min.js"></script>
+    <script src="lib/supabase.min.js" defer></script>
     <!-- Include Blog Logic -->
-    <script src="blog_logic.js?v=8.0.0.0" defer></script>
+    <script src="blog_logic.js?v=8.29" defer></script>
 
     <!-- TACTICAL ICON TRAY (GLOBAL) -->
     <div id="tactical-icon-tray" class="hidden fixed top-20 left-1/2 -translate-x-1/2 md:left-2 md:translate-x-0 bg-gray-900 border-2 border-green-500/50 rounded-lg p-2 shadow-2xl z-[9999] flex flex-col gap-2 w-40">
@@ -9195,17 +9176,20 @@ try {
         </div>
     </div>
 
-    <!-- V8 RED TEAM MODULE -->
+    <!-- V8 RED TEAM MODULE (Non-blocking idle init) -->
     <script type="module">
         import { initRedTeam } from './js/modules/redteam.js';
-        initRedTeam();
-        console.log('[V8 ENGINE] Red Team module loaded.');
+        const startRedTeam = () => { initRedTeam(); console.log('[V8 ENGINE] Red Team module loaded.'); };
+        if ('requestIdleCallback' in window) requestIdleCallback(startRedTeam, { timeout: 2000 });
+        else setTimeout(startRedTeam, 100);
     </script>
 
-    <!-- V8 MISSION STATUS BOARD MODULE -->
+    <!-- V8 MISSION STATUS BOARD MODULE (Non-blocking idle init) -->
     <script type="module">
         import { initMissionBoard } from './js/modules/mission_board.js';
-        initMissionBoard();
+        const startMissionBoard = () => { initMissionBoard(); };
+        if ('requestIdleCallback' in window) requestIdleCallback(startMissionBoard, { timeout: 2000 });
+        else setTimeout(startMissionBoard, 150);
     </script>
 
     <!-- V8 COMMS MANUAL -->
@@ -9236,7 +9220,7 @@ try {
             }
         };
     </script>
-    <script type="module" src="js/modules/sfu_audio.js?v=8.12"></script>
+    <script type="module" src="js/modules/sfu_audio.js?v=8.29"></script>
 </body>
 
 </html>
