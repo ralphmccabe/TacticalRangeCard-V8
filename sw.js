@@ -1,5 +1,5 @@
-/* TRC-VERSION - v8.65 */
-const CACHE_NAME = 'trc-v8.65';
+/* TRC-VERSION - v8.66 */
+const CACHE_NAME = 'trc-v8.66';
 const ASSETS = [
     './',
     './index.html?v=8.30',

@@ -1667,10 +1667,8 @@ class TacticalScannerController {
     }
 
     tuneMemory(id) {
-        const ch = this.getChannelById(id);
-        if (ch) {
-            this.setCustomChannel(ch, true);
-        }
+        this.tuneChannel(id);
+        this.refreshDeckIfOpen();
     }
 
     handleCustomSubmit(autoTune = true) {
