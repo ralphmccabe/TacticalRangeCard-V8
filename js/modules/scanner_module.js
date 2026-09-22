@@ -1319,6 +1319,25 @@ class TacticalScannerController {
             
         const textClass = this.backlightOn === false ? 'text-[#1b3b22]' : 'text-[#4ade80]';
 
+        const memoryChannels = this.customChannels.filter(c => c.cat === 'memory');
+        let memoryButtonsHtml = '';
+        if (memoryChannels.length > 0) {
+            memoryButtonsHtml = `<div class="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2">`;
+            memoryChannels.forEach(ch => {
+                memoryButtonsHtml += `
+                    <div class="flex shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                        <button type="button" onclick="window.TacticalScanner.tuneMemory('${ch.id}')" class="flex-1 bg-emerald-950 border border-emerald-800 hover:bg-emerald-900 text-emerald-200 py-2 rounded-l text-[8px] font-black uppercase tracking-wider truncate px-1" title="${ch.name}">
+                            📻 ${ch.name}
+                        </button>
+                        <button type="button" onclick="window.TacticalScanner.deleteCustomChannel('${ch.id}')" class="bg-red-950 border border-red-800 border-l-0 hover:bg-red-900 text-red-400 px-2 rounded-r flex items-center justify-center transition-colors" title="Delete">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            memoryButtonsHtml += `</div>`;
+        }
+
         container.innerHTML = `
             <div id="trc-scanner-deck-container" class="w-full flex flex-col items-center justify-start p-2 pb-16 space-y-4">
                 
@@ -1349,84 +1368,74 @@ class TacticalScannerController {
                         
                         <!-- Side PTT Button (Sticking out left) -->
                         <div class="absolute -left-3 top-24 w-4 h-16 bg-orange-600 rounded-l-md border-2 border-r-0 border-orange-800 shadow-md cursor-pointer active:scale-95 active:bg-orange-700 flex items-center justify-center" onclick="window.TacticalScanner.togglePlayback()" title="PTT / LISTEN">
-                            <div class="h-8 w-1 bg-orange-800/50 rounded"></div>
+                            <div class="w-1 h-8 bg-orange-900/50 rounded-full"></div>
                         </div>
+                        
+                        <!-- Screen Bezel -->
+                        <div class="w-full bg-gray-900 rounded-2xl p-3 shadow-inner border border-gray-800 relative">
+                            
+                            <!-- LCD Screen -->
+                            <div class="${backlightClass}">
+                                
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex gap-2">
+                                        <span class="text-[8px] font-black bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/30">BUFFERING</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <div class="w-1.5 h-1.5 rounded-full ${isLive ? 'bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]' : 'bg-red-950 opacity-50'}"></div>
+                                        <div class="w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]' : 'bg-emerald-950 opacity-50'}"></div>
+                                    </div>
+                                </div>
 
-                        <!-- Brand / Speaker Grille -->
-                        <div class="flex justify-between items-center w-full mb-3 px-2">
-                            <div class="flex items-center gap-3">
-                                <span class="text-[10px] font-black text-gray-500 tracking-widest italic">TRC-COMMS</span>
-                                <div class="text-[9px] font-mono text-cyan-600/70 tracking-tighter font-bold flex gap-2">
-                                    <span id="scanner-telemetry-zulu">0000Z</span>
-                                    ${this.lastLat && this.lastLon ? `<span class="text-emerald-700/80">${this.lastLat.toFixed(4)}, ${this.lastLon.toFixed(4)}</span>` : ''}
+                                <div class="flex-1 flex flex-col justify-center items-center -mt-2">
+                                    <div class="w-full flex justify-between px-2 mb-1">
+                                        <span class="text-[7px] font-bold border border-cyan-800/50 px-1 rounded bg-cyan-950/30 text-cyan-500 uppercase tracking-wider">${currentBand}</span>
+                                        <span class="flex items-center gap-1">BATT <div class="w-3 h-1.5 bg-gray-300"></div></span>
+                                    </div>
+                                    
+                                    <div id="tac-scanner-deck-freq-display" class="font-mono text-3xl font-black ${textClass} tracking-wider text-center mt-1 drop-shadow-[0_0_5px_rgba(74,222,128,0.3)]">
+                                        ${currentFreq}
+                                    </div>
+                                    
+                                    <div id="tac-scanner-deck-name-display" class="text-[8px] font-bold uppercase tracking-widest text-center mt-1 w-full truncate px-2 opacity-80">
+                                        ${currentName}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex gap-1">
-                                <div class="w-1.5 h-1.5 rounded-full ${isLive ? 'bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]' : 'bg-red-950 opacity-50'}"></div>
-                                <div class="w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]' : 'bg-emerald-950 opacity-50'}"></div>
-                            </div>
                         </div>
 
-                        <!-- LCD Screen -->
-                        <div id="tac-scanner-lcd-screen" class="${backlightClass}">
-                            <!-- LCD Header (Badges) -->
-                            <div class="flex justify-between items-start text-[9px] font-mono ${textClass} font-bold opacity-90 mb-1">
-                                <span id="tac-scanner-deck-status-badge" class="px-1 border ${isLive ? 'border-green-500 text-green-400' : 'border-orange-500 text-orange-400'} rounded">${isLive ? 'RECEIVING LIVE (RX)' : 'BUFFERING'}</span>
-                                <span id="tac-scanner-deck-band-badge" class="px-1 border border-cyan-700 text-cyan-400 rounded tracking-widest">${currentBand}</span>
-                                <span class="flex items-center gap-1">BATT <div class="w-3 h-1.5 bg-gray-300"></div></span>
-                            </div>
-                            
-                            <div id="tac-scanner-deck-freq-display" class="font-mono text-3xl font-black ${textClass} tracking-wider text-center mt-1 drop-shadow-[0_0_5px_rgba(74,222,128,0.3)]">
-                                ${currentFreq}
-                            </div>
-                            
-                            <div id="tac-scanner-deck-name-display" class="text-[9px] font-bold ${textClass} text-center uppercase tracking-wider truncate px-1 opacity-90 mt-1">
-                                ${currentName}
-                            </div>
-
-                            <!-- Mini LCD Terminal for 2 lines -->
-                            <div id="diag-terminal-body" class="mt-auto h-9 font-mono text-[8px] leading-normal ${textClass} opacity-90 overflow-hidden flex flex-col justify-end pb-1">
-                                <!-- Populated by renderDiagnosticTerminalEntries -->
-                            </div>
-                            
-                            <!-- LCD Scanline Overlay -->
-                            <div class="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] pointer-events-none rounded-lg opacity-50"></div>
-                        </div>
-
-                        <!-- Main Function Keys -->
-                        <div class="flex justify-between w-full mt-5 px-1 gap-2">
-                            <button onclick="window.TacticalScanner.cycleBand()" class="bg-gray-700 border-gray-900 hover:bg-gray-600 flex-1 py-2 rounded border-b-4 text-[10px] font-black text-white uppercase tracking-wider active:border-b-0 active:translate-y-1 transition-all">
-                                BAND
+                        <!-- Keypad -->
+                        <div class="mt-6 grid grid-cols-3 gap-3 px-4">
+                            <div class="text-[8px] text-gray-500 font-bold text-center -mb-1">BAND</div>
+                            <button id="tac-scanner-deck-play-btn" onclick="window.TacticalScanner.togglePlayback()" class="${isLive ? 'bg-yellow-600 hover:bg-yellow-500 text-black shadow-[0_0_15px_rgba(202,138,4,0.4)]' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]'} rounded border-b-4 border-black/40 font-black text-[9px] py-1 flex items-center justify-center gap-1 transition-all active:scale-95 active:border-b-0 active:translate-y-1 z-20">
+                                ${isLive ? '<i data-lucide="pause" class="w-3 h-3"></i> MUTE' : '<i data-lucide="play" class="w-3 h-3"></i> LISTEN'}
                             </button>
-                            <button id="tac-scanner-deck-play-btn" onclick="window.TacticalScanner.togglePlayback()" class="${isLive ? 'bg-orange-600 border-orange-800 hover:bg-orange-500' : 'bg-emerald-600 border-emerald-800 hover:bg-emerald-500'} flex-1 py-2 rounded border-b-4 text-[10px] font-black text-white uppercase tracking-wider active:border-b-0 active:translate-y-1 transition-all">
-                                ${isLive ? 'STOP' : 'LISTEN'}
-                            </button>
-                            <button onclick="window.TacticalScanner.autoLocateLocalGps()" class="bg-cyan-700 border-cyan-900 hover:bg-cyan-600 flex-1 py-2 rounded border-b-4 text-[10px] font-black text-white uppercase tracking-wider active:border-b-0 active:translate-y-1 transition-all flex items-center justify-center gap-1">
-                                GPS
-                            </button>
+                            <div class="text-[8px] text-gray-500 font-bold text-center -mb-1">GPS</div>
+                            
+                            <button onclick="window.TacticalScanner.typeFreq('1')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">1</button>
+                            <button onclick="window.TacticalScanner.typeFreq('2')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">2</button>
+                            <button onclick="window.TacticalScanner.typeFreq('3')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">3</button>
+                            
+                            <button onclick="window.TacticalScanner.typeFreq('4')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">4</button>
+                            <button onclick="window.TacticalScanner.typeFreq('5')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">5</button>
+                            <button onclick="window.TacticalScanner.typeFreq('6')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">6</button>
+                            
+                            <button onclick="window.TacticalScanner.typeFreq('7')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">7</button>
+                            <button onclick="window.TacticalScanner.typeFreq('8')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">8</button>
+                            <button onclick="window.TacticalScanner.typeFreq('9')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">9</button>
+                            
+                            <button onclick="window.TacticalScanner.typeFreq('*')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-black shadow-md active:scale-95 transition-all flex flex-col items-center leading-none gap-1">*<span class="text-[5px] tracking-widest text-gray-600 uppercase">SCAN</span></button>
+                            <button onclick="window.TacticalScanner.typeFreq('0')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-bold shadow-md active:scale-95 transition-all flex flex-col items-center leading-none">0</button>
+                            <button onclick="window.TacticalScanner.typeFreq('#')" class="bg-slate-900 border-2 border-slate-800 rounded-sm py-2 text-gray-400 hover:text-white hover:bg-slate-800 font-mono text-lg font-black shadow-md active:scale-95 transition-all flex flex-col items-center leading-none gap-1">#<span class="text-[5px] tracking-widest text-gray-600 uppercase">DEL</span></button>
                         </div>
 
-                        <!-- Keypad Grid -->
-                        <div class="grid grid-cols-3 gap-3 mt-5 px-2">
-                            ${[1,2,3,4,5,6,7,8,9,'* SCAN',0,'# DEL'].map(val => {
-                                const num = val.toString().split(' ')[0];
-                                const label = val.toString().split(' ')[1] || '';
-                                return `
-                                <button onclick="window.TacticalScanner.handleKeypad('${num}')" class="bg-gray-800 border-2 border-gray-900 hover:bg-gray-700 rounded-md py-1.5 text-sm font-black text-gray-300 shadow-sm active:scale-95 transition-all text-center select-none flex flex-col items-center justify-center leading-none">
-                                    <span>${num}</span>
-                                    ${label ? `<span class="text-[5px] text-cyan-600 uppercase tracking-widest mt-0.5">${label}</span>` : ''}
-                                </button>
-                                `;
-                            }).join('')}
-                        </div>
-
-                        <!-- Speaker Grille Pattern -->
-                        <div class="w-full flex justify-center gap-1.5 mt-6 px-4 pb-2">
-                            <div class="w-1.5 h-10 bg-gray-950 rounded-full shadow-inner"></div>
-                            <div class="w-1.5 h-10 bg-gray-950 rounded-full shadow-inner"></div>
-                            <div class="w-1.5 h-10 bg-gray-950 rounded-full shadow-inner"></div>
-                            <div class="w-1.5 h-10 bg-gray-950 rounded-full shadow-inner"></div>
-                            <div class="w-1.5 h-10 bg-gray-950 rounded-full shadow-inner"></div>
+                        <!-- Speaker Grille -->
+                        <div class="mt-4 mb-2 flex justify-center gap-1.5 opacity-20">
+                            <div class="w-1.5 h-6 bg-black rounded-full"></div>
+                            <div class="w-1.5 h-6 bg-black rounded-full"></div>
+                            <div class="w-1.5 h-6 bg-black rounded-full"></div>
+                            <div class="w-1.5 h-6 bg-black rounded-full"></div>
+                            <div class="w-1.5 h-6 bg-black rounded-full"></div>
                         </div>
                     </div>
                 </div>
@@ -1454,12 +1463,19 @@ class TacticalScannerController {
                             
                             <input type="hidden" id="custom-ch-cat" value="custom">
 
-                        <button type="submit" class="w-full mt-2 bg-cyan-700 hover:bg-cyan-600 text-white font-black py-2 rounded text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5">
-                            <i data-lucide="upload" class="w-3 h-3"></i> PROGRAM & TUNE RADIO
-                        </button>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <button type="button" onclick="window.TacticalScanner.saveToMemoryBank()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black py-2 rounded text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                                <i data-lucide="save" class="w-3 h-3"></i> SAVE MEMORY
+                            </button>
+                            <button type="submit" class="w-full bg-cyan-700 hover:bg-cyan-600 text-white font-black py-2 rounded text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(8,145,178,0.3)]">
+                                <i data-lucide="upload" class="w-3 h-3"></i> TUNE RADIO
+                            </button>
+                        </div>
                     </form>
                     
-                    <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    ${memoryButtonsHtml}
+                    
+                    <div class="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <button onclick="window.TacticalScanner.loadTestFeed('jfk', true)" class="bg-indigo-950 border border-indigo-800 hover:bg-indigo-900 text-indigo-200 py-2 rounded text-[8px] font-black uppercase tracking-wider">✈️ JFK (NY)</button>
                         <button onclick="window.TacticalScanner.loadTestFeed('atl', true)" class="bg-indigo-950 border border-indigo-800 hover:bg-indigo-900 text-indigo-200 py-2 rounded text-[8px] font-black uppercase tracking-wider">✈️ ATL (GA)</button>
                         <button onclick="window.TacticalScanner.loadTestFeed('lax', true)" class="bg-indigo-950 border border-indigo-800 hover:bg-indigo-900 text-indigo-200 py-2 rounded text-[8px] font-black uppercase tracking-wider">✈️ LAX (CA)</button>
@@ -1613,6 +1629,47 @@ class TacticalScannerController {
         if (key) {
             localStorage.setItem('trc_scanner_api_key', key);
             if (window.showToast) window.showToast("🔑 Stream API key saved securely in browser storage.", "SUCCESS");
+        }
+    }
+
+    saveToMemoryBank() {
+        const freqInput = document.getElementById('custom-ch-freq');
+        const nameInput = document.getElementById('custom-ch-name');
+        const urlInput = document.getElementById('custom-ch-url');
+        
+        const freq = (freqInput?.value || this.customFormDraft?.freq || '').trim();
+        const name = (nameInput?.value || this.customFormDraft?.name || '').trim();
+        const url = (urlInput?.value || this.customFormDraft?.url || '').trim();
+        const warnEl = document.getElementById('custom-stream-warning');
+
+        if (!freq || !name || !url) {
+            if (warnEl) {
+                warnEl.innerText = "⚠️ Please provide a Frequency, Channel Name, and Stream URL to save.";
+                warnEl.classList.remove('hidden');
+            }
+            return;
+        }
+
+        const newCh = {
+            id: 'mem-' + Date.now(),
+            freq: freq,
+            name: name,
+            cat: 'memory',
+            band: 'CUSTOM-MEM',
+            streamUrl: url,
+            isCustom: true
+        };
+
+        this.customChannels.push(newCh);
+        this.saveCustomPresets();
+        this.refreshDeckIfOpen();
+        if (window.showToast) window.showToast("Saved to Memory Bank!", "SUCCESS");
+    }
+
+    tuneMemory(id) {
+        const ch = this.getChannelById(id);
+        if (ch) {
+            this.setCustomChannel(ch, true);
         }
     }
 
