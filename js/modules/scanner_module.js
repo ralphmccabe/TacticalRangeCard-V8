@@ -29,7 +29,7 @@ const PRESET_CHANNELS = [
         county: 'Eastern Seaboard',
         location: 'CSX Class I Mainline (East Coast)',
         desc: 'Verified 24/7 live Class I freight railroad dispatch — locomotive movements, wayside defect detectors, track warrants, and train crew road channels.',
-        url: 'http://listen.trackstreamer.com/csxop'
+        url: 'https://listen.trackstreamer.com/csxop'
     },
     {
         id: 'rail_fec_dispatch',
@@ -43,7 +43,7 @@ const PRESET_CHANNELS = [
         county: 'Southeast FL',
         location: 'FEC Mainline (Jacksonville → Miami)',
         desc: 'Verified 24/7 live FEC railway dispatch — intermodal freight, mainline hot box detectors, and freight switching.',
-        url: 'http://listen.trackstreamer.com/fecftl'
+        url: 'https://listen.trackstreamer.com/fecftl'
     },
     {
         id: 'rail_botemixer',
@@ -57,7 +57,7 @@ const PRESET_CHANNELS = [
         county: 'Regional',
         location: 'Multi-Carrier Rail Yard & Switching',
         desc: 'Verified 24/7 live railroad classification yard operations, hump control, switching, and regional freight coordination.',
-        url: 'http://listen.trackstreamer.com/botemixer'
+        url: 'https://listen.trackstreamer.com/botemixer'
     },
 
     // ── VERIFIED METRO PUBLIC SAFETY RELAY (ACCURATELY LABELED) ──
@@ -1522,7 +1522,7 @@ class TacticalScannerController {
                 name: 'NEW YORK JFK TOWER',
                 cat: 'aviation',
                 band: 'AIRBAND',
-                url: 'http://d.liveatc.net/kjfk_twr'
+                url: 'https://d.liveatc.net/kjfk_twr'
             };
         } else if (type === 'atl') {
             this.customFormDraft = {
@@ -1530,7 +1530,7 @@ class TacticalScannerController {
                 name: 'ATLANTA TOWER (ALL)',
                 cat: 'aviation',
                 band: 'AIRBAND',
-                url: 'http://d.liveatc.net/katl_twr'
+                url: 'https://d.liveatc.net/katl_twr'
             };
         } else if (type === 'lax') {
             this.customFormDraft = {
@@ -1538,7 +1538,7 @@ class TacticalScannerController {
                 name: 'LOS ANGELES TOWER',
                 cat: 'aviation',
                 band: 'AIRBAND',
-                url: 'http://d.liveatc.net/klax_twr'
+                url: 'https://d.liveatc.net/klax_twr'
             };
         } else if (type === 'sfo') {
             this.customFormDraft = {
@@ -1546,7 +1546,7 @@ class TacticalScannerController {
                 name: 'SAN FRANCISCO TOWER',
                 cat: 'aviation',
                 band: 'AIRBAND',
-                url: 'http://d.liveatc.net/ksfo_twr'
+                url: 'https://d.liveatc.net/ksfo_twr'
             };
         }
 
