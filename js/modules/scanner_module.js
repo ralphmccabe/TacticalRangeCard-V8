@@ -1320,7 +1320,7 @@ class TacticalScannerController {
         const textClass = this.backlightOn === false ? 'text-[#1b3b22]' : 'text-[#4ade80]';
 
         container.innerHTML = `
-            <div id="trc-scanner-deck-container" class="w-full flex flex-col items-center justify-center p-2 pb-16 space-y-4">
+            <div id="trc-scanner-deck-container" class="w-full flex flex-col items-center justify-start p-2 pb-16 space-y-4">
                 
                 <!-- RETURN BAR -->
                 <div class="w-full max-w-sm flex items-center justify-between mb-2 px-2">
