@@ -1,5 +1,5 @@
-/* TRC-VERSION - v8.30 */
-const CACHE_NAME = 'trc-v8.30';
+/* TRC-VERSION - v8.62 */
+const CACHE_NAME = 'trc-v8.62';
 const ASSETS = [
     './',
     './index.html?v=8.30',
@@ -66,27 +66,34 @@ self.addEventListener('activate', event => {
 
 // Dynamic Offline Caching Strategy
 self.addEventListener('fetch', event => {
-    // Bypass cache for these â€” large data files / live APIs that must never be stored
+    // Bypass cache for these 🚨 large data files / live APIs that must never be stored
     const bypassPatterns = [
         'VERSION_HISTORY.txt',
         'api.open-meteo.com',
         'supabase.co',              // live Supabase API calls
         'us-states.js',
         'us-states.json',
-        'colorado_2026.json',       // large data files â€” never cache
-        'arcgisonline.com',         // map tiles â€” browser handles its own cache
-        'qrserver.com'
+        'colorado_2026.json',       // large data files — never cache
+        'arcgisonline.com',         // map tiles — browser handles its own cache
+        'qrserver.com',
+        'proxy_stream',             // TRC local audio proxy
+        'trackstreamer.com',        // live rail audio streams
+        'somafm.com',               // live radio streams
+        'noaa-weatherradio.org',    // live NOAA streams
+        '.mp3',                     // audio stream chunks
+        '/stream'                   // shoutcast/icecast streams
     ];
+    
+    // TRULY BYPASS the service worker for streams (do not call event.respondWith)
     if (bypassPatterns.some(p => event.request.url.includes(p))) {
-        event.respondWith(fetch(event.request));
-        return;
+        return; 
     }
     
     // Only cache GET requests
     if (event.request.method !== 'GET') return;
 
     // Network-First for all app logic & HTML: ensures code updates land immediately
-    const networkFirstPatterns = ['index.html', 'trc_core.js', 'sfu_audio.js', 'style.css', 'style.min.css'];
+    const networkFirstPatterns = ['index.html', 'trc_core.js', 'sfu_audio.js', 'scanner_module.js', 'style.css', 'style.min.css'];
     const isNavigation = event.request.mode === 'navigate' || event.request.destination === 'document';
     const isCoreApp = networkFirstPatterns.some(p => event.request.url.includes(p));
 

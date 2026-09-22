@@ -341,8 +341,11 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             playTone('permit');
             startVoiceTranscription();
 
-            // Mute all incoming speakers while transmitting — prevents self-echo
-            document.querySelectorAll('audio').forEach(function(el){ el.muted = true; });
+            // Dispatch event for tactical scanner ducking
+            try { window.dispatchEvent(new CustomEvent('trc:ptt_start')); } catch(e){}
+
+            // Mute all incoming speakers while transmitting — prevents self-echo (exclude TRC managed scanner)
+            document.querySelectorAll('audio:not([data-trc-managed="true"])').forEach(function(el){ el.muted = true; });
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = true; });
 
             // 15-second safety watchdog to prevent stuck transmissions
@@ -371,7 +374,8 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                 }
                 if (statusEl) { statusEl.innerText = 'STANDBY'; statusEl.style.color = ''; }
                 if (spk) { spk.innerText = ''; }
-                document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
+                try { window.dispatchEvent(new CustomEvent('trc:ptt_stop')); } catch(err){}
+                document.querySelectorAll('audio:not([data-trc-managed="true"])').forEach(function(el){ el.muted = false; });
                 (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
                 return;
             }
@@ -389,7 +393,8 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                 }
                 if (statusEl) { statusEl.innerText = (btn && btn.dataset.busy === 'true') ? 'CHANNEL BUSY' : 'STANDBY'; statusEl.style.color = ''; }
                 if (spk) { spk.innerText = ''; }
-                document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
+                try { window.dispatchEvent(new CustomEvent('trc:ptt_stop')); } catch(err){}
+                document.querySelectorAll('audio:not([data-trc-managed="true"])').forEach(function(el){ el.muted = false; });
                 (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
             }
         };
@@ -414,6 +419,9 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
             playTone('roger');
             stopAndBroadcastVoiceTranscription(callsign, role, currentFreq || 'ALPHA');
 
+            // Dispatch event for tactical scanner restore
+            try { window.dispatchEvent(new CustomEvent('trc:ptt_stop')); } catch(e){}
+
             try {
                 if (localAudioTrack) {
                     await localAudioTrack.mute();
@@ -422,8 +430,8 @@ async function connectToLiveKit(missionId, callsign, role, freq) {
                 }
             } catch(e) {}
 
-            // Restore incoming speakers now that we are done transmitting
-            document.querySelectorAll('audio').forEach(function(el){ el.muted = false; });
+            // Restore incoming speakers now that we are done transmitting (exclude TRC managed scanner)
+            document.querySelectorAll('audio:not([data-trc-managed="true"])').forEach(function(el){ el.muted = false; });
             (window.sfuAudioElements || []).forEach(function(el){ el.muted = false; });
         };
 

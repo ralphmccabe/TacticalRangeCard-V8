@@ -231,8 +231,8 @@ window.renderWorkstationMenu = async function() {
                     </button>
                 </div>
                 
-                <!-- 9. EXECUTIVE CASE FILE & 10. TRC SUPPLY DEPOT -->
-                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                <!-- 9. EXECUTIVE CASE FILE & 10. TRC SUPPLY DEPOT & 11. TAC SCANNER -->
+                <div class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
                     <button onclick="window.openWorkstationForm('casefile')" class="w-full bg-slate-900 border-2 border-slate-700 rounded-lg p-3 flex items-center justify-center gap-3 hover:bg-slate-800 hover:border-slate-400 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] group cursor-pointer">
                         <i data-lucide="file-check-2" class="w-6 h-6 text-slate-300 group-hover:scale-110 transition-transform"></i>
                         <div class="text-left">
@@ -244,7 +244,14 @@ window.renderWorkstationMenu = async function() {
                         <i data-lucide="shopping-bag" class="w-6 h-6 text-amber-400 group-hover:scale-110 transition-transform animate-pulse"></i>
                         <div class="text-left">
                             <div class="text-[12px] font-black text-amber-300 uppercase leading-tight tracking-widest">SUPPLY DEPOT &amp; ARMORY</div>
-                            <div class="text-[8px] text-amber-400/80 uppercase mt-0.5 tracking-wider font-bold">Dropship Gear, Merch &amp; Free DIY Stickers</div>
+                            <div class="text-[8px] text-amber-400/80 uppercase mt-0.5 tracking-wider font-bold">Dropship Gear, Merch &amp; Stickers</div>
+                        </div>
+                    </button>
+                    <button onclick="window.openWorkstationForm('scanner')" class="w-full bg-cyan-950/90 border-2 border-cyan-400 rounded-lg p-3 flex items-center justify-center gap-3 hover:bg-cyan-900 hover:border-cyan-300 transition-all shadow-[0_0_20px_rgba(6,182,212,0.25)] group cursor-pointer">
+                        <i data-lucide="radio" class="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform animate-pulse"></i>
+                        <div class="text-left">
+                            <div class="text-[12px] font-black text-cyan-300 uppercase leading-tight tracking-widest">TAC SCANNER &amp; DISPATCH</div>
+                            <div class="text-[8px] text-cyan-400/80 uppercase mt-0.5 tracking-wider font-bold">Marine, Airband, NOAA &amp; Police/Fire</div>
                         </div>
                     </button>
                 </div>
@@ -256,6 +263,7 @@ window.renderWorkstationMenu = async function() {
             </div>
         </div>
     `;
+
     if (window.lucide) window.lucide.createIcons();
 };
 
@@ -270,6 +278,14 @@ window.openWorkstationForm = function(type, rawCardData = null) {
             console.error('[TRC-WS] workstation-container not found in DOM');
             if (window.pushTacLog) window.pushTacLog('ERROR: WORKSTATION CONTAINER NOT FOUND', 'ERROR');
             return;
+        }
+
+        // Handle Tac Scanner Module
+        if (type === 'scanner' || type === 'radio_scanner') {
+            if (window.TacticalScanner) {
+                window.TacticalScanner.renderDeck(container);
+                return;
+            }
         }
 
         // Normalize cardData unwrapping if passed from vaultCache / intelVault wrapper
