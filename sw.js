@@ -1,5 +1,5 @@
-/* TRC-VERSION - v8.70 */
-const CACHE_NAME = 'trc-v8.70';
+/* TRC-VERSION - v8.71 */
+const CACHE_NAME = 'trc-v8.71';
 const ASSETS = [
     './',
     './index.html?v=8.30',
@@ -93,7 +93,7 @@ self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
     // Network-First for all app logic & HTML: ensures code updates land immediately
-    const networkFirstPatterns = ['index.html', 'trc_core.js', 'sfu_audio.js', 'scanner_module.js', 'style.css', 'style.min.css'];
+    const networkFirstPatterns = ['index.html', 'trc_core.js', 'sfu_audio.js', 'scanner_module.js', 'style.css', 'style.min.css', 'bolo_logic.js', 'gametag_logic.js', 'license_logic.js', 'workstation_logic.js', 'field_intel_logic.js', 'officer_card_logic.js', 'blog_logic.js', 'master_op_card_logic.js', 'supply_depot_logic.js'];
     const isNavigation = event.request.mode === 'navigate' || event.request.destination === 'document';
     const isCoreApp = networkFirstPatterns.some(p => event.request.url.includes(p));
 

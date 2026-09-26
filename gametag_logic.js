@@ -510,13 +510,15 @@ if (gametagToVaultBtnTop) {
                 throw new Error('html2canvas library not loaded');
             }
 
+            await new Promise(r => setTimeout(r, 400));
             const html2canvasPromise = window.html2canvas(renderZone, {
                 backgroundColor: '#3E4A35',
                 scale: 1.5, 
                 logging: false,
                 useCORS: true,
                 allowTaint: true,
-                imageTimeout: 8000,
+                foreignObjectRendering: false,
+                imageTimeout: 15000,
                 removeContainer: true,
                 onclone: (clonedDoc) => {
                     const clonedZone = clonedDoc.getElementById('gametag-render-zone');
@@ -528,7 +530,7 @@ if (gametagToVaultBtnTop) {
                 }
             });
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('html2canvas render timed out')), 15000)
+                setTimeout(() => reject(new Error('html2canvas render timed out')), 30000)
             );
             
             const canvas = await Promise.race([html2canvasPromise, timeoutPromise]);

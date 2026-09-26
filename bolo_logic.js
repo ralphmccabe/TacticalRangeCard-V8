@@ -387,7 +387,12 @@ async function renderBoloLibrary() {
             let displaySub = 'WANTED';
             if (isPerson) displaySub = bolo.reason || 'WANTED';
             else if (isAnimal) displaySub = bolo.animal_territory || bolo.animal_threat || 'NUISANCE ANIMAL';
-            else if (isVehicle) displaySub = bolo.veh_reason || bolo.veh_color || 'NO DETAILS';
+            else if (isVehicle) {
+                const flagLabels = { stolen: '🚨 STOLEN VEHICLE', felony: '⚠️ FELONY WARRANT', armed: '🛑 OCCUPANTS ARMED', occupants: '🛑 OCCUPANTS ARMED' };
+                displaySub = (bolo.veh_flag && flagLabels[bolo.veh_flag])
+                    ? flagLabels[bolo.veh_flag]
+                    : (bolo.veh_reason || bolo.veh_color || 'NO DETAILS');
+            }
             
             const accentColor = isPerson ? '#ef4444' : (isVehicle ? '#3b82f6' : '#9ca3af');
             const cardBorder  = isActive ? (isPerson ? 'border-red-500' : (isVehicle ? 'border-blue-500' : 'border-gray-400')) : 'border-gray-800';
@@ -511,6 +516,20 @@ window.loadBoloBackToEditor = function(bolo) {
         set('bolo-input-contact',  bolo.contact);
         window.setBoloThreatLevel(bolo.threat_level || 'poi');
         window.setBoloSex(bolo.sex || 'unknown');
+    } else if (bolo.bolo_type === 'vehicle') {
+        const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+        set('bolo-input-agency',   bolo.agency);
+        set('bolo-input-case',     bolo.case_num);
+        set('bolo-veh-make',       bolo.veh_make);
+        set('bolo-veh-color',      bolo.veh_color);
+        set('bolo-veh-plate',      bolo.veh_plate);
+        set('bolo-veh-state',      bolo.veh_state);
+        set('bolo-veh-vin',        bolo.veh_vin);
+        set('bolo-veh-features',   bolo.veh_features);
+        set('bolo-veh-owner',      bolo.veh_owner);
+        set('bolo-veh-reason',     bolo.veh_reason);
+        if (window.setBoloVehType) window.setBoloVehType(bolo.veh_type || 'car');
+        if (window.setBoloVehFlag) window.setBoloVehFlag(bolo.veh_flag || 'stolen');
     } else {
         const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
         set('bolo-input-agency',           bolo.agency);
@@ -676,14 +695,17 @@ window.exportBoloToVault = async function(bolo, btnElement = null) {
         const bannerTxt = el('bolo-veh-render-banner-text');
         
         const flagColors = {
-            stolen: { bg: '#92400e', text: '⚠  STOLEN VEHICLE  ⚠' },
-            felony: { bg: '#7f1d1d', text: '⚠  FELONY VEHICLE  ⚠' },
-            occupants: { bg: '#1d4ed8', text: '⚠  WANTED OCCUPANTS  ⚠' }
+            stolen:    { bg: '#92400e', text: '⚠  STOLEN VEHICLE  ⚠',                          subtitle: 'STOLEN / WANTED VEHICLE BOLO' },
+            felony:    { bg: '#7f1d1d', text: '⚠  FELONY VEHICLE  ⚠',                           subtitle: 'FELONY WARRANT — VEHICLE BOLO' },
+            occupants: { bg: '#7f1d1d', text: '🛑  OCCUPANTS ARMED — APPROACH WITH CAUTION  🛑', subtitle: '⚠ OCCUPANTS ARMED — ARMED & DANGEROUS' },
+            armed:     { bg: '#7f1d1d', text: '🛑  OCCUPANTS ARMED — APPROACH WITH CAUTION  🛑', subtitle: '⚠ OCCUPANTS ARMED — ARMED & DANGEROUS' }
         };
-        const vCfg = flagColors[bolo.veh_flag || 'stolen'] || flagColors.stolen;
+        const vCfg = flagColors[bolo.veh_flag] || flagColors.stolen;
         
         if(bannerEl)  bannerEl.style.background = vCfg.bg;
         if(bannerTxt) bannerTxt.innerText = vCfg.text;
+        const subtitleEl = el('bolo-veh-render-subtitle');
+        if(subtitleEl) subtitleEl.innerText = vCfg.subtitle;
 
         const notesEl = el('bolo-veh-render-notes');
         const notesSec = el('bolo-veh-render-notes-section');
@@ -783,7 +805,7 @@ window.exportBoloToVault = async function(bolo, btnElement = null) {
             throw new Error('html2canvas library not loaded');
         }
 
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 400));
         const bgColor = isPerson ? '#080808' : '#1a1a1a';
         
         const html2canvasPromise = window.html2canvas(renderZone, {
@@ -792,7 +814,8 @@ window.exportBoloToVault = async function(bolo, btnElement = null) {
             logging: false,
             useCORS: true,
             allowTaint: true,
-            imageTimeout: 8000,
+            foreignObjectRendering: false,
+            imageTimeout: 15000,
             removeContainer: true,
             onclone: (clonedDoc) => {
                 const clonedZone = clonedDoc.getElementById('bolo-poster-render-zone');
@@ -804,7 +827,7 @@ window.exportBoloToVault = async function(bolo, btnElement = null) {
             }
         });
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('html2canvas render timed out')), 15000)
+            setTimeout(() => reject(new Error('html2canvas render timed out')), 30000)
         );
         
         const canvas = await Promise.race([html2canvasPromise, timeoutPromise]);
