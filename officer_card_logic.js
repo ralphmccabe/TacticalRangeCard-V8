@@ -1680,17 +1680,17 @@ window.blogOfficerCardToWire = async function(id) {
     // Save full high-res card to Vault first
     await window.saveOfficerCardToVault(id);
 
-    // Deep clone card data and compress images so broadcast payload stays under 40KB
+    // Deep clone card data and compress images so broadcast payload stays well under WebRTC/Supabase limits (<140KB)
     const cardData = JSON.parse(JSON.stringify(rawCardData));
     let compressedCardImage = '';
     if (cardData.data) {
         if (cardData.data.sketchImage) {
-            compressedCardImage = await window.compressBase64Image(cardData.data.sketchImage, 750, 0.72);
+            compressedCardImage = await window.compressBase64Image(cardData.data.sketchImage, 550, 0.65);
             cardData.data.sketchImage = compressedCardImage;
         }
         if (cardData.data.scenePhotos && cardData.data.scenePhotos.length > 0) {
             cardData.data.scenePhotos = await Promise.all(
-                cardData.data.scenePhotos.map(p => window.compressBase64Image(p, 700, 0.70))
+                cardData.data.scenePhotos.map(p => window.compressBase64Image(p, 420, 0.55))
             );
         }
     }
@@ -1699,17 +1699,14 @@ window.blogOfficerCardToWire = async function(id) {
 
     const payloadItem = {
         type: 'officer_sitrep',
-        label: `OFFICER SITREP: ${cardData.data.unitCallsign}`,
+        label: `OFFICER SITREP: ${cardData.data.unitCallsign || 'UNIT'}`,
+        title: `OFFICER SITREP: ${cardData.data.unitCallsign || 'UNIT'}`,
         workstationData: cardData,
+        officerData: cardData.data,
+        data: cardData.data,
         image: lightImage
     };
     const userObj = (typeof commsUser !== 'undefined' && commsUser && commsUser.callsign) ? commsUser : { callsign: 'OPERATOR', role: 'FIRST RESPONDER', team: 'ALPHA' };
-    const payload = {
-        message: `[ OFFICER SITREP: ${cardData.data.unitCallsign} ]`,
-        image: lightImage,
-        user: userObj,
-        metadata: payloadItem
-    };
 
     // 1. Broadcast over Encrypted Comms Chat (P2P + Supabase)
     if (typeof commsUser !== 'undefined' && commsUser && commsUser.callsign && typeof TacticalCrypto !== 'undefined') {
@@ -1718,15 +1715,15 @@ window.blogOfficerCardToWire = async function(id) {
             message: messageText,
             user: commsUser,
             timestamp: Date.now(),
-            image: compressedCardImage,
-            metadata: payload
+            image: lightImage,
+            metadata: payloadItem
         });
         const msgId = Math.random().toString(36).substring(2, 9);
         if (window.receivedMsgIds) window.receivedMsgIds.add(msgId);
 
         // Render locally in sender chat
         if (typeof renderChatMessage === 'function') {
-            renderChatMessage(commsUser, messageText, true, compressedCardImage, null, payload);
+            renderChatMessage(commsUser, messageText, true, lightImage, null, payloadItem);
         }
 
         // Send over WebRTC P2P DataChannels
@@ -1750,7 +1747,7 @@ window.blogOfficerCardToWire = async function(id) {
     // 2. Post to Global Wire Blog Feed if available
     if (typeof window.submitGlobalWirePost === 'function') {
         const wireText = `[ 🚓 FIRST RESPONDER SITREP • ${cardData.data.sceneStatus} ]\nUNIT: ${cardData.data.unitCallsign} | CAD: ${cardData.data.cadNumber || 'N/A'}\nINCIDENT: ${cardData.data.incidentType}\nNOTES: ${cardData.data.incidentNotes || 'None'}`;
-        window.submitGlobalWirePost(wireText, compressedCardImage, 'OFFICER SITREP');
+        window.submitGlobalWirePost(wireText, lightImage, 'OFFICER SITREP');
     }
 
     // Reset and clear form fields & photos cleanly after transmit
@@ -1773,7 +1770,7 @@ window.reworkCurrentOfficerCard = function() {
 
 window.generateOfficerCardHTML = function(card) {
     window.lastRenderedOfficerCard = card;
-    const data = card.data || (card.workstationData ? card.workstationData.data : card);
+    const data = card.officerData || card.data || (card.workstationData ? (card.workstationData.data || card.workstationData) : card);
     const parties = data.parties || [];
     const photos = data.scenePhotos || [];
     

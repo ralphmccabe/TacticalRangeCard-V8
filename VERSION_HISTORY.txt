@@ -47,3 +47,47 @@ v8.72.0.0 - FIRST RESPONDER SITREP, INTEL VAULT & WHITEBOARD RESTORATION
   - Clicking any card in the grid now silently displays inside Window #4 (Intel Vault viewer) instead of jumping to Window #6.
   - Dedicated corner buttons and Window #4 actuator buttons ('REWORK INVOICE' and 'REWORK SITREP') open cards for editing in Window #6.
 * Bumped Service Worker cache version v8.71 -> v8.72 for instant mobile cache eviction.
+
+============================================================
+v8.73.0.0 - TACTICAL SPOTTER / SNIPER SITUATIONAL AWARENESS SUITE
+* Hybrid Road Names & Labels Overlay:
+  - Added multi-layer map engine with interactive toggle: SATELLITE / HYBRID (ROADS & NAMES) / TOPO CONTOURS.
+  - Hybrid mode overlays high-contrast Esri Transportation and Places reference tiles displaying interstate shields (I-35, I-10), state highways, FM/CR roads, and city street names directly over high-res satellite imagery.
+* Cross-Road & Intersection Search:
+  - Integrated smart geocoding search bar in Geo-Matrix toolbar supporting crossroads (e.g. "Hwy 71 & FM 973"), street intersections, mile markers, cities, landmarks, and direct lat/lon coordinate jumps.
+  - Automatically flies to target and locks high-contrast pulsing target crosshair pin.
+* 3-Way Distance Unit Selector (Yards / Meters / Miles):
+  - Upgraded distance selector to cycle YDS -> MTR -> MI -> YDS.
+  - Formatted mile calculations for long-distance spotter recon (e.g. "2.45 MI").
+* Sniper DOPE Range Rings:
+  - Built toggleable concentric DOPE range rings (200y, 400y, 600y, 800y, 1000y or 1/4 mi, 1/2 mi, 1 mi) centered on shooter/origin OP or operator position.
+  - Annotated with time-of-flight (TOF) ballistic estimates and color-coded danger thresholds.
+* Azimuth / Bearing & Heading Indicator:
+  - Added real-time azimuth calculation (000°-359°) with 16-point cardinal direction headings (e.g. "048° NE") to all measured vector lines.
+* 12 Tactical Stamp Icons with High-Contrast Live Badges:
+  - Added custom tactical stamp tray featuring 12 mission icons: Enemy/Hostile (💀), Animal/Game (🦌), TRP 1 (🎯), OP/Hide (👁️), Airstrip (✈️), Hospital/ER (🏥), Medevac LZ (🚁), Dead Space (🛑), Vehicle (🚗), Target Waypoint (📍), Hazard (⚠️), and Water Cache (💧).
+  - Dropped stamps render with top-level drop shadow emojis and glowing tactical chip labels underneath.
+  - Tap any stamp on map to view details or remove.
+* Intel Vault & Comms Chat Synchronization:
+  - Serialized all tactical stamps, DOPE rings, layer mode, and range units into Intel Vault card metadata and 2D canvas reports.
+  - Restores full tactical layout with one click when loaded back from Intel Vault.
+  - Integrated "OPEN IN GEO-MATRIX" and "SAVE TO VAULT" action buttons directly in encrypted mission chat messages for transmitted map cards.
+* Bumped Service Worker cache version v8.72 -> v8.73 for automatic client cache refresh.
+
+============================================================
+v8.74.0.0 - FIRST RESPONDER SITREP CHAT TRANSMISSION & DIAGRAM PRESERVATION
+* Fixed First Responder SITREP card transmission over P2P Comms Chat:
+  - Eliminated duplicate uncompressed metadata trees between officerData and workstationData that previously caused payloads to exceed WebRTC SCTP data channel buffer (256KB) and Supabase Realtime broadcast message limits.
+  - Implemented balanced, high-efficiency client image compression:
+    • Scene evidence photos (up to 5): 420px max dimension, 0.55 JPEG quality (~10-15KB each).
+    • Crime scene tactical sketch diagram: 550px max dimension, 0.65 JPEG/PNG (~15-20KB).
+    • Visual card snapshot: 600px max dimension, 0.65 JPEG (~25KB).
+  - Keeps total encrypted payload compactly between 80KB-130KB, guaranteeing instant and seamless transmission across all mobile devices and desktop clients.
+* Fixed Crime Scene Tactical Diagram (Sketchpad) deletion bug:
+  - Removed faulty fallback logic in sendVaultItemToChat that previously deleted sketchImage whenever payload approached size thresholds.
+  - Sketchpad drawing is now permanently preserved with zero-deletion guarantee across transmission, storage, and retrieval.
+* Fixed Intel Vault / Viewer (Window #4) reconstruction on received SITREP cards:
+  - Normalized chat message metadata unwrapping so transmitted cards retain all tactical fields, scene photos, and sketchpad diagram.
+  - Fixed saveChatCardToVault to store thumbnail preview and complete officerData / workstationData structures.
+  - Updated loadSnapshotToViewer and generateOfficerCardHTML to recognize all received card schemas and immediately render the Crime Scene Tactical Diagram in full fidelity.
+* Bumped Service Worker cache version v8.73 -> v8.74 for instant mobile cache eviction.

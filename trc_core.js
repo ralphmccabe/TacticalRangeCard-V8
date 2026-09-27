@@ -3667,12 +3667,74 @@ function initializeTacticalDashboard2() {
             });
             resizeObserver.observe(container);
 
-            // 2. Load World Imagery Tile Layer (Satellite)
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            // 2. Initialize Multi-Layer Engine (Satellite, Hybrid Roads & Names, Topo Contours)
+            window.satTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles &copy; Esri',
                 crossOrigin: true
-            }).addTo(orbitalMap);
+            });
+
+            window.roadsTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Esri Transportation',
+                crossOrigin: true,
+                opacity: 0.95
+            });
+
+            window.labelsTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Esri Places',
+                crossOrigin: true,
+                opacity: 0.95
+            });
+
+            window.topoTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Esri Topo',
+                crossOrigin: true
+            });
+
+            window.setGeoMapLayer = function(mode) {
+                if (!orbitalMap) return;
+                window.currentMapLayer = mode;
+                [window.satTileLayer, window.roadsTileLayer, window.labelsTileLayer, window.topoTileLayer].forEach(l => {
+                    if (l && orbitalMap.hasLayer(l)) orbitalMap.removeLayer(l);
+                });
+                const lbl = document.getElementById('geo-layer-label');
+                const btn = document.getElementById('geo-layer-toggle-btn');
+                if (mode === 'sat') {
+                    window.satTileLayer.addTo(orbitalMap);
+                    if (lbl) lbl.textContent = '🛰️ SAT';
+                    if (btn) { btn.classList.remove('border-amber-500', 'text-amber-400', 'border-emerald-500', 'text-emerald-400'); }
+                    if (window.pushTacLog) window.pushTacLog("MAP LAYER: SATELLITE", "SYS");
+                } else if (mode === 'topo') {
+                    window.topoTileLayer.addTo(orbitalMap);
+                    if (lbl) lbl.textContent = '🏔️ TOPO';
+                    if (btn) { btn.classList.add('border-emerald-500', 'text-emerald-400'); btn.classList.remove('border-amber-500', 'text-amber-400'); }
+                    if (window.pushTacLog) window.pushTacLog("MAP LAYER: TOPO CONTOURS", "SYS");
+                } else {
+                    window.currentMapLayer = 'hybrid';
+                    window.satTileLayer.addTo(orbitalMap);
+                    window.roadsTileLayer.addTo(orbitalMap);
+                    window.labelsTileLayer.addTo(orbitalMap);
+                    if (lbl) lbl.textContent = '🗺️ HYBRID';
+                    if (btn) { btn.classList.add('border-amber-500', 'text-amber-400'); btn.classList.remove('border-emerald-500', 'text-emerald-400'); }
+                    if (window.pushTacLog) window.pushTacLog("MAP LAYER: HYBRID ROADS & NAMES", "SYS");
+                }
+            };
+
+            window.cycleGeoMapLayer = function() {
+                if (window.currentMapLayer === 'sat') {
+                    window.setGeoMapLayer('hybrid');
+                } else if (window.currentMapLayer === 'hybrid') {
+                    window.setGeoMapLayer('topo');
+                } else {
+                    window.setGeoMapLayer('sat');
+                }
+            };
+
+            // Default to rich Hybrid with road names, highways, and places
+            window.setGeoMapLayer(window.currentMapLayer || 'hybrid');
 
             // Push Zoom control to a custom location so it doesn't mess with our headers
             L.control.zoom({ position: 'bottomright' }).addTo(orbitalMap);
@@ -3746,8 +3808,89 @@ function initializeTacticalDashboard2() {
     }
 
     // ----------------------------------------------------------------
-    // GEO COORDINATE JUMP — parses lat,long from toolbar input
+    // GEO LOCATION & CROSS-ROAD SEARCH / COORDINATE JUMP
     // ----------------------------------------------------------------
+    window.geoExecuteSearch = async function() {
+        const input = document.getElementById('geo-coord-jump-input') || document.getElementById('geo-jump-input');
+        if (!input) return;
+        const query = input.value.trim();
+        if (!query) return;
+
+        // 1. Check if input is directly lat, lon coordinates
+        const parts = query.split(/[\s,]+/).filter(Boolean);
+        if (parts.length >= 2) {
+            const lat = parseFloat(parts[0]);
+            const lon = parseFloat(parts[1]);
+            if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                window.geoJumpToCoords();
+                return;
+            }
+        }
+
+        // 2. Geocode intersection, crossroad, mile marker, or address
+        const targetMap = window.orbitalMap || window.geoMap || (typeof orbitalMap !== 'undefined' ? orbitalMap : null);
+        if (!targetMap) {
+            if (window.showToast) window.showToast('⚠ Map not active — open Geo Matrix first', 'WARNING');
+            return;
+        }
+
+        if (window.showToast) window.showToast(`🔍 LOCATING: "${query}"...`, 'INFO');
+        if (window.pushTacLog) window.pushTacLog(`GEO SEARCH: "${query}"`, 'SYS');
+
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+            const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+            if (!resp.ok) throw new Error("Search service unavailable");
+            const data = await resp.json();
+
+            if (!data || data.length === 0) {
+                if (window.showToast) window.showToast(`❌ Location not found: "${query}"`, 'WARNING');
+                if (window.pushTacLog) window.pushTacLog(`GEO SEARCH NOT FOUND: "${query}"`, 'WARNING');
+                return;
+            }
+
+            const res = data[0];
+            const lat = parseFloat(res.lat);
+            const lon = parseFloat(res.lon);
+            const shortName = res.display_name.split(',').slice(0, 3).join(', ');
+
+            targetMap.invalidateSize();
+            targetMap.flyTo([lat, lon], 16, { animate: true, duration: 1.5 });
+
+            if (window.L) {
+                const searchIcon = window.L.divIcon({
+                    className: '',
+                    html: `<div style="display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -100%); cursor:pointer;">
+                             <div style="font-size:28px; filter:drop-shadow(0 0 10px #00e5ff); animation:bounce 1s infinite alternate;">🎯</div>
+                             <div style="margin-top:2px; font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:900; letter-spacing:0.5px; padding:2px 7px; border-radius:4px; background:rgba(3,7,18,0.92); color:#00e5ff; border:1.5px solid #00e5ff; box-shadow:0 0 12px rgba(0,229,255,0.6); white-space:nowrap; text-transform:uppercase;">
+                               ${shortName}
+                             </div>
+                           </div>`,
+                    iconSize: [28, 48],
+                    iconAnchor: [14, 48]
+                });
+                const marker = window.L.marker([lat, lon], { icon: searchIcon }).addTo(targetMap);
+                marker.bindPopup(`
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:10px; min-width:180px;">
+                        <b style="color:#00e5ff; font-size:11px;">🎯 SEARCH TARGET LOCK</b><br>
+                        <span style="color:#e2e8f0;">${res.display_name}</span><br>
+                        <span style="color:#10b981; font-weight:bold; font-size:9px;">LAT: ${lat.toFixed(6)} | LON: ${lon.toFixed(6)}</span>
+                    </div>
+                `).openPopup();
+
+                if (!window.wireIntelMarkers) window.wireIntelMarkers = [];
+                window.wireIntelMarkers.push(marker);
+            }
+
+            if (window.showToast) window.showToast(`🎯 TARGET LOCKED: ${shortName}`);
+            if (window.pushTacLog) window.pushTacLog(`GEO FIX SECURED: [${lat.toFixed(5)}, ${lon.toFixed(5)}] ${shortName}`, 'SUCCESS');
+            input.value = '';
+        } catch (err) {
+            console.error("Geocoding failed:", err);
+            if (window.showToast) window.showToast('⚠ Search request failed. Verify network.', 'ERROR');
+        }
+    };
+
     window.geoJumpToCoords = function() {
         const input = document.getElementById('geo-coord-jump-input') || document.getElementById('geo-jump-input');
         if (!input) return;
@@ -3757,12 +3900,20 @@ function initializeTacticalDashboard2() {
         // Accept formats: "34.0069, -101.98" or "34.0069 -101.98" or "34.0069,-101.98"
         const parts = raw.split(/[\s,]+/).filter(Boolean);
         if (parts.length < 2) {
+            if (window.geoExecuteSearch) {
+                window.geoExecuteSearch();
+                return;
+            }
             if (window.showToast) window.showToast('⚠ Enter coordinates as: lat, long', 'WARNING');
             return;
         }
         const lat = parseFloat(parts[0]);
         const lon = parseFloat(parts[1]);
         if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+            if (window.geoExecuteSearch) {
+                window.geoExecuteSearch();
+                return;
+            }
             if (window.showToast) window.showToast('⚠ Invalid coordinates. Lat: -90–90  Long: -180–180', 'WARNING');
             return;
         }
@@ -3828,10 +3979,10 @@ function initializeTacticalDashboard2() {
     }
 
     function handleMapClick(e) {
-    if (window.activeIconStamp) {
-        window.dropTacticalIcon(e.latlng.lat, e.latlng.lng, window.activeIconStamp);
-        return; // Don't do other click actions if we are stamping
-    }
+        if (window.activeIconStamp) {
+            window.dropTacticalIcon(e.latlng.lat, e.latlng.lng, window.activeIconStamp, window.activeIconLabel);
+            return; // Don't do other click actions if we are stamping
+        }
         if (isDrawingMode) return;
         // Prevent accidental marker drops when clicking to expand the panel from the dashboard
         const panel = document.getElementById('panel-measuring');
@@ -3862,12 +4013,127 @@ function initializeTacticalDashboard2() {
 
         mapMarkers.push(marker);
 
+        if (window.isDopeRingsActive && typeof window.renderDopeRings === 'function') {
+            window.renderDopeRings();
+        }
+
         if (mapMarkers.length >= 2) {
             drawMapLine();
         } else {
             document.getElementById('live-map-dist').textContent = "--.--";
         }
     }
+
+    // ========================================================================
+    // SNIPER DOPE RANGE RINGS ENGINE
+    // ========================================================================
+    window.isDopeRingsActive = false;
+    window.dopeRingsLayers = [];
+
+    window.toggleDopeRings = function() {
+        window.isDopeRingsActive = !window.isDopeRingsActive;
+        const btn = document.getElementById('geo-rings-toggle-btn');
+        if (window.isDopeRingsActive) {
+            if (btn) {
+                btn.classList.replace('text-gray-300', 'text-cyan-400');
+                btn.classList.replace('border-gray-700', 'border-cyan-500');
+                btn.classList.add('bg-cyan-950/80');
+            }
+            window.renderDopeRings();
+            if (window.pushTacLog) window.pushTacLog("SNIPER DOPE RANGE RINGS ENGAGED", "LOCK");
+        } else {
+            if (btn) {
+                btn.classList.replace('text-cyan-400', 'text-gray-300');
+                btn.classList.replace('border-cyan-500', 'border-gray-700');
+                btn.classList.remove('bg-cyan-950/80');
+            }
+            window.clearDopeRings();
+            if (window.pushTacLog) window.pushTacLog("SNIPER DOPE RANGE RINGS DISENGAGED", "SYS");
+        }
+    };
+
+    window.clearDopeRings = function() {
+        if (orbitalMap && window.dopeRingsLayers.length > 0) {
+            window.dopeRingsLayers.forEach(l => {
+                if (orbitalMap.hasLayer(l)) orbitalMap.removeLayer(l);
+            });
+            window.dopeRingsLayers = [];
+        }
+    };
+
+    window.renderDopeRings = function() {
+        if (!orbitalMap || !window.isDopeRingsActive) return;
+        window.clearDopeRings();
+
+        // Determine center: 1st map measurement marker (origin OP), or GPS position, or map center
+        let center = null;
+        if (typeof mapMarkers !== 'undefined' && mapMarkers.length > 0) {
+            center = mapMarkers[0].getLatLng();
+        } else if (window.myLatestCoords && window.myLatestCoords.lat) {
+            center = L.latLng(window.myLatestCoords.lat, window.myLatestCoords.lng);
+        } else {
+            center = orbitalMap.getCenter();
+        }
+
+        // Standard .308 175gr BTHP standard dope / TOF approximations
+        let rings = [];
+        if (geoDistanceUnit === 'MI') {
+            rings = [
+                { distM: 402.34, label: '0.25 MI (440 YDS)', color: '#06b6d4', weight: 1 },
+                { distM: 804.67, label: '0.50 MI (880 YDS)', color: '#06b6d4', weight: 1.5 },
+                { distM: 1207.01, label: '0.75 MI (1320 YDS)', color: '#06b6d4', weight: 1 },
+                { distM: 1609.34, label: '1.00 MI (1760 YDS)', color: '#38bdf8', weight: 2 },
+                { distM: 3218.69, label: '2.00 MI (3520 YDS)', color: '#ef4444', weight: 2 }
+            ];
+        } else if (geoDistanceUnit === 'M') {
+            rings = [
+                { distM: 200, label: '200 MTR • TOF 0.26s', color: '#06b6d4', weight: 1 },
+                { distM: 400, label: '400 MTR • TOF 0.58s', color: '#06b6d4', weight: 1.5 },
+                { distM: 600, label: '600 MTR • TOF 0.98s', color: '#06b6d4', weight: 1.5 },
+                { distM: 800, label: '800 MTR • TOF 1.48s', color: '#38bdf8', weight: 1.8 },
+                { distM: 1000, label: '1000 MTR • TOF 2.15s', color: '#ef4444', weight: 2 }
+            ];
+        } else { // YDS
+            rings = [
+                { distM: 182.88, label: '200 YDS • TOF 0.24s', color: '#06b6d4', weight: 1 },
+                { distM: 365.76, label: '400 YDS • TOF 0.52s', color: '#06b6d4', weight: 1.5 },
+                { distM: 548.64, label: '600 YDS • TOF 0.86s', color: '#06b6d4', weight: 1.5 },
+                { distM: 731.52, label: '800 YDS • TOF 1.28s', color: '#38bdf8', weight: 1.8 },
+                { distM: 914.40, label: '1000 YDS • TOF 1.82s', color: '#ef4444', weight: 2 }
+            ];
+        }
+
+        rings.forEach(r => {
+            const circle = L.circle(center, {
+                radius: r.distM,
+                color: r.color,
+                weight: r.weight,
+                dashArray: '5, 7',
+                fillOpacity: 0.02,
+                fillColor: r.color,
+                interactive: false
+            }).addTo(orbitalMap);
+            window.dopeRingsLayers.push(circle);
+
+            // Put a crisp label at the North point of the ring
+            const deltaLat = (r.distM / 6378137) * (180 / Math.PI);
+            const labelPos = L.latLng(center.lat + deltaLat, center.lng);
+
+            const lblIcon = L.divIcon({
+                className: '',
+                html: `<div style="transform:translate(-50%, -50%); pointer-events:none;">
+                         <span style="font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:900; color:${r.color}; background:rgba(3,7,18,0.88); border:1px solid ${r.color}; padding:1px 5px; border-radius:3px; white-space:nowrap; box-shadow:0 0 8px ${r.color}66;">
+                           ${r.label}
+                         </span>
+                       </div>`,
+                iconSize: [1, 1],
+                iconAnchor: [0, 0]
+            });
+
+            const labelMarker = L.marker(labelPos, { icon: lblIcon, interactive: false }).addTo(orbitalMap);
+            window.dopeRingsLayers.push(labelMarker);
+        });
+    };
 
     window.drawMapLine = function() {
         if (!orbitalMap || mapMarkers.length < 2) return;
@@ -3881,6 +4147,7 @@ function initializeTacticalDashboard2() {
 
         const origin = mapMarkers[0].getLatLng();
         let lastDisplayDistance = "--.--";
+        let lastAzimuthStr = "---°";
 
         for (let i = 1; i < mapMarkers.length; i++) {
             const target = mapMarkers[i].getLatLng();
@@ -3899,26 +4166,46 @@ function initializeTacticalDashboard2() {
                 mapPolylines.push(polyline);
             }
 
-            // === MIDPOINT LABEL INJECTION (HOT PINK DISTANCE) ===
+            // === AZIMUTH / BEARING CALCULATION ===
+            const toRad = deg => deg * Math.PI / 180;
+            const toDeg = rad => rad * 180 / Math.PI;
+            const phi1 = toRad(origin.lat), phi2 = toRad(target.lat);
+            const deltaLambda = toRad(target.lng - origin.lng);
+            const y = Math.sin(deltaLambda) * Math.cos(phi2);
+            const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+            const bearing = Math.round((toDeg(Math.atan2(y, x)) + 360) % 360);
+            const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            const cardinal = cardinals[Math.round(bearing / 22.5) % 16];
+            const azimuthStr = `${bearing.toString().padStart(3, '0')}° ${cardinal}`;
+            lastAzimuthStr = azimuthStr;
+
+            // === MIDPOINT LABEL INJECTION (HOT PINK DISTANCE + CYAN AZIMUTH) ===
             const midLat = (origin.lat + target.lat) / 2;
             const midLng = (origin.lng + target.lng) / 2;
             
             // Spherical Earth Math
             const distanceMeters = origin.distanceTo(target);
             let displayDistance;
+            let displayUnit = geoDistanceUnit;
             if (geoDistanceUnit === 'YDS') {
                 displayDistance = (distanceMeters * 1.09361).toFixed(1);
+            } else if (geoDistanceUnit === 'MI') {
+                displayDistance = (distanceMeters / 1609.344).toFixed(2);
             } else {
                 displayDistance = distanceMeters.toFixed(1);
+                displayUnit = 'MTR';
             }
             lastDisplayDistance = displayDistance;
 
-            const labelHtml = `<div style="color:#ff1493; font-family:'JetBrains Mono', monospace; font-weight:900; font-size:20px; text-shadow:-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; white-space:nowrap;">${displayDistance} ${geoDistanceUnit}</div>`;
+            const labelHtml = `<div style="background:rgba(3,7,18,0.88); border:1.5px solid #ff1493; border-radius:5px; padding:3px 8px; box-shadow:0 0 14px rgba(255,20,147,0.6); display:flex; flex-direction:column; align-items:center; white-space:nowrap; transform:translate(-50%, -50%); pointer-events:none;">
+                <span style="color:#ff1493; font-family:'JetBrains Mono', monospace; font-weight:900; font-size:18px; letter-spacing:0.5px; text-shadow:0 0 8px #ff1493; line-height:1.1;">${displayDistance} ${displayUnit}</span>
+                <span style="color:#00e5ff; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:11px; letter-spacing:0.8px; text-shadow:0 0 4px #00e5ff; margin-top:2px;">AZ ${azimuthStr}</span>
+            </div>`;
             const customIcon = L.divIcon({
                 html: labelHtml,
                 className: 'geo-midpoint-label',
-                iconSize: null,
-                iconAnchor: [30, -10]
+                iconSize: [1, 1],
+                iconAnchor: [0, 0]
             });
 
             const marker = L.marker([midLat, midLng], { icon: customIcon }).addTo(orbitalMap);
@@ -3931,9 +4218,9 @@ function initializeTacticalDashboard2() {
         }
 
         document.getElementById('live-map-dist').textContent = lastDisplayDistance;
-        if(document.getElementById('live-map-unit')) document.getElementById('live-map-unit').textContent = geoDistanceUnit;
+        if(document.getElementById('live-map-unit')) document.getElementById('live-map-unit').textContent = geoDistanceUnit === 'M' ? 'MTR' : geoDistanceUnit;
         
-        window.pushTacLog(`ORBITAL VECTOR SECURED:  .`, "LOCK");
+        window.pushTacLog(`ORBITAL VECTOR SECURED: ${lastDisplayDistance} ${geoDistanceUnit === 'M' ? 'MTR' : geoDistanceUnit} • AZ ${lastAzimuthStr}`, "LOCK");
         
         // === PERSIST TO MINIMIZED PANEL VIEW ===
         const minimized = document.getElementById('geo-minimized-view');
@@ -3942,7 +4229,7 @@ function initializeTacticalDashboard2() {
                 <div class="w-full h-full bg-emerald-950/20 flex flex-col items-center justify-center p-2 text-center relative group-hover:bg-emerald-500/5 transition-all">
                     <div class="absolute top-1 left-1 text-[6px] text-emerald-500 font-black uppercase opacity-60">VECTOR LOCK</div>
                     <span class="text-2xl font-black text-white font-mono tracking-tighter leading-none">${lastDisplayDistance}</span>
-                    <span class="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em] mt-1">${geoDistanceUnit}</span>
+                    <span class="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em] mt-0.5">${geoDistanceUnit === 'M' ? 'MTR' : geoDistanceUnit} • AZ ${lastAzimuthStr}</span>
                     <div class="absolute bottom-1 right-1 text-[6px] text-gray-400 font-mono">GEO_FIX</div>
                 </div>
             `;
@@ -4280,11 +4567,29 @@ function initializeTacticalDashboard2() {
     if (geoUnitBtn) {
         geoUnitBtn.addEventListener('click', (e) => { 
             e.stopPropagation(); 
-            geoDistanceUnit = geoDistanceUnit === 'YDS' ? 'M' : 'YDS'; 
-            document.getElementById('geo-unit-label').textContent = geoDistanceUnit; 
+            geoDistanceUnit = geoDistanceUnit === 'YDS' ? 'M' : (geoDistanceUnit === 'M' ? 'MI' : 'YDS'); 
+            const unitLabel = geoDistanceUnit === 'M' ? 'MTR' : geoDistanceUnit;
+            document.getElementById('geo-unit-label').textContent = unitLabel; 
             if(document.getElementById('live-map-unit')) 
-                document.getElementById('live-map-unit').textContent = geoDistanceUnit; 
+                document.getElementById('live-map-unit').textContent = unitLabel; 
             if (typeof drawMapLine === 'function') drawMapLine(); 
+            if (window.isDopeRingsActive && typeof window.renderDopeRings === 'function') window.renderDopeRings();
+        });
+    }
+
+    const geoLayerBtn = document.getElementById('geo-layer-toggle-btn');
+    if (geoLayerBtn) {
+        geoLayerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.cycleGeoMapLayer) window.cycleGeoMapLayer();
+        });
+    }
+
+    const geoRingsBtn = document.getElementById('geo-rings-toggle-btn');
+    if (geoRingsBtn) {
+        geoRingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.toggleDopeRings) window.toggleDopeRings();
         });
     }
 
@@ -4298,7 +4603,6 @@ function initializeTacticalDashboard2() {
         });
     }
 
-    // Master Snapshot Bridge Button (Window 3 to Window 4)
     // Master Snapshot Bridge Button (Window 3 to Window 4)
     const mapSnapBtn = document.getElementById('geo-snapshot-btn');
     if (mapSnapBtn) {
@@ -4320,7 +4624,11 @@ function initializeTacticalDashboard2() {
                 type: 'geo-snapshot',
                 label: label,
                 timestamp: new Date().toISOString(),
-                myCoords: window.myLatestCoords ? Object.assign({}, window.myLatestCoords) : null
+                myCoords: window.myLatestCoords ? Object.assign({}, window.myLatestCoords) : null,
+                tacticalIcons: (window.tacticalIconData && window.tacticalIconData.length > 0) ? window.tacticalIconData.slice() : [],
+                dopeRingsActive: !!window.isDopeRingsActive,
+                mapLayer: window.currentMapLayer || 'hybrid',
+                geoDistanceUnit: typeof geoDistanceUnit !== 'undefined' ? geoDistanceUnit : 'YDS'
             };
 
             const tmInput = document.getElementById('geo-coord-jump-input') || document.getElementById('geo-jump-coords');
@@ -4706,7 +5014,7 @@ function initializeTacticalDashboard2() {
     // LOAD INTEL VAULT TO MAP
     // ========================================================================
     window.loadVaultToMap = function(item) {
-        if (!item || (!item.markers && !item.originLat && !item.drawings && !item.image && !item.routeTracker)) {
+        if (!item || (!item.markers && !item.originLat && !item.drawings && !item.image && !item.routeTracker && !item.tacticalIcons)) {
             alert("This snapshot does not contain valid map data or images.");
             return;
         }
@@ -4823,6 +5131,46 @@ function initializeTacticalDashboard2() {
             }
         }
 
+        // 3.95. Restore Tactical Stamps
+        if (item.tacticalIcons && Array.isArray(item.tacticalIcons)) {
+            if (window.tacticalIconLayers) {
+                window.tacticalIconLayers.forEach(m => {
+                    if (window.orbitalMap && window.orbitalMap.hasLayer(m)) window.orbitalMap.removeLayer(m);
+                });
+                window.tacticalIconLayers = [];
+            }
+            window.tacticalIconData = [];
+            item.tacticalIcons.forEach(st => {
+                if (window.dropTacticalIcon) {
+                    window.dropTacticalIcon(st.lat, st.lng, st.icon, st.label, true);
+                }
+            });
+        }
+
+        // 3.96. Restore Map Layer (Sat, Hybrid, Topo)
+        if (item.mapLayer && window.setGeoMapLayer) {
+            window.setGeoMapLayer(item.mapLayer);
+        }
+
+        // 3.97. Restore Distance Unit
+        if (item.geoDistanceUnit) {
+            geoDistanceUnit = item.geoDistanceUnit;
+            const unitLabel = geoDistanceUnit === 'M' ? 'MTR' : geoDistanceUnit;
+            const uLbl = document.getElementById('geo-unit-label');
+            if (uLbl) uLbl.textContent = unitLabel;
+            const lUnit = document.getElementById('live-map-unit');
+            if (lUnit) lUnit.textContent = unitLabel;
+        }
+
+        // 3.98. Restore DOPE Range Rings
+        if (item.dopeRingsActive) {
+            if (!window.isDopeRingsActive && window.toggleDopeRings) {
+                window.toggleDopeRings();
+            } else if (window.isDopeRingsActive && window.renderDopeRings) {
+                window.renderDopeRings();
+            }
+        }
+
         // 4. Draw Line
         if (typeof drawMapLine === 'function') drawMapLine();
 
@@ -4832,6 +5180,7 @@ function initializeTacticalDashboard2() {
             if (window.mySelfPositionMarker) activeMarkers.push(window.mySelfPositionMarker);
             if (window.teammateLocatorMarker) activeMarkers.push(window.teammateLocatorMarker);
             if (mapMarkers && mapMarkers.length > 0) activeMarkers.push(...mapMarkers);
+            if (window.tacticalIconLayers && window.tacticalIconLayers.length > 0) activeMarkers.push(...window.tacticalIconLayers);
 
             if (activeMarkers.length > 0) {
                 const group = L.featureGroup(activeMarkers);
@@ -5166,6 +5515,7 @@ function initializeTacticalDashboard2() {
                         item.routeTracker ||
                         (item.markers && item.markers.length > 0) ||
                         (item.drawings && item.drawings.length > 0) ||
+                        (item.tacticalIcons && item.tacticalIcons.length > 0) ||
                         item.originLat ||
                         item.type === 'map' ||
                         item.type === 'geomatrix' ||
@@ -8832,12 +9182,13 @@ function initializeTacticalDashboard2() {
         const cardObj = window.chatPayloadStore[key];
         if (!cardObj) return;
         const title = cardObj.title || cardObj.name || cardObj.label || 'TRANSMITTED CARD';
-        const img = cardObj.image || (cardObj.workstationData ? cardObj.workstationData.image : '') || '';
+        const img = cardObj.image || (cardObj.workstationData ? cardObj.workstationData.image : '') || (cardObj.officerData ? (cardObj.officerData.sketchImage || (cardObj.officerData.scenePhotos && cardObj.officerData.scenePhotos[0])) : '') || '';
         if (window.saveIntelSnapshot) {
             window.saveIntelSnapshot(title, img, cardObj);
         }
         if (window.pushTacLog) window.pushTacLog(`CARD "${title}" SAVED TO INTEL VAULT`, 'SUCCESS');
-        alert(`"${title}" Saved to Intel Vault!`);
+        if (window.showToast) window.showToast(`"${title}" Saved to Intel Vault!`);
+        else alert(`"${title}" Saved to Intel Vault!`);
     };
 
     window.reworkChatCard = function(key) {
@@ -8856,7 +9207,7 @@ function initializeTacticalDashboard2() {
             }
         }
         
-        if (cardType === 'officer' || cardType === 'officer_sitrep' || cardObj.type === 'officer_sitrep') {
+        if (cardType === 'officer' || cardType === 'officer_sitrep' || cardObj.type === 'officer_sitrep' || cardObj.officerData) {
             if (typeof window.loadOfficerCardBackToEditor === 'function') {
                 window.loadOfficerCardBackToEditor(cardObj);
                 return;
@@ -8938,11 +9289,42 @@ function initializeTacticalDashboard2() {
                     </div>
                 </div>
             `;
-        } else if (tapeMetadata && (tapeMetadata.type === 'officer_sitrep' || tapeMetadata.type === 'officer' || tapeMetadata.workstationData?.type === 'officer' || tapeMetadata.workstationData)) {
-            const cardObj = tapeMetadata.workstationData || tapeMetadata;
+        } else if (tapeMetadata && (tapeMetadata.type === 'officer_sitrep' || tapeMetadata.type === 'officer' || tapeMetadata.workstationData?.type === 'officer' || tapeMetadata.officerData || (tapeMetadata.label && tapeMetadata.label.includes('OFFICER SITREP')) || tapeMetadata.workstationData)) {
+            // Unwrap if double wrapped in metadata
+            let meta = tapeMetadata;
+            if (meta.metadata && !meta.workstationData && !meta.officerData) {
+                meta = meta.metadata;
+            }
+            const isOfficer = meta.type === 'officer_sitrep' || meta.type === 'officer' || Boolean(meta.officerData) || meta.workstationData?.type === 'officer' || (meta.label && meta.label.includes('OFFICER SITREP'));
+            let cardObj;
+            if (isOfficer) {
+                const normData = meta.officerData || meta.workstationData?.data || meta.data || meta;
+                const cardTitle = meta.label || meta.title || (normData.unitCallsign ? `OFFICER SITREP: ${normData.unitCallsign}` : 'OFFICER SITREP');
+                cardObj = {
+                    id: meta.id || Date.now(),
+                    label: cardTitle,
+                    title: cardTitle,
+                    type: 'officer_sitrep',
+                    image: imageBase64 || meta.image || normData.sketchImage || (normData.scenePhotos && normData.scenePhotos[0]) || '',
+                    officerData: normData,
+                    workstationData: meta.workstationData || {
+                        id: meta.id || Date.now(),
+                        type: 'officer',
+                        timestamp: meta.timestamp || Date.now(),
+                        data: normData
+                    },
+                    data: normData
+                };
+            } else {
+                cardObj = meta.workstationData || meta;
+                if (!cardObj.image && imageBase64) cardObj.image = imageBase64;
+            }
+
             const chatKey = `card_${Math.random().toString(36).substring(2, 9)}`;
             window.chatPayloadStore = window.chatPayloadStore || {};
             window.chatPayloadStore[chatKey] = cardObj;
+
+            const previewImg = cardObj.image || (cardObj.officerData && cardObj.officerData.sketchImage) || imageBase64;
 
             contentHtml += `
                 <div class="mt-2 p-2 bg-slate-900 border border-cyan-500/60 rounded-lg text-left text-xs text-white max-w-full space-y-1.5 shadow-lg">
@@ -8950,7 +9332,7 @@ function initializeTacticalDashboard2() {
                         <span>🚓 ${cardObj.title || cardObj.label || 'WORKSTATION DOSSIER'}</span>
                         <span class="text-[8px] bg-red-950 text-red-400 px-1.5 py-0.5 rounded border border-red-600/50 font-mono">ENCRYPTED INTEL</span>
                     </div>
-                    ${imageBase64 ? `<img src="${imageBase64}" class="w-full h-44 object-contain rounded border border-slate-700 bg-black cursor-pointer shadow" onclick="if(window.loadSnapshotToViewer) window.loadSnapshotToViewer(window.chatPayloadStore['${chatKey}']);">` : ''}
+                    ${previewImg ? `<img src="${previewImg}" class="w-full h-44 object-contain rounded border border-slate-700 bg-black cursor-pointer shadow" onclick="if(window.loadSnapshotToViewer) window.loadSnapshotToViewer(window.chatPayloadStore['${chatKey}']);">` : ''}
                     <div class="flex items-center gap-1.5 pt-1 flex-wrap">
                         <button type="button" onclick="event.stopPropagation(); if(window.saveChatCardToVault) window.saveChatCardToVault('${chatKey}');" class="bg-purple-900 hover:bg-purple-800 text-purple-200 text-[9px] font-black px-2.5 py-1 rounded border border-purple-500/60 uppercase flex items-center gap-1 cursor-pointer shadow">
                             <i data-lucide="folder-plus" class="w-3 h-3 text-purple-300"></i> SAVE TO VAULT
@@ -8962,13 +9344,43 @@ function initializeTacticalDashboard2() {
                 </div>
             `;
         } else if (imageBase64) {
+            const isMapCard = !!(tapeMetadata && (
+                tapeMetadata.markers ||
+                tapeMetadata.drawings ||
+                tapeMetadata.tacticalIcons ||
+                tapeMetadata.type === 'geo-snapshot' ||
+                tapeMetadata.type === 'map' ||
+                (tapeMetadata.label && (
+                    tapeMetadata.label.startsWith('GEO') ||
+                    tapeMetadata.label.startsWith('ROUTE') ||
+                    tapeMetadata.label.startsWith('RECON') ||
+                    tapeMetadata.label.includes('MAP')
+                ))
+            ));
+
+            const chatKey = `map_${Math.random().toString(36).substring(2, 9)}`;
+            if (isMapCard && tapeMetadata) {
+                window.chatPayloadStore = window.chatPayloadStore || {};
+                window.chatPayloadStore[chatKey] = Object.assign({ image: imageBase64 }, tapeMetadata);
+            }
+
             contentHtml += `
                 <div class="mt-2 p-1.5 bg-slate-950 border border-cyan-500/60 rounded-lg text-left shadow-lg">
                     <div class="flex items-center justify-between text-[9px] font-black text-cyan-300 uppercase tracking-widest px-1 pb-1">
-                        <span>INTEL CARD PREVIEW</span>
+                        <span>${isMapCard ? '🗺️ GEO-MATRIX INTEL' : 'INTEL CARD PREVIEW'}</span>
                         <span class="text-[8px] text-slate-400 font-mono">🔍 TAP TO ZOOM</span>
                     </div>
                     <img src="${imageBase64}" class="w-full max-w-[320px] h-auto object-contain rounded border border-slate-700 bg-slate-900 cursor-pointer shadow" onclick="if(window.loadSnapshotToViewer) { window.loadSnapshotToViewer({ image: this.src, label: '${(tapeMetadata?.label || 'INTEL CARD').replace(/'/g, "\\'")}' }); } else { window.open(this.src); }">
+                    ${isMapCard ? `
+                    <div class="flex items-center gap-1.5 pt-1.5 flex-wrap">
+                        <button type="button" onclick="event.stopPropagation(); if(window.loadVaultToMap) window.loadVaultToMap(window.chatPayloadStore['${chatKey}']);" class="bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black px-2.5 py-1 rounded border border-blue-400 uppercase flex items-center gap-1 cursor-pointer shadow">
+                            <i data-lucide="map" class="w-3 h-3 text-white"></i> OPEN IN GEO-MATRIX
+                        </button>
+                        <button type="button" onclick="event.stopPropagation(); if(window.saveChatCardToVault) window.saveChatCardToVault('${chatKey}');" class="bg-purple-900 hover:bg-purple-800 text-purple-200 text-[9px] font-black px-2.5 py-1 rounded border border-purple-500/60 uppercase flex items-center gap-1 cursor-pointer shadow">
+                            <i data-lucide="folder-plus" class="w-3 h-3 text-purple-300"></i> SAVE TO VAULT
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -10700,12 +11112,12 @@ function initializeTacticalDashboard2() {
         if (captureBtn) captureBtn.classList.add('hidden');
         
         const isContactCard = item.contact || item.type === 'intel_report' || item.type === 'contact';
-        const isOfficerCard = item.type === 'officer_sitrep' || item.workstationData?.type === 'officer';
+        const isOfficerCard = item.type === 'officer_sitrep' || item.type === 'officer' || Boolean(item.officerData) || item.workstationData?.type === 'officer' || (item.label && item.label.includes('OFFICER SITREP'));
         const isCasefile = item.type === 'casefile-pdf' || Boolean(item.casefileData) || (item.workstationData && item.workstationData.type === 'casefile');
         const isWsCard = item.type === 'workstation' || Boolean(item.workstationData) || ['medevac', 'scorecard', 'logistics', 'roster', 'bragboard', 'officer'].includes(item.type);
 
         if (isOfficerCard && cardViewer && typeof window.generateOfficerCardHTML === 'function') {
-            cardViewer.innerHTML = window.generateOfficerCardHTML(item.workstationData || item);
+            cardViewer.innerHTML = window.generateOfficerCardHTML(item);
             cardViewer.className = "w-full h-full max-h-full overflow-y-auto custom-scrollbar p-2 relative";
             if (window.lucide) window.lucide.createIcons();
             cardViewer.classList.remove('hidden');
@@ -11294,7 +11706,9 @@ ${cardImgHtml}
                 // General Intel / First Responder / Workstation / Blog Report Transmission
                 window.pushTacLog("SECURING INTEL FOR TRANSMISSION...", "SYS");
 
-                let compressedImg = await safeImage(item.image, 850, 0.75);
+                const isOfficer = item.type === 'officer_sitrep' || item.type === 'officer' || Boolean(item.officerData) || (item.workstationData && item.workstationData.type === 'officer') || (item.label && item.label.includes('OFFICER SITREP'));
+
+                let compressedImg = '';
                 const itemLabel = item.name || item.label || (item.title ? `WORKSTATION: ${item.title}` : `INTEL REPORT: ${item.category || item.type?.toUpperCase() || 'SNAPSHOT'}`);
                 
                 // Build clean lightweight metadata payload
@@ -11310,27 +11724,63 @@ ${cardImgHtml}
                     if (payloadItem.casefileData.mainAttachedImage) delete payloadItem.casefileData.mainAttachedImage;
                 }
 
-                // Compress heavy nested base64 image duplicates to keep payload under limits for broadcast, but DO NOT delete them!
-                if (payloadItem.data) {
-                    delete payloadItem.data.image; // duplicate
-                    if (payloadItem.data.exhibitImages) delete payloadItem.data.exhibitImages;
-                    if (payloadItem.data.sketchImage) {
-                        payloadItem.data.sketchImage = await safeImage(payloadItem.data.sketchImage, 600, 0.65);
+                if (isOfficer) {
+                    // Extract single source of truth for officer data
+                    const rawOffData = item.officerData || (item.workstationData && item.workstationData.data) || item.data || item;
+                    const cleanOffData = JSON.parse(JSON.stringify(rawOffData));
+                    delete cleanOffData.image;
+                    if (cleanOffData.exhibitImages) delete cleanOffData.exhibitImages;
+
+                    // Compress sketchpad diagram (CRITICAL: NEVER DELETE THIS!)
+                    if (cleanOffData.sketchImage) {
+                        cleanOffData.sketchImage = await safeImage(cleanOffData.sketchImage, 550, 0.65);
                     }
-                    if (payloadItem.data.scenePhotos && payloadItem.data.scenePhotos.length > 0) {
-                        payloadItem.data.scenePhotos = await Promise.all(payloadItem.data.scenePhotos.map(p => safeImage(p, 550, 0.60)));
+                    // Compress real scene evidence photos (max 5)
+                    if (cleanOffData.scenePhotos && cleanOffData.scenePhotos.length > 0) {
+                        cleanOffData.scenePhotos = await Promise.all(
+                            cleanOffData.scenePhotos.map(p => safeImage(p, 420, 0.55))
+                        );
                     }
-                }
-                if (payloadItem.workstationData) {
-                    delete payloadItem.workstationData.image; // duplicate
-                    if (payloadItem.workstationData.data) {
-                        delete payloadItem.workstationData.data.image; // duplicate
-                        if (payloadItem.workstationData.data.exhibitImages) delete payloadItem.workstationData.data.exhibitImages;
-                        if (payloadItem.workstationData.data.sketchImage) {
-                            payloadItem.workstationData.data.sketchImage = await safeImage(payloadItem.workstationData.data.sketchImage, 600, 0.65);
+
+                    const offLabel = item.label || item.title || (cleanOffData.unitCallsign ? `OFFICER SITREP: ${cleanOffData.unitCallsign}` : 'OFFICER SITREP');
+                    payloadItem.type = 'officer_sitrep';
+                    payloadItem.label = offLabel;
+                    payloadItem.title = offLabel;
+                    payloadItem.officerData = cleanOffData;
+                    payloadItem.workstationData = {
+                        id: item.id || Date.now(),
+                        type: 'officer',
+                        timestamp: item.timestamp || Date.now(),
+                        data: cleanOffData
+                    };
+                    payloadItem.data = cleanOffData;
+
+                    compressedImg = await safeImage(item.image || cleanOffData.sketchImage || (cleanOffData.scenePhotos && cleanOffData.scenePhotos[0]) || '', 600, 0.65);
+                } else {
+                    compressedImg = await safeImage(item.image, 750, 0.70);
+
+                    // Compress heavy nested base64 image duplicates to keep payload under limits for broadcast
+                    if (payloadItem.data) {
+                        delete payloadItem.data.image;
+                        if (payloadItem.data.exhibitImages) delete payloadItem.data.exhibitImages;
+                        if (payloadItem.data.sketchImage) {
+                            payloadItem.data.sketchImage = await safeImage(payloadItem.data.sketchImage, 550, 0.65);
                         }
-                        if (payloadItem.workstationData.data.scenePhotos && payloadItem.workstationData.data.scenePhotos.length > 0) {
-                            payloadItem.workstationData.data.scenePhotos = await Promise.all(payloadItem.workstationData.data.scenePhotos.map(p => safeImage(p, 550, 0.60)));
+                        if (payloadItem.data.scenePhotos && payloadItem.data.scenePhotos.length > 0) {
+                            payloadItem.data.scenePhotos = await Promise.all(payloadItem.data.scenePhotos.map(p => safeImage(p, 420, 0.55)));
+                        }
+                    }
+                    if (payloadItem.workstationData) {
+                        delete payloadItem.workstationData.image;
+                        if (payloadItem.workstationData.data) {
+                            delete payloadItem.workstationData.data.image;
+                            if (payloadItem.workstationData.data.exhibitImages) delete payloadItem.workstationData.data.exhibitImages;
+                            if (payloadItem.workstationData.data.sketchImage) {
+                                payloadItem.workstationData.data.sketchImage = await safeImage(payloadItem.workstationData.data.sketchImage, 550, 0.65);
+                            }
+                            if (payloadItem.workstationData.data.scenePhotos && payloadItem.workstationData.data.scenePhotos.length > 0) {
+                                payloadItem.workstationData.data.scenePhotos = await Promise.all(payloadItem.workstationData.data.scenePhotos.map(p => safeImage(p, 420, 0.55)));
+                            }
                         }
                     }
                 }
@@ -11345,22 +11795,33 @@ ${cardImgHtml}
                     };
                     encryptedImage = TacticalCrypto.encrypt(cryptoPayload);
 
-                    if (new Blob([encryptedImage]).size > 200000) {
-                        if (payloadItem.data) delete payloadItem.data.scenePhotos;
-                        if (payloadItem.workstationData && payloadItem.workstationData.data) {
-                            delete payloadItem.workstationData.data.scenePhotos;
+                    // Adaptive compression if payload approaches transport limit - NEVER DELETE SKETCHPAD!
+                    if (new Blob([encryptedImage]).size > 185000) {
+                        if (payloadItem.officerData && payloadItem.officerData.scenePhotos) {
+                            payloadItem.officerData.scenePhotos = await Promise.all(
+                                payloadItem.officerData.scenePhotos.map(p => safeImage(p, 300, 0.40))
+                            );
+                            if (payloadItem.workstationData && payloadItem.workstationData.data) {
+                                payloadItem.workstationData.data.scenePhotos = payloadItem.officerData.scenePhotos;
+                            }
+                        } else if (payloadItem.data && payloadItem.data.scenePhotos) {
+                            payloadItem.data.scenePhotos = await Promise.all(
+                                payloadItem.data.scenePhotos.map(p => safeImage(p, 300, 0.40))
+                            );
                         }
-                        compressedImg = await safeImage(compressedImg, 600, 0.60);
+                        compressedImg = await safeImage(compressedImg, 450, 0.50);
                         cryptoPayload.image = compressedImg;
                         encryptedImage = TacticalCrypto.encrypt(cryptoPayload);
                     }
                     
-                    if (new Blob([encryptedImage]).size > 200000) {
-                        if (payloadItem.data) delete payloadItem.data.sketchImage;
-                        if (payloadItem.workstationData && payloadItem.workstationData.data) {
-                            delete payloadItem.workstationData.data.sketchImage;
+                    if (new Blob([encryptedImage]).size > 195000) {
+                        if (payloadItem.officerData && payloadItem.officerData.sketchImage) {
+                            payloadItem.officerData.sketchImage = await safeImage(payloadItem.officerData.sketchImage, 450, 0.50);
+                            if (payloadItem.workstationData && payloadItem.workstationData.data) {
+                                payloadItem.workstationData.data.sketchImage = payloadItem.officerData.sketchImage;
+                            }
                         }
-                        compressedImg = await safeImage(compressedImg, 450, 0.50);
+                        compressedImg = await safeImage(compressedImg, 350, 0.40);
                         cryptoPayload.image = compressedImg;
                         encryptedImage = TacticalCrypto.encrypt(cryptoPayload);
                     }
@@ -13268,6 +13729,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.tacticalIconLayers = [];
 window.tacticalIconData = [];
 window.activeIconStamp = null;
+window.activeIconLabel = null;
 
 function initTacticalIconTray() {
     const geoIconTrayBtn = document.getElementById('geo-icons-btn');
@@ -13281,21 +13743,22 @@ function initTacticalIconTray() {
         e.stopPropagation();
         if (iconTray.classList.contains('hidden')) {
             iconTray.classList.remove('hidden');
+            if (window.lucide) window.lucide.createIcons();
             if(geoIconTrayBtn) {
-                geoIconTrayBtn.classList.replace('text-gray-300', 'text-green-400');
-                geoIconTrayBtn.classList.replace('border-gray-700', 'border-green-500');
+                geoIconTrayBtn.classList.replace('text-gray-300', 'text-emerald-400');
+                geoIconTrayBtn.classList.replace('border-gray-700', 'border-emerald-500');
             }
             if(commsIconTrayBtn) {
-                commsIconTrayBtn.classList.replace('text-gray-300', 'text-green-400');
+                commsIconTrayBtn.classList.replace('text-gray-300', 'text-emerald-400');
             }
         } else {
             iconTray.classList.add('hidden');
             if(geoIconTrayBtn) {
-                geoIconTrayBtn.classList.replace('text-green-400', 'text-gray-300');
-                geoIconTrayBtn.classList.replace('border-green-500', 'border-gray-700');
+                geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
+                geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
             }
             if(commsIconTrayBtn) {
-                commsIconTrayBtn.classList.replace('text-green-400', 'text-gray-300');
+                commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
             }
             deactivateStamp();
         }
@@ -13308,11 +13771,11 @@ function initTacticalIconTray() {
         closeTrayBtn.addEventListener('click', () => {
             iconTray.classList.add('hidden');
             if(geoIconTrayBtn) {
-                geoIconTrayBtn.classList.replace('text-green-400', 'text-gray-300');
-                geoIconTrayBtn.classList.replace('border-green-500', 'border-gray-700');
+                geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
+                geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
             }
             if(commsIconTrayBtn) {
-                commsIconTrayBtn.classList.replace('text-green-400', 'text-gray-300');
+                commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
             }
             deactivateStamp();
         });
@@ -13320,8 +13783,9 @@ function initTacticalIconTray() {
 
     function deactivateStamp() {
         window.activeIconStamp = null;
+        window.activeIconLabel = null;
         stampBtns.forEach(btn => {
-            btn.classList.remove('ring-2', 'ring-green-500', 'bg-green-900/50');
+            btn.classList.remove('ring-2', 'ring-emerald-500', 'ring-green-500', 'bg-emerald-950/80', 'bg-green-900/50');
         });
         if (window.orbitalMap) {
             window.orbitalMap.getContainer().style.cursor = '';
@@ -13335,13 +13799,15 @@ function initTacticalIconTray() {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const icon = btn.getAttribute('data-icon');
+            const label = btn.getAttribute('data-label') || '';
             
             if (window.activeIconStamp === icon) {
                 deactivateStamp();
             } else {
                 deactivateStamp();
                 window.activeIconStamp = icon;
-                btn.classList.add('ring-2', 'ring-green-500', 'bg-green-900/50');
+                window.activeIconLabel = label;
+                btn.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-950/80');
                 if (window.orbitalMap) {
                     window.orbitalMap.getContainer().style.cursor = 'crosshair';
                 }
@@ -13353,28 +13819,76 @@ function initTacticalIconTray() {
             if (window.innerWidth < 768 && iconTray) {
                 iconTray.classList.add('hidden');
                 if(geoIconTrayBtn) {
-                    geoIconTrayBtn.classList.replace('text-green-400', 'text-gray-300');
-                    geoIconTrayBtn.classList.replace('border-green-500', 'border-gray-700');
+                    geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
+                    geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
                 }
                 if(commsIconTrayBtn) {
-                    commsIconTrayBtn.classList.replace('text-green-400', 'text-gray-300');
+                    commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
                 }
             }
         });
     });
 
-    window.dropTacticalIcon = function(lat, lng, icon) {
+    window.dropTacticalIcon = function(lat, lng, icon, label = null, save = true) {
+        if (!label) {
+            const stampMap = {
+                '💀': 'ENEMY',
+                '🦌': 'ANIMAL',
+                '🎯': 'TRP 1',
+                '👁️': 'OP/HIDE',
+                '✈️': 'AIRSTRIP',
+                '🏥': 'HOSPITAL',
+                '🚁': 'MEDEVAC',
+                '🛑': 'DEAD SPACE',
+                '🚗': 'VEHICLE',
+                '📍': 'WAYPOINT',
+                '⚠️': 'HAZARD',
+                '💧': 'WATER'
+            };
+            label = stampMap[icon] || 'TARGET';
+        }
+
+        const badgeColor = (function(lbl) {
+            if (/ENEMY|HOSTILE/i.test(lbl)) return '#ef4444';
+            if (/ANIMAL|GAME/i.test(lbl)) return '#f59e0b';
+            if (/AIRSTRIP|RUNWAY/i.test(lbl)) return '#06b6d4';
+            if (/HOSPITAL|ER|MED/i.test(lbl)) return '#f43f5e';
+            if (/OP|HIDE/i.test(lbl)) return '#10b981';
+            if (/DEAD SPACE/i.test(lbl)) return '#a855f7';
+            if (/VEHICLE/i.test(lbl)) return '#eab308';
+            if (/HAZARD/i.test(lbl)) return '#f97316';
+            if (/WATER/i.test(lbl)) return '#38bdf8';
+            return '#00e5ff';
+        })(label);
+
+        const stampId = 'stamp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
         const createMarker = (mapInstance) => {
             if (!mapInstance) return null;
-            return L.marker([lat, lng], {
+            const marker = L.marker([lat, lng], {
                 icon: L.divIcon({
-                    html: `<div style="font-size:32px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.8)); text-align:center; transform: translate(-50%, -50%); cursor: default;">${icon}</div>`,
-                    className: 'tactical-emoji-marker',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
+                    html: `<div class="tac-stamp-container" style="display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -100%); cursor:pointer;">
+                             <div style="font-size:26px; line-height:1; filter:drop-shadow(0 2px 5px rgba(0,0,0,0.9));">${icon}</div>
+                             <div style="margin-top:2px; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:900; letter-spacing:0.5px; padding:1.5px 5px; border-radius:3px; background:rgba(3,7,18,0.92); color:#fff; border:1.5px solid ${badgeColor}; box-shadow:0 0 10px ${badgeColor}66; white-space:nowrap; text-transform:uppercase;">
+                               ${label}
+                             </div>
+                           </div>`,
+                    className: 'tactical-stamp-marker',
+                    iconSize: [28, 44],
+                    iconAnchor: [14, 44]
                 }),
-                interactive: false
+                interactive: true
             }).addTo(mapInstance);
+
+            marker.stampId = stampId;
+            marker.bindPopup(`
+                <div style="font-family:'JetBrains Mono',monospace; min-width:140px; text-align:center;">
+                    <div style="font-size:18px; margin-bottom:2px;">${icon} <b style="color:${badgeColor}; font-size:12px;">${label}</b></div>
+                    <div style="font-size:9px; color:#9ca3af; margin-bottom:8px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+                    <button onclick="window.deleteTacticalStamp('${stampId}')" style="background:#450a0a; color:#f87171; border:1px solid #dc2626; border-radius:3px; padding:3px 8px; font-size:9px; font-weight:bold; cursor:pointer; width:100%;">🗑️ REMOVE STAMP</button>
+                </div>
+            `);
+            return marker;
         };
 
         const m1 = createMarker(window.orbitalMap);
@@ -13383,20 +13897,39 @@ function initTacticalIconTray() {
         if (m1) window.tacticalIconLayers.push(m1);
         if (m2) window.tacticalIconLayers.push(m2);
 
-        window.tacticalIconData.push({ lat, lng, icon });
+        if (save) {
+            window.tacticalIconData.push({ id: stampId, lat, lng, icon, label });
+            saveTacticalIcons();
+            if(window.pushTacLog) window.pushTacLog(`TACTICAL STAMP [${icon} ${label}] PLACED`, 'SUCCESS');
+        }
+    };
+
+    window.deleteTacticalStamp = function(stampId) {
+        window.tacticalIconLayers = window.tacticalIconLayers.filter(m => {
+            if (m && m.stampId === stampId) {
+                if (window.orbitalMap && window.orbitalMap.hasLayer(m)) window.orbitalMap.removeLayer(m);
+                if (window.commsMapInstance && window.commsMapInstance.hasLayer(m)) window.commsMapInstance.removeLayer(m);
+                return false;
+            }
+            return true;
+        });
+        window.tacticalIconData = window.tacticalIconData.filter(d => d.id !== stampId);
         saveTacticalIcons();
-        if(window.pushTacLog) window.pushTacLog(`TACTICAL ICON [${icon}] STAMPED`, 'SUCCESS');
+        if(window.pushTacLog) window.pushTacLog('TACTICAL STAMP REMOVED', 'WARNING');
     };
 
     if (clearIconsBtn) {
         clearIconsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (confirm("Clear all tactical icons from map?")) {
-                window.tacticalIconLayers.forEach(m => m.remove());
+            if (confirm("Clear all tactical stamps from map?")) {
+                window.tacticalIconLayers.forEach(m => {
+                    if (window.orbitalMap && window.orbitalMap.hasLayer(m)) window.orbitalMap.removeLayer(m);
+                    if (window.commsMapInstance && window.commsMapInstance.hasLayer(m)) window.commsMapInstance.removeLayer(m);
+                });
                 window.tacticalIconLayers = [];
                 window.tacticalIconData = [];
                 saveTacticalIcons();
-                if(window.pushTacLog) window.pushTacLog('TACTICAL ICONS CLEARED', 'WARNING');
+                if(window.pushTacLog) window.pushTacLog('TACTICAL STAMPS CLEARED', 'WARNING');
             }
         });
     }
@@ -13410,7 +13943,7 @@ function initTacticalIconTray() {
             const saved = JSON.parse(localStorage.getItem('tacticalIconsData') || '[]');
             if (saved.length > 0 && window.dropTacticalIcon) {
                 saved.forEach(item => {
-                    window.dropTacticalIcon(item.lat, item.lng, item.icon);
+                    window.dropTacticalIcon(item.lat, item.lng, item.icon, item.label, false);
                 });
             }
         } catch(e) {
