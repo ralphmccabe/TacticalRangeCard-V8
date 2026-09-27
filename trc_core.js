@@ -1,3 +1,19 @@
+// GLOBAL FIX: Optimize canvas readback and eliminate willReadFrequently warnings for Lighthouse & html2canvas
+(function() {
+    if (typeof HTMLCanvasElement !== 'undefined' && HTMLCanvasElement.prototype.getContext) {
+        const originalGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, options) {
+            if (type === '2d') {
+                options = options || {};
+                if (options.willReadFrequently === undefined) {
+                    options.willReadFrequently = true;
+                }
+            }
+            return originalGetContext.call(this, type, options);
+        };
+    }
+})();
+
 let geoDistanceUnit = 'YDS';
 /* 
     TACTICAL RANGE CARD PRO - PRODUCTION CORE v2.1
@@ -1155,7 +1171,8 @@ function initializeTacticalDashboard1() {
                 scale: Math.max(window.devicePixelRatio || 2, 2),
                 backgroundColor: '#ffffff',
                 useCORS: true,
-                logging: true,
+                logging: false,
+                ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream',
                 scrollX: 0,
                 scrollY: 0
             }).then(canvas => {
@@ -1541,7 +1558,8 @@ function initializeTacticalDashboard1() {
                 backgroundColor: '#ffffff',
                 useCORS: true,        // Critical for CDN icons
                 allowTaint: false,    // Security handshake
-                logging: true,        // Prints errors to F12 Console
+                logging: false,
+                ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream',
                 scrollX: 0,
                 scrollY: 0,
                 onclone: (clonedDoc) => {
@@ -2654,11 +2672,11 @@ function initializeTacticalDashboard2() {
                     scale: scale,
                     backgroundColor: '#ffffff',
                     useCORS: true,
-                    logging: true,
+                    logging: false,
                     scrollX: 0,
                     scrollY: 0,
                     ignoreElements: (el) => {
-                        return el.id === 'recon-canvas' || (el.classList && el.classList.contains('recon-marker'));
+                        return el.tagName === 'VIDEO' || el.id === 'surveillance-stream' || el.id === 'recon-canvas' || (el.classList && el.classList.contains('recon-marker'));
                     }
                 }).then(canvas => {
                     document.body.classList.remove('is-capturing');
@@ -4832,12 +4850,14 @@ function initializeTacticalDashboard2() {
                         const canvas = await html2canvas(mapContainer, { 
                             useCORS: true, 
                             allowTaint: false,
-                            backgroundColor: '#030712'
+                            backgroundColor: '#030712',
+                            logging: false,
+                            ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream'
                         });
                         dataUri = canvas.toDataURL('image/jpeg', 0.88);
                         
                         // If canvas is pure black (no tiles rendered), reject it
-                        const sCtx = canvas.getContext('2d');
+                        const sCtx = canvas.getContext('2d', { willReadFrequently: true });
                         const px = sCtx.getImageData(Math.floor(canvas.width/2), Math.floor(canvas.height/2), 1, 1).data;
                         if (px[0] < 5 && px[1] < 5 && px[2] < 5) dataUri = null;
                     } catch(e) {
@@ -5405,8 +5425,9 @@ function initializeTacticalDashboard2() {
         // 4. Draw Line
         if (typeof drawMapLine === 'function') drawMapLine();
 
-        // 5. Pan and Zoom to bounds or exact center
+        // 5. Pan and Zoom to bounds, exact center, or fit imported overlay
         if (window.orbitalMap) {
+            window.orbitalMap.invalidateSize();
             const activeMarkers = [];
             if (window.mySelfPositionMarker) activeMarkers.push(window.mySelfPositionMarker);
             if (window.teammateLocatorMarker) activeMarkers.push(window.teammateLocatorMarker);
@@ -5418,8 +5439,109 @@ function initializeTacticalDashboard2() {
                 window.orbitalMap.fitBounds(group.getBounds(), { padding: [60, 60], maxZoom: 17 });
             } else if (item.centerLat !== undefined && item.centerLng !== undefined && item.zoom !== undefined) {
                 window.orbitalMap.setView([item.centerLat, item.centerLng], item.zoom);
+            } else if (item.image) {
+                // If it's an imported image card with no vector coords, anchor it into the map view as an overlay
+                const b = window.orbitalMap.getBounds();
+                window.importedImageOverlay = L.imageOverlay(item.image, b, { opacity: 0.85 }).addTo(window.orbitalMap);
+                window.orbitalMap.fitBounds(b);
             }
         }
+
+        // 6. Restore target distance readout if present
+        if (item.distance) {
+            const distEl = document.getElementById('live-map-dist');
+            if (distEl) {
+                const cleanDist = item.distance.toString().replace(/[^0-9.]/g, '');
+                if (cleanDist) distEl.textContent = cleanDist;
+            }
+        }
+
+        if (window.showToast) window.showToast(`🗺️ Loaded [${item.label || 'GEO INTEL'}] to Geo-Matrix`);
+        if (window.pushTacLog) window.pushTacLog(`LOADED INTEL [${item.label || 'GEO'}] TO GEO-MATRIX`, 'SUCCESS');
+    };
+
+    window.loadReconBackToEditor = function(item) {
+        if (!item) return;
+
+        // 1. Close vault panel / modal if open
+        const vaultPanel = document.getElementById('panel-vault');
+        if (vaultPanel && vaultPanel.classList.contains('is-maximized') && window.toggleFullscreen) {
+            window.toggleFullscreen('panel-vault');
+        }
+        const vaultModal = document.getElementById('vault-modal-overlay') || document.getElementById('vault-modal');
+        if (vaultModal) vaultModal.classList.add('hidden');
+
+        // 2. Maximize / show main range card panel (Window #1)
+        const mainPanel = document.getElementById('panel-card') || document.getElementById('panel-main');
+        if (mainPanel && !mainPanel.classList.contains('is-maximized') && window.toggleFullscreen) {
+            window.toggleFullscreen('panel-card');
+        }
+
+        // 3. Switch to Tactical Recon Mapper if not currently active
+        const toggleBtn = document.getElementById('toggleReconMapperBtn');
+        const isCurrentlyActive = toggleBtn && toggleBtn.textContent.includes('BACK TO RANGE CARD');
+        if (!isCurrentlyActive && toggleBtn) {
+            toggleBtn.click();
+        }
+
+        // 4. Restore scenario name and report
+        const scenarioName = item.originalName || item.name || item.scenarioName || (item.label && item.label !== 'RECON_MAP' ? item.label : '') || 'RECON SCENARIO';
+        const rScenarioInput = document.getElementById('recon-scenario-name');
+        const rReportInput = document.getElementById('recon-report');
+        if (rScenarioInput) {
+            rScenarioInput.value = scenarioName;
+            rScenarioInput.dispatchEvent(new Event('input'));
+        }
+        if (rReportInput) {
+            rReportInput.value = item.report || item.sitrep || '';
+            rReportInput.dispatchEvent(new Event('input'));
+        }
+
+        // 5. Restore background image or default grid
+        const rBgImage = document.getElementById('recon-bg-image');
+        const mBgImage = document.getElementById('mobile-recon-bg-image');
+        const rDefaultGrid = document.getElementById('recon-default-grid');
+        const mDefaultGrid = document.getElementById('mobile-recon-default-grid');
+
+        const mapSrc = item.snapshot || item.bgImage || item.image || item.data;
+        if (rBgImage && mapSrc) {
+            rBgImage.src = mapSrc;
+            rBgImage.classList.remove('hidden');
+            if (rDefaultGrid) rDefaultGrid.classList.add('hidden');
+            if (mBgImage) { mBgImage.src = mapSrc; mBgImage.classList.remove('hidden'); }
+            if (mDefaultGrid) mDefaultGrid.classList.add('hidden');
+        }
+
+        // 6. Restore markers if present
+        document.querySelectorAll('.recon-marker').forEach(m => m.remove());
+        if (item.markers && Array.isArray(item.markers)) {
+            item.markers.forEach(m => {
+                if (typeof window.createMarker === 'function') {
+                    window.createMarker(m.x, m.y, m.emoji, m.note || '');
+                }
+            });
+        }
+
+        // 7. Restore drawings if present
+        const rCanvas = document.getElementById('recon-canvas');
+        const mCanvas = document.getElementById('mobile-recon-canvas');
+        if (rCanvas) {
+            const rCtx = rCanvas.getContext('2d');
+            rCtx.clearRect(0, 0, rCanvas.width, rCanvas.height);
+            if (mCanvas) mCanvas.getContext('2d').clearRect(0, 0, mCanvas.width, mCanvas.height);
+            
+            if (item.drawing) {
+                const img = new Image();
+                img.onload = () => {
+                    rCtx.drawImage(img, 0, 0);
+                    if (mCanvas) mCanvas.getContext('2d').drawImage(img, 0, 0);
+                };
+                img.src = item.drawing;
+            }
+        }
+
+        if (window.showToast) window.showToast("🗺️ Tactical Recon Map loaded to editor for rework!");
+        if (window.pushTacLog) window.pushTacLog("RECON MAP LOADED TO EDITOR FOR REWORK", "SUCCESS");
     };
 
     window.saveIntelSnapshot = saveIntelSnapshot;
@@ -5482,12 +5604,14 @@ function initializeTacticalDashboard2() {
             return;
         }
         listToRender.forEach((item, index) => {
-            let itemColor = 'emerald-500'; // Default snapshot
+            const isReconItem = !!(item.label === 'RECON_MAP' || item.type === 'recon_map' || (item.label && item.label.startsWith('RECON')));
+            let itemColor = 'emerald-500';
             if (item.type === 'bolo-card') itemColor = 'orange-500';
             else if (item.type === 'gametag-card') itemColor = 'amber-500';
             else if (item.type === 'license-card') itemColor = 'green-400';
             else if (item.type === 'casefile-pdf' || item.casefileData || (item.workstationData && item.workstationData.type === 'casefile')) itemColor = 'blue-400';
-            else if (item.label && (item.label.startsWith('GEO_') || item.label.startsWith('ROUTE'))) itemColor = 'blue-500';
+            else if (isReconItem) itemColor = 'emerald-500';
+            else if (item.type === 'geomatrix' || item.type === 'geo-snapshot' || item.type === 'map' || (item.label && (item.label.startsWith('GEO') || item.label.startsWith('ROUTE') || item.label.includes('IMPORTED') || item.label.includes('MAP')))) itemColor = 'blue-500';
             else if (item.type === 'video') itemColor = 'purple-500';
             else if (item.type === 'workstation-card') itemColor = 'fbbf24'; // Yellow-ish
 
@@ -5742,7 +5866,14 @@ function initializeTacticalDashboard2() {
                 ` : ''}
 
                 ${(() => {
-                    const isMapItem = !!(
+                    const isReconCard = !!(
+                        item.label === 'RECON_MAP' ||
+                        item.type === 'recon_map' ||
+                        (item.label && item.label.startsWith('RECON_MAP')) ||
+                        (item.label && item.label.startsWith('RECON') && !item.label.startsWith('RECON_GPS'))
+                    );
+
+                    const isMapItem = !isReconCard && !!(
                         item.routeTracker ||
                         (item.markers && item.markers.length > 0) ||
                         (item.drawings && item.drawings.length > 0) ||
@@ -5750,15 +5881,17 @@ function initializeTacticalDashboard2() {
                         item.originLat ||
                         item.type === 'map' ||
                         item.type === 'geomatrix' ||
-                        item.type === 'recon_map' ||
+                        item.type === 'geo-snapshot' ||
                         item.satData ||
                         item.geoData ||
                         (item.label && (
                             item.label.startsWith('GEO') ||
                             item.label.startsWith('ROUTE') ||
-                            item.label.startsWith('RECON') ||
                             item.label.includes('LOCATE') ||
-                            item.label.includes('MAP')
+                            item.label.includes('MAP') ||
+                            item.label.startsWith('IMPORTED') ||
+                            item.label.includes('IMPORTED IMG') ||
+                            item.label.includes('TARGET')
                         ))
                     );
 
@@ -5776,13 +5909,19 @@ function initializeTacticalDashboard2() {
                         `;
                     } else if (!item.remarksText) {
                         return `
-                        <button class="load-snapshot-btn absolute bottom-7 left-1.5 bg-emerald-600 text-white p-1.5 rounded border border-emerald-400 shadow-lg hover:bg-emerald-400 transition-all z-30" title="Load Snapshot to Viewer">
+                        <button class="load-snapshot-btn absolute bottom-7 left-1.5 bg-emerald-600 text-white p-1.5 rounded border border-emerald-400 shadow-lg hover:bg-emerald-400 transition-all z-30" title="Load Snapshot to Camera Viewer">
                             <i data-lucide="camera" class="w-3 h-3"></i>
                         </button>
                         `;
                     }
                     return '';
                 })()}
+
+                ${(item.label === 'RECON_MAP' || item.type === 'recon_map' || (item.label && item.label.startsWith('RECON_MAP')) || (item.label && item.label.startsWith('RECON') && !item.label.startsWith('RECON_GPS'))) ? `
+                <button class="rework-recon-btn absolute bottom-7 right-1.5 bg-indigo-600 text-white p-1.5 rounded border border-indigo-400 shadow-lg hover:bg-indigo-400 hover:text-black transition-all z-30 flex items-center gap-1" title="Rework Tactical Recon Map">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                </button>
+                ` : ''}
 
                 ${(item.type === 'casefile-pdf' || item.casefileData || (item.workstationData && item.workstationData.type === 'casefile')) ? `
                 <button class="rework-casefile-btn absolute bottom-7 right-1.5 bg-blue-600 text-white p-1.5 rounded border border-blue-400 shadow-lg hover:bg-blue-400 hover:text-black transition-all z-30 flex items-center gap-1" title="Rework Casefile & Invoice">
@@ -5804,11 +5943,22 @@ function initializeTacticalDashboard2() {
                    e.target.closest('.load-map-btn') || 
                    e.target.closest('.load-video-btn') || 
                    e.target.closest('.load-snapshot-btn') ||
+                   e.target.closest('.rework-recon-btn') ||
                    e.target.closest('.rework-casefile-btn') ||
                    e.target.closest('.rework-officer-btn')) return;
                 e.stopPropagation();
                 selectVaultItem(item);
             });
+
+            const reworkReconBtn = el.querySelector('.rework-recon-btn');
+            if (reworkReconBtn) {
+                reworkReconBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.loadReconBackToEditor) {
+                        window.loadReconBackToEditor(item);
+                    }
+                });
+            }
 
             const reworkCaseBtn = el.querySelector('.rework-casefile-btn');
             if (reworkCaseBtn) {
@@ -6472,6 +6622,9 @@ function initializeTacticalDashboard2() {
         if (_recStartBtn) _recStartBtn.classList.remove('hidden');
         // Also reset kill button text in case it was changed to "CLOSE REVIEW"
         if (killBtn) killBtn.innerHTML = '<i data-lucide="power-off" class="w-4 h-4"></i>';
+
+        const feedReconReworkBtn = document.getElementById('feed-recon-rework-btn');
+        if (feedReconReworkBtn) feedReconReworkBtn.remove();
 
         // HIDE FOOTER ON STOP
         const survFooter = document.getElementById('surveillance-footer');
@@ -7498,11 +7651,48 @@ function initializeTacticalDashboard2() {
             for (let i = 0; i < itemsToExport.length; i++) {
                 const item = itemsToExport[i];
                 try {
-                    const dataUrl = await getVaultItemExportUri(item);
+                    let dataUrl = await getVaultItemExportUri(item);
                     if (dataUrl) {
+                        const isMapExport = !!(
+                            item.markers ||
+                            item.drawings ||
+                            item.tacticalIcons ||
+                            item.type === 'geomatrix' ||
+                            item.type === 'geo-snapshot' ||
+                            (item.label && (item.label.startsWith('GEO') || item.label.startsWith('ROUTE') || item.label.includes('MAP') || item.label.includes('IMPORTED')))
+                        );
+
+                        if (isMapExport) {
+                            try {
+                                const geoMeta = {
+                                    label: item.label,
+                                    type: 'geomatrix',
+                                    distance: item.distance || 0,
+                                    markers: item.markers || [],
+                                    drawings: item.drawings || [],
+                                    tacticalIcons: item.tacticalIcons || [],
+                                    myCoords: item.myCoords || null,
+                                    teammateCoords: item.teammateCoords || null,
+                                    mapLayer: item.mapLayer || 'hybrid',
+                                    geoDistanceUnit: item.geoDistanceUnit || 'YDS',
+                                    dopeRingsActive: !!item.dopeRingsActive,
+                                    centerLat: item.centerLat,
+                                    centerLng: item.centerLng,
+                                    zoom: item.zoom
+                                };
+                                const payloadStr = `TRC_GEO_DATA_START:${encodeURIComponent(JSON.stringify(geoMeta))}:TRC_GEO_DATA_END`;
+                                const parts = dataUrl.split(',');
+                                const mime = parts[0];
+                                const rawBytes = atob(parts[1]);
+                                dataUrl = mime + ',' + btoa(rawBytes + payloadStr);
+                            } catch(eGeoEmbed) {
+                                console.warn("Could not embed geo metadata into exported image", eGeoEmbed);
+                            }
+                        }
+
                         const a = document.createElement('a');
                         a.href = dataUrl;
-                        const distStr = item.distance ? `${item.distance}yds_` : '';
+                        const distStr = item.distance ? `${item.distance.toString().replace(/[^0-9.]/g, '')}yds_` : '';
                         const nameStr = (item.author || item.name || item.label || 'card').replace(/[^a-zA-Z0-9_-]/g, '_');
                         a.download = `TRC_INTEL_${nameStr}_${distStr}${item.timestamp || Date.now()}.png`;
                         document.body.appendChild(a);
@@ -8246,14 +8436,57 @@ function initializeTacticalDashboard2() {
                             casefileData: caseData
                         };
                     } else {
+                        let rawBinary = '';
+                        try {
+                            rawBinary = atob((dataUrl.split(',')[1] || ''));
+                        } catch(eBin) {}
+
+                        let parsedGeoData = null;
+                        const geoMetaMatch = rawBinary.match(/TRC_GEO_DATA_START:\s*([^\s:]+)\s*:TRC_GEO_DATA_END/);
+                        if (geoMetaMatch) {
+                            try {
+                                parsedGeoData = JSON.parse(decodeURIComponent(geoMetaMatch[1]));
+                            } catch(eParseGeo) {}
+                        }
+
+                        // Determine smart card label
+                        let derivedLabel = '';
+                        if (parsedGeoData && parsedGeoData.label) {
+                            derivedLabel = parsedGeoData.label;
+                        } else {
+                            // Extract from filename
+                            let cleanName = file.name.replace(/\.(png|jpe?g|webp|bmp)$/i, '');
+                            cleanName = cleanName.replace(/^TRC_INTEL_/i, '');
+                            cleanName = cleanName.replace(/_\d{10,}$/, ''); // Strip trailing timestamp
+                            cleanName = cleanName.replace(/_\d+yds_?/i, '').replace(/\d+yds_?/i, '');
+                            cleanName = cleanName.replace(/[_-]+$/, '').trim();
+
+                            if (cleanName && !/^image$/i.test(cleanName) && !/^card$/i.test(cleanName)) {
+                                derivedLabel = cleanName.toUpperCase() + (distance ? ` @ ${distance} YDS` : '');
+                            } else {
+                                derivedLabel = `GEO_INTEL ${distance ? '@ ' + distance + ' YDS' : ''}`;
+                            }
+                        }
+
+                        const isGeoItem = !!(
+                            parsedGeoData ||
+                            /GEO|ROUTE|RECON|MAP|TARGET|LOCATE/i.test(file.name) ||
+                            /GEO|ROUTE|RECON|MAP|TARGET|LOCATE/i.test(derivedLabel) ||
+                            distance > 0
+                        );
+
                         newItem = {
                             id: 'import_' + Math.random().toString(36).substr(2, 9),
-                            timestamp: timestamp,
-                            label: `IMPORTED IMG ${distance ? '@ ' + distance + ' YDS' : ''}`,
+                            timestamp: (parsedGeoData && parsedGeoData.timestamp) ? parsedGeoData.timestamp : timestamp,
+                            label: derivedLabel,
                             image: dataUrl,
-                            distance: distance,
-                            type: 'image'
+                            distance: distance ? `${distance} YDS` : (parsedGeoData?.distance || 0),
+                            type: isGeoItem ? 'geomatrix' : 'image',
+                            ...(parsedGeoData || {})
                         };
+                        newItem.label = derivedLabel;
+                        newItem.image = dataUrl;
+                        if (isGeoItem) newItem.type = 'geomatrix';
                     }
 
                     vaultCache.unshift(newItem);
@@ -9414,6 +9647,21 @@ function initializeTacticalDashboard2() {
         if (!cardObj) return;
         const title = cardObj.title || cardObj.name || cardObj.label || 'TRANSMITTED CARD';
         const img = cardObj.image || (cardObj.workstationData ? cardObj.workstationData.image : '') || (cardObj.officerData ? (cardObj.officerData.sketchImage || (cardObj.officerData.scenePhotos && cardObj.officerData.scenePhotos[0])) : '') || '';
+        
+        // Ensure Recon cards preserve recon_map type, while Geo-Matrix maps get type 'geomatrix'
+        const isReconCard = !!(
+            cardObj.type === 'recon_map' ||
+            cardObj.label === 'RECON_MAP' ||
+            title === 'RECON_MAP' ||
+            (title && title.startsWith('RECON') && !title.startsWith('RECON_GPS'))
+        );
+
+        if (isReconCard) {
+            cardObj.type = 'recon_map';
+        } else if (key.startsWith('map_') || cardObj.markers || cardObj.drawings || cardObj.tacticalIcons || cardObj.type === 'geo-snapshot' || cardObj.type === 'geomatrix' || /GEO|ROUTE|MAP/i.test(title)) {
+            cardObj.type = 'geomatrix';
+        }
+
         if (window.saveIntelSnapshot) {
             window.saveIntelSnapshot(title, img, cardObj);
         }
@@ -9575,43 +9823,78 @@ function initializeTacticalDashboard2() {
                 </div>
             `;
         } else if (imageBase64) {
-            const isMapCard = !!(tapeMetadata && (
+            const isReconCard = !!(tapeMetadata && (
+                tapeMetadata.label === 'RECON_MAP' ||
+                tapeMetadata.type === 'recon_map' ||
+                (tapeMetadata.label && tapeMetadata.label.startsWith('RECON_MAP')) ||
+                (tapeMetadata.label && tapeMetadata.label.startsWith('RECON') && !tapeMetadata.label.startsWith('RECON_GPS'))
+            ));
+
+            const isMapCard = !isReconCard && !!(tapeMetadata && (
                 tapeMetadata.markers ||
                 tapeMetadata.drawings ||
                 tapeMetadata.tacticalIcons ||
                 tapeMetadata.type === 'geo-snapshot' ||
+                tapeMetadata.type === 'geomatrix' ||
                 tapeMetadata.type === 'map' ||
                 (tapeMetadata.label && (
                     tapeMetadata.label.startsWith('GEO') ||
                     tapeMetadata.label.startsWith('ROUTE') ||
-                    tapeMetadata.label.startsWith('RECON') ||
-                    tapeMetadata.label.includes('MAP')
+                    tapeMetadata.label.includes('MAP') ||
+                    tapeMetadata.label.startsWith('IMPORTED') ||
+                    tapeMetadata.label.includes('IMPORTED') ||
+                    tapeMetadata.label.includes('TARGET')
                 ))
             ));
 
-            const chatKey = `map_${Math.random().toString(36).substring(2, 9)}`;
-            if (isMapCard && tapeMetadata) {
-                window.chatPayloadStore = window.chatPayloadStore || {};
-                window.chatPayloadStore[chatKey] = Object.assign({ image: imageBase64 }, tapeMetadata);
-            }
+            const chatKey = isReconCard 
+                ? `recon_${Math.random().toString(36).substring(2, 9)}`
+                : (isMapCard ? `map_${Math.random().toString(36).substring(2, 9)}` : `snap_${Math.random().toString(36).substring(2, 9)}`);
+
+            window.chatPayloadStore = window.chatPayloadStore || {};
+            window.chatPayloadStore[chatKey] = Object.assign(
+                {
+                    image: imageBase64,
+                    type: isReconCard ? 'recon_map' : (isMapCard ? 'geomatrix' : 'snapshot'),
+                    label: tapeMetadata?.label || (isReconCard ? 'RECON_MAP' : (isMapCard ? 'GEO INTEL' : 'SNAPSHOT'))
+                },
+                tapeMetadata || {}
+            );
+
+            const cardTitle = isReconCard ? '🗺️ TACTICAL RECON INTEL' : (isMapCard ? '🗺️ GEO-MATRIX INTEL' : 'INTEL CARD PREVIEW');
+            const borderColor = isReconCard ? 'border-emerald-500/60' : (isMapCard ? 'border-cyan-500/60' : 'border-slate-700');
+            const headerColor = isReconCard ? 'text-emerald-300' : (isMapCard ? 'text-cyan-300' : 'text-slate-300');
 
             contentHtml += `
-                <div class="mt-2 p-1.5 bg-slate-950 border border-cyan-500/60 rounded-lg text-left shadow-lg">
-                    <div class="flex items-center justify-between text-[9px] font-black text-cyan-300 uppercase tracking-widest px-1 pb-1">
-                        <span>${isMapCard ? '🗺️ GEO-MATRIX INTEL' : 'INTEL CARD PREVIEW'}</span>
+                <div class="mt-2 p-1.5 bg-slate-950 border ${borderColor} rounded-lg text-left shadow-lg">
+                    <div class="flex items-center justify-between text-[9px] font-black ${headerColor} uppercase tracking-widest px-1 pb-1">
+                        <span>${cardTitle}</span>
                         <span class="text-[8px] text-slate-400 font-mono">🔍 TAP TO ZOOM</span>
                     </div>
-                    <img src="${imageBase64}" class="w-full max-w-[320px] h-auto object-contain rounded border border-slate-700 bg-slate-900 cursor-pointer shadow" onclick="if(window.loadSnapshotToViewer) { window.loadSnapshotToViewer({ image: this.src, label: '${(tapeMetadata?.label || 'INTEL CARD').replace(/'/g, "\\'")}' }); } else { window.open(this.src); }">
-                    ${isMapCard ? `
+                    <img src="${imageBase64}" class="w-full max-w-[340px] h-auto object-contain rounded border border-slate-700 bg-slate-900 cursor-pointer shadow" onclick="if(window.loadSnapshotToViewer) { window.loadSnapshotToViewer(window.chatPayloadStore['${chatKey}'] || { image: this.src, label: '${(tapeMetadata?.label || 'INTEL CARD').replace(/'/g, "\\'")}' }); } else { window.open(this.src); }">
                     <div class="flex items-center gap-1.5 pt-1.5 flex-wrap">
-                        <button type="button" onclick="event.stopPropagation(); if(window.loadVaultToMap) window.loadVaultToMap(window.chatPayloadStore['${chatKey}']);" class="bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black px-2.5 py-1 rounded border border-blue-400 uppercase flex items-center gap-1 cursor-pointer shadow">
+                        ${isReconCard ? `
+                        <button type="button" onclick="event.stopPropagation(); if(window.loadSnapshotToViewer) window.loadSnapshotToViewer(window.chatPayloadStore['${chatKey}']);" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded border border-emerald-400 uppercase flex items-center gap-1 cursor-pointer shadow" title="View in Camera Viewer">
+                            <i data-lucide="camera" class="w-3 h-3 text-white"></i> CAMERA VIEWER
+                        </button>
+                        <button type="button" onclick="event.stopPropagation(); if(window.loadReconBackToEditor) window.loadReconBackToEditor(window.chatPayloadStore['${chatKey}']);" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[9px] font-black px-2.5 py-1 rounded border border-indigo-400 uppercase flex items-center gap-1 cursor-pointer shadow" title="Rework Tactical Recon Map">
+                            <i data-lucide="refresh-cw" class="w-3 h-3 text-white"></i> REWORK MAP
+                        </button>
+                        ` : ''}
+                        ${isMapCard ? `
+                        <button type="button" onclick="event.stopPropagation(); if(window.loadVaultToMap) window.loadVaultToMap(window.chatPayloadStore['${chatKey}']);" class="bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black px-2.5 py-1 rounded border border-blue-400 uppercase flex items-center gap-1 cursor-pointer shadow" title="Open in Geo Matrix">
                             <i data-lucide="map" class="w-3 h-3 text-white"></i> OPEN IN GEO-MATRIX
                         </button>
-                        <button type="button" onclick="event.stopPropagation(); if(window.saveChatCardToVault) window.saveChatCardToVault('${chatKey}');" class="bg-purple-900 hover:bg-purple-800 text-purple-200 text-[9px] font-black px-2.5 py-1 rounded border border-purple-500/60 uppercase flex items-center gap-1 cursor-pointer shadow">
+                        ` : ''}
+                        ${(!isReconCard && !isMapCard) ? `
+                        <button type="button" onclick="event.stopPropagation(); if(window.loadSnapshotToViewer) window.loadSnapshotToViewer(window.chatPayloadStore['${chatKey}']);" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded border border-emerald-400 uppercase flex items-center gap-1 cursor-pointer shadow" title="View in Camera Viewer">
+                            <i data-lucide="camera" class="w-3 h-3 text-white"></i> CAMERA VIEWER
+                        </button>
+                        ` : ''}
+                        <button type="button" onclick="event.stopPropagation(); if(window.saveChatCardToVault) window.saveChatCardToVault('${chatKey}');" class="bg-purple-900 hover:bg-purple-800 text-purple-200 text-[9px] font-black px-2.5 py-1 rounded border border-purple-500/60 uppercase flex items-center gap-1 cursor-pointer shadow" title="Save to Intel Vault">
                             <i data-lucide="folder-plus" class="w-3 h-3 text-purple-300"></i> SAVE TO VAULT
                         </button>
                     </div>
-                    ` : ''}
                 </div>
             `;
         }
@@ -9703,6 +9986,12 @@ function initializeTacticalDashboard2() {
 
                 const cardImage = imageBase64 || (wsCardData ? wsCardData.image : null) || (tapeMetadata ? tapeMetadata.image : null) || '';
 
+                const isReconCard = !!(
+                    tapeMetadata?.label === 'RECON_MAP' ||
+                    tapeMetadata?.type === 'recon_map' ||
+                    (tapeMetadata?.label && tapeMetadata.label.startsWith('RECON') && !tapeMetadata.label.startsWith('RECON_GPS'))
+                );
+
                 const vaultMeta = Object.assign(
                     {
                         id: cardId,
@@ -9712,7 +10001,7 @@ function initializeTacticalDashboard2() {
                         source: 'comms_chat',
                         senderCallsign: userObj.callsign,
                         senderRole: userObj.role,
-                        type: isBizCard ? 'intel_report' : (wsCardData ? 'workstation' : (tapeMetadata?.type || 'snapshot'))
+                        type: isBizCard ? 'intel_report' : (wsCardData ? 'workstation' : (isReconCard ? 'recon_map' : (tapeMetadata?.type || 'snapshot')))
                     },
                     tapeMetadata || {}
                 );
@@ -11441,6 +11730,42 @@ function initializeTacticalDashboard2() {
                 killBtn.textContent = '✕  CLOSE REVIEW';
             }
 
+            // RECON CARD ENHANCEMENT: Add REWORK MAP button to Camera Viewer
+            const isReconCard = !!(
+                item.label === 'RECON_MAP' ||
+                item.type === 'recon_map' ||
+                (item.label && item.label.startsWith('RECON_MAP')) ||
+                (item.label && item.label.startsWith('RECON') && !item.label.startsWith('RECON_GPS'))
+            );
+
+            let feedReconReworkBtn = document.getElementById('feed-recon-rework-btn');
+            if (isReconCard) {
+                if (!feedReconReworkBtn && killBtn && killBtn.parentNode) {
+                    feedReconReworkBtn = document.createElement('button');
+                    feedReconReworkBtn.id = 'feed-recon-rework-btn';
+                    feedReconReworkBtn.className = 'px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-mono font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all cursor-pointer border border-indigo-400';
+                    feedReconReworkBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> REWORK MAP';
+                    killBtn.parentNode.insertBefore(feedReconReworkBtn, killBtn);
+                    if (window.lucide) window.lucide.createIcons();
+                }
+                if (feedReconReworkBtn) {
+                    feedReconReworkBtn.classList.remove('hidden');
+                    feedReconReworkBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (typeof window.closeSurveillanceReview === 'function') {
+                            window.closeSurveillanceReview();
+                        } else if (killBtn) {
+                            killBtn.click();
+                        }
+                        if (window.loadReconBackToEditor) {
+                            window.loadReconBackToEditor(item);
+                        }
+                    };
+                }
+            } else if (feedReconReworkBtn) {
+                feedReconReworkBtn.classList.add('hidden');
+            }
+
             if (label) label.textContent = `INTEL REVIEW [${item.label || 'SNAPSHOT'}]`;
         };
 
@@ -11536,6 +11861,7 @@ function initializeTacticalDashboard2() {
                         backgroundColor: '#0f172a', // slate-900
                         scale: Math.max(window.devicePixelRatio || 2, 2),
                         logging: false,
+                        ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream',
                         onclone: (clonedDoc) => {
                             // Safely copy all textarea values
                             Array.from(targetEl.querySelectorAll('textarea')).forEach(originalTa => {
@@ -11993,9 +12319,23 @@ ${cardImgHtml}
                     };
                     payloadItem.data = cleanOffData;
 
-                    compressedImg = await safeImage(item.image || cleanOffData.sketchImage || (cleanOffData.scenePhotos && cleanOffData.scenePhotos[0]) || '', 600, 0.65);
                 } else {
-                    compressedImg = await safeImage(item.image, 750, 0.70);
+                    const isGeoItem = !!(
+                        item.markers ||
+                        item.drawings ||
+                        item.tacticalIcons ||
+                        item.type === 'geomatrix' ||
+                        item.type === 'geo-snapshot' ||
+                        (item.label && (item.label.startsWith('GEO') || item.label.startsWith('ROUTE') || item.label.includes('IMPORTED') || item.label.includes('MAP')))
+                    );
+
+                    // High clarity for Geo Matrix cards so coordinates, stamps, and satellite grids are razor sharp on receiver's end
+                    if (isGeoItem) {
+                        compressedImg = await safeImage(item.image, 1000, 0.88);
+                        payloadItem.type = 'geomatrix';
+                    } else {
+                        compressedImg = await safeImage(item.image, 750, 0.70);
+                    }
 
                     // Compress heavy nested base64 image duplicates to keep payload under limits for broadcast
                     if (payloadItem.data) {
@@ -12778,7 +13118,8 @@ document.getElementById('btn-matrix-to-vault').addEventListener('click', async (
         const canvas = await html2canvas(multiColContainer, {
             backgroundColor: '#000000',
             scale: Math.max(window.devicePixelRatio || 2, 2),
-            logging: false
+            logging: false,
+            ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream'
         });
         
         // Cleanup DOM instantly
@@ -12823,6 +13164,7 @@ document.getElementById('btn-weather-to-vault').addEventListener('click', async 
             backgroundColor: '#030712', // Use very dark gray instead of pure black
             scale: Math.max(window.devicePixelRatio || 2, 2),
             logging: false,
+            ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream',
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('weather-panel-content');
                 if (clonedTarget) {
@@ -12878,6 +13220,7 @@ if (btnBallisticToVault) {
                 backgroundColor: '#000000',
                 scale: Math.max(window.devicePixelRatio || 2, 2),
                 logging: false,
+                ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream',
                 windowWidth: targetEl.scrollWidth,
                 windowHeight: targetEl.scrollHeight,
                 onclone: (clonedDoc) => {
@@ -13069,7 +13412,8 @@ setTimeout(() => {
                         useCORS: true,
                         allowTaint: false,
                         scale: 1, 
-                        ignoreElements: (element) => element.id === 'geo-toolkit-bar'
+                        logging: false,
+                        ignoreElements: (element) => element.tagName === 'VIDEO' || element.id === 'surveillance-stream' || element.id === 'geo-toolkit-bar'
                     });
                     
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -13730,6 +14074,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     backgroundColor: '#0f172a', // slate-900
                     scale: Math.max(window.devicePixelRatio || 2, 2),
                     logging: false,
+                    ignoreElements: (el) => el.tagName === 'VIDEO' || el.id === 'surveillance-stream',
                     windowWidth: targetEl.scrollWidth,
                     windowHeight: targetEl.scrollHeight,
                     onclone: (clonedDoc) => {
@@ -14371,17 +14716,5 @@ HTMLCanvasElement.prototype.toDataURL = function() {
         }, 5000);
     }
     return result;
-};
-
-// GLOBAL FIX: Prevent html2canvas 'willReadFrequently' Lighthouse warnings and improve getImageData performance
-const originalGetContext = HTMLCanvasElement.prototype.getContext;
-HTMLCanvasElement.prototype.getContext = function(type, options) {
-    if (type === '2d') {
-        options = options || {};
-        if (options.willReadFrequently === undefined) {
-            options.willReadFrequently = true;
-        }
-    }
-    return originalGetContext.call(this, type, options);
 };
 

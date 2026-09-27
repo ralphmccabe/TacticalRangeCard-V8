@@ -5434,7 +5434,7 @@ try {
 
                     <!-- The Real Video Stream Target -->
 
-                    <video id="surveillance-stream" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover hidden z-0"></video>
+                    <video id="surveillance-stream" data-html2canvas-ignore="true" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover hidden z-0"></video>
 
                     
 
@@ -6312,7 +6312,7 @@ try {
         <span class="text-cyan-500">Radio Freq</span>
     </div>
     <div class="flex gap-1">
-        <label for="comms-team" class="sr-only">e.g. TRC</label><input type="text" id="comms-team" class="w-1/2 bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. TRC" aria-label="e.g. TRC">
+        <label for="comms-team" class="sr-only">e.g. TRC</label><input type="text" id="comms-team" autocomplete="off" class="w-1/2 bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. TRC" aria-label="e.g. TRC">
         
         <label for="comms-freq" class="sr-only">Freq</label><select id="comms-freq" class="w-1/2 bg-black border border-cyan-900/50 rounded px-1 py-2 text-[10px] text-cyan-400 focus:border-cyan-500 outline-none uppercase cursor-pointer text-center font-bold">
             <option value="ALPHA">CH-1: ALPHA</option>
@@ -6337,7 +6337,7 @@ try {
 
                                 <div class="text-[7px] text-gray-400 uppercase font-black ml-1">Call Sign</div>
 
-                                <label for="comms-callsign" class="sr-only">e.g. CMDPST</label><input type="text" id="comms-callsign" class="w-full bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. CMDPST" aria-label="e.g. CMDPST">
+                                <label for="comms-callsign" class="sr-only">e.g. CMDPST</label><input type="text" id="comms-callsign" autocomplete="username" class="w-full bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. CMDPST" aria-label="e.g. CMDPST">
 
                             </div>
 
@@ -6345,7 +6345,7 @@ try {
 
                                 <div class="text-[7px] text-gray-400 uppercase font-black ml-1">Role</div>
 
-                                <label for="comms-role" class="sr-only">e.g. OPERATIONS</label><input type="text" id="comms-role" class="w-full bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. OPERATIONS" aria-label="e.g. OPERATIONS">
+                                <label for="comms-role" class="sr-only">e.g. OPERATIONS</label><input type="text" id="comms-role" autocomplete="off" class="w-full bg-black border border-emerald-900/50 rounded px-2 py-2 text-[10px] text-white focus:border-emerald-500 outline-none uppercase placeholder-gray-800" placeholder="e.g. OPERATIONS" aria-label="e.g. OPERATIONS">
 
                             </div>
 
@@ -6774,7 +6774,7 @@ try {
     <script src="lib/Sortable.min.js" defer></script>
 
     <!-- MAIN SCRIPTS -->
-    <script src="./trc_core.js?v=8.76" defer></script>
+    <script src="./trc_core.js?v=8.76.5.0" defer></script>
     <script src="./workstation_logic.js?v=8.30" defer></script>
     <script src="./field_intel_logic.js?v=8.30" defer></script>
     <script src="./officer_card_logic.js?v=8.30" defer></script>
