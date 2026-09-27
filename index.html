@@ -5900,7 +5900,7 @@ try {
                                         <i data-lucide="circle-dot" class="w-4 h-4"></i> <span id="geo-rings-label">⭕ RINGS</span>
                                     </button>
 
-                                    <button id="geo-icons-btn" class="bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-emerald-400 hover:border-emerald-500 transition-all cursor-pointer shadow-sm" title="Open Tactical Stamp Tray">
+                                    <button id="geo-icons-btn" onclick="window.toggleTacticalIconTray(event)" class="bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-emerald-400 hover:border-emerald-500 transition-all cursor-pointer shadow-sm" title="Open Tactical Stamp Tray">
                                         <i data-lucide="map-pin" class="w-4 h-4"></i> <span id="geo-icons-label">STAMPS</span>
                                     </button>
 
@@ -5990,6 +5990,12 @@ try {
                             <div class="flex-1 relative z-0 flex min-h-0 h-full w-full overflow-hidden">
 
                                 <div class="w-full h-full relative z-0 bg-gray-900" id="live-sat-map-container"></div>
+
+                                <!-- ACTIVE STAMP PLACEMENT HUD BANNER -->
+                                <div id="geo-stamp-banner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-emerald-950/95 border-2 border-emerald-400 text-white text-xs font-mono font-black px-4 py-2 rounded-xl shadow-[0_0_25px_rgba(16,185,129,0.7)] flex items-center gap-3 backdrop-blur-md pointer-events-auto" style="z-index: 10001;">
+                                    <span id="geo-stamp-banner-text" class="flex items-center gap-1.5 text-emerald-300">🎯 TAP MAP TO PLACE <span id="geo-stamp-active-label" class="text-white font-extrabold underline">ENEMY</span></span>
+                                    <button type="button" onclick="if(window.cancelActiveStamp) window.cancelActiveStamp(event)" class="bg-red-900/90 hover:bg-red-700 text-red-200 border border-red-500 text-[10px] px-2.5 py-1 rounded uppercase font-bold cursor-pointer transition-colors">CANCEL</button>
+                                </div>
 
                                 
 
@@ -6512,7 +6518,7 @@ try {
                                     <button id="c2-copy-coords-btn" class="text-[6px] bg-emerald-950 border border-emerald-700 text-emerald-300 px-1.5 py-0.5 rounded font-bold uppercase flex items-center gap-1 hover:bg-emerald-900 transition-all cursor-pointer" title="Copy Teammates GPS Coords" aria-label="Copy Coords">
                                         <i data-lucide="crosshair" class="w-2.5 h-2.5"></i> COORDS
                                     </button>
-                                    <button id="comms-icons-btn" class="text-[6px] bg-gray-800 border border-gray-700 text-gray-300 px-1 rounded font-bold uppercase flex items-center gap-1 hover:bg-gray-700" aria-label="Action Button"><i data-lucide="smile" class="w-2.5 h-2.5"></i> Icons</button>
+                                    <button id="comms-icons-btn" onclick="window.toggleTacticalIconTray(event)" class="text-[6px] bg-gray-800 border border-gray-700 text-gray-300 px-1 rounded font-bold uppercase flex items-center gap-1 hover:bg-gray-700" aria-label="Action Button"><i data-lucide="smile" class="w-2.5 h-2.5"></i> Icons</button>
                                     <button id="comms-map-sync" class="text-[6px] bg-orange-950 border border-orange-900 text-orange-400 px-1 rounded font-bold uppercase" aria-label="Action Button">Sync</button>
                                     <button id="redteam-toggle-btn" class="text-[6px] bg-red-950 border border-red-800 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase flex items-center gap-1 hover:bg-red-900 transition-all cursor-pointer" title="Red Team Tracker" aria-label="Red Team Tracker"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.5"/><text x="12" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff">H</text></svg> RED TEAM</button>
                                 </div>
@@ -6768,7 +6774,7 @@ try {
     <script src="lib/Sortable.min.js" defer></script>
 
     <!-- MAIN SCRIPTS -->
-    <script src="./trc_core.js?v=8.30" defer></script>
+    <script src="./trc_core.js?v=8.76" defer></script>
     <script src="./workstation_logic.js?v=8.30" defer></script>
     <script src="./field_intel_logic.js?v=8.30" defer></script>
     <script src="./officer_card_logic.js?v=8.30" defer></script>
@@ -9097,12 +9103,12 @@ try {
     <script src="blog_logic.js?v=8.30" defer></script>
 
     <!-- TACTICAL ICON TRAY (GLOBAL) -->
-    <div id="tactical-icon-tray" class="hidden fixed top-20 left-1/2 -translate-x-1/2 md:left-4 md:translate-x-0 bg-gray-950/95 border-2 border-emerald-500/70 rounded-xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.8)] flex flex-col gap-2 w-72 backdrop-blur-md" style="z-index: 999999 !important;">
+    <div id="tactical-icon-tray" class="hidden fixed bg-gray-950/95 border-2 border-emerald-500/80 rounded-xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] flex flex-col gap-2 w-72 backdrop-blur-md" style="z-index: 10000000 !important;">
         <div class="flex justify-between items-center border-b border-gray-800 pb-1.5 px-0.5">
             <span class="text-[11px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 font-mono">
                 <i data-lucide="crosshair" class="w-3.5 h-3.5 text-emerald-400"></i> TACTICAL STAMPS
             </span>
-            <button aria-label="Close Icon Tray" id="close-icon-tray" class="text-gray-400 hover:text-red-400 transition-colors cursor-pointer p-0.5"><i data-lucide="x" class="w-4 h-4"></i></button>
+            <button aria-label="Close Icon Tray" id="close-icon-tray" onclick="if(window.closeTacticalIconTray) window.closeTacticalIconTray()" class="text-gray-400 hover:text-red-400 transition-colors cursor-pointer p-0.5"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
         <div id="tactical-stamps-grid" class="grid grid-cols-3 gap-1.5">
             <!-- Dynamic Stamps Populated via JavaScript Unicode Definition -->

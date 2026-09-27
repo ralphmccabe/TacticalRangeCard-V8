@@ -3981,6 +3981,7 @@ function initializeTacticalDashboard2() {
     function handleMapClick(e) {
         if (window.activeIconStamp) {
             window.dropTacticalIcon(e.latlng.lat, e.latlng.lng, window.activeIconStamp, window.activeIconLabel);
+            if (window.cancelActiveStamp) window.cancelActiveStamp();
             return; // Don't do other click actions if we are stamping
         }
         if (isDrawingMode) return;
@@ -4590,6 +4591,14 @@ function initializeTacticalDashboard2() {
         geoRingsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (window.toggleDopeRings) window.toggleDopeRings();
+        });
+    }
+
+    const geoIconsBtn = document.getElementById('geo-icons-btn');
+    if (geoIconsBtn) {
+        geoIconsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.toggleTacticalIconTray) window.toggleTacticalIconTray(e);
         });
     }
 
@@ -9837,6 +9846,13 @@ function initializeTacticalDashboard2() {
                 }).addTo(commsMapInstance);
                 // Expose globally so Red Team module can hook in
                 window.commsMapInstance = commsMapInstance;
+
+                commsMapInstance.on('click', (e) => {
+                    if (window.activeIconStamp) {
+                        window.dropTacticalIcon(e.latlng.lat, e.latlng.lng, window.activeIconStamp, window.activeIconLabel);
+                        if (window.cancelActiveStamp) window.cancelActiveStamp();
+                    }
+                });
             }
         }
         
@@ -13764,27 +13780,84 @@ const LABEL_TO_STAMP_ICON = {
     'WATER CACHE': '\u{1F4A7}'
 };
 
+window.toggleTacticalIconTray = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const iconTray = document.getElementById('tactical-icon-tray');
+    if (!iconTray) return;
+
+    if (iconTray.classList.contains('hidden')) {
+        const anchorBtn = (e && e.currentTarget) || document.getElementById('geo-icons-btn') || document.getElementById('comms-icons-btn');
+        if (anchorBtn) {
+            const rect = anchorBtn.getBoundingClientRect();
+            const trayWidth = 288;
+            let top = rect.bottom + 6;
+            let left = rect.left + (rect.width / 2) - (trayWidth / 2);
+            if (left < 8) left = 8;
+            if (left + trayWidth > window.innerWidth - 8) {
+                left = window.innerWidth - trayWidth - 8;
+            }
+            if (top + 340 > window.innerHeight) {
+                top = Math.max(10, rect.top - 340);
+            }
+            iconTray.style.top = `${top}px`;
+            iconTray.style.left = `${left}px`;
+            iconTray.style.transform = 'none';
+        }
+        iconTray.classList.remove('hidden');
+        if (window.lucide) window.lucide.createIcons();
+        
+        const geoIconTrayBtn = document.getElementById('geo-icons-btn');
+        if (geoIconTrayBtn) {
+            geoIconTrayBtn.classList.replace('text-gray-300', 'text-emerald-400');
+            geoIconTrayBtn.classList.replace('border-gray-700', 'border-emerald-500');
+            geoIconTrayBtn.classList.add('bg-emerald-950/80');
+        }
+    } else {
+        window.closeTacticalIconTray();
+    }
+};
+
+window.closeTacticalIconTray = function() {
+    const iconTray = document.getElementById('tactical-icon-tray');
+    const geoIconTrayBtn = document.getElementById('geo-icons-btn');
+    const commsIconTrayBtn = document.getElementById('comms-icons-btn');
+    if (iconTray) iconTray.classList.add('hidden');
+    if (geoIconTrayBtn) {
+        geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
+        geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
+        geoIconTrayBtn.classList.remove('bg-emerald-950/80');
+    }
+    if (commsIconTrayBtn) {
+        commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
+    }
+};
+
+window.cancelActiveStamp = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    window.activeIconStamp = null;
+    window.activeIconLabel = null;
+    const banner = document.getElementById('geo-stamp-banner');
+    if (banner) banner.classList.add('hidden');
+    document.querySelectorAll('.tactical-stamp-btn').forEach(btn => {
+        btn.classList.remove('ring-2', 'ring-emerald-500', 'ring-green-500', 'bg-emerald-950/80', 'bg-green-900/50');
+    });
+    if (window.orbitalMap) window.orbitalMap.getContainer().style.cursor = '';
+    if (window.commsMapInstance) window.commsMapInstance.getContainer().style.cursor = '';
+    window.closeTacticalIconTray();
+};
+
 function initTacticalIconTray() {
     const geoIconTrayBtn = document.getElementById('geo-icons-btn');
     const commsIconTrayBtn = document.getElementById('comms-icons-btn');
     const iconTray = document.getElementById('tactical-icon-tray');
     const closeTrayBtn = document.getElementById('close-icon-tray');
     const clearIconsBtn = document.getElementById('clear-tactical-icons-btn');
-
-    function deactivateStamp() {
-        window.activeIconStamp = null;
-        window.activeIconLabel = null;
-        const allBtns = document.querySelectorAll('.tactical-stamp-btn');
-        allBtns.forEach(btn => {
-            btn.classList.remove('ring-2', 'ring-emerald-500', 'ring-green-500', 'bg-emerald-950/80', 'bg-green-900/50');
-        });
-        if (window.orbitalMap) {
-            window.orbitalMap.getContainer().style.cursor = '';
-        }
-        if (window.commsMapInstance) {
-            window.commsMapInstance.getContainer().style.cursor = '';
-        }
-    }
 
     // Populate stamp buttons dynamically with clean Unicode characters
     if (iconTray) {
@@ -13804,30 +13877,34 @@ function initTacticalIconTray() {
                 `;
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (window.activeIconStamp === stamp.icon) {
-                        deactivateStamp();
-                    } else {
-                        deactivateStamp();
-                        window.activeIconStamp = stamp.icon;
-                        window.activeIconLabel = stamp.label;
-                        btn.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-950/80');
-                        if (window.orbitalMap) {
-                            window.orbitalMap.getContainer().style.cursor = 'crosshair';
-                        }
-                        if (window.commsMapInstance) {
-                            window.commsMapInstance.getContainer().style.cursor = 'crosshair';
-                        }
+                    window.activeIconStamp = stamp.icon;
+                    window.activeIconLabel = stamp.label;
+
+                    // Highlight selected button
+                    document.querySelectorAll('.tactical-stamp-btn').forEach(b => {
+                        b.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-950/80');
+                    });
+                    btn.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-950/80');
+
+                    // Show HUD Placement Banner directly on the map
+                    const banner = document.getElementById('geo-stamp-banner');
+                    const labelEl = document.getElementById('geo-stamp-active-label');
+                    if (labelEl) labelEl.textContent = `${stamp.icon} ${stamp.label}`;
+                    if (banner) banner.classList.remove('hidden');
+
+                    // Set cursor to crosshair
+                    if (window.orbitalMap) {
+                        window.orbitalMap.getContainer().style.cursor = 'crosshair';
                     }
-                    
-                    if (window.innerWidth < 768 && iconTray) {
-                        iconTray.classList.add('hidden');
-                        if (geoIconTrayBtn) {
-                            geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-                            geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
-                        }
-                        if (commsIconTrayBtn) {
-                            commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-                        }
+                    if (window.commsMapInstance) {
+                        window.commsMapInstance.getContainer().style.cursor = 'crosshair';
+                    }
+
+                    // Auto-close tray so user can clearly see and click anywhere on the map
+                    window.closeTacticalIconTray();
+
+                    if (window.pushTacLog) {
+                        window.pushTacLog(`ARMED STAMP: [${stamp.icon} ${stamp.label}] — TAP MAP TO PLACE`, 'SYS');
                     }
                 });
                 gridEl.appendChild(btn);
@@ -13835,47 +13912,28 @@ function initTacticalIconTray() {
         }
     }
 
-    const toggleTray = (e) => {
-        e.stopPropagation();
-        if (iconTray.classList.contains('hidden')) {
-            iconTray.classList.remove('hidden');
-            if (window.lucide) window.lucide.createIcons();
-            if (geoIconTrayBtn) {
-                geoIconTrayBtn.classList.replace('text-gray-300', 'text-emerald-400');
-                geoIconTrayBtn.classList.replace('border-gray-700', 'border-emerald-500');
-            }
-            if (commsIconTrayBtn) {
-                commsIconTrayBtn.classList.replace('text-gray-300', 'text-emerald-400');
-            }
-        } else {
-            iconTray.classList.add('hidden');
-            if (geoIconTrayBtn) {
-                geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-                geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
-            }
-            if (commsIconTrayBtn) {
-                commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-            }
-            deactivateStamp();
-        }
-    };
-
-    if (geoIconTrayBtn && iconTray) geoIconTrayBtn.addEventListener('click', toggleTray);
-    if (commsIconTrayBtn && iconTray) commsIconTrayBtn.addEventListener('click', toggleTray);
-
-    if (closeTrayBtn && iconTray) {
-        closeTrayBtn.addEventListener('click', () => {
-            iconTray.classList.add('hidden');
-            if (geoIconTrayBtn) {
-                geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-                geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
-            }
-            if (commsIconTrayBtn) {
-                commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-            }
-            deactivateStamp();
-        });
+    if (geoIconTrayBtn) {
+        geoIconTrayBtn.onclick = (e) => window.toggleTacticalIconTray(e);
     }
+    if (commsIconTrayBtn) {
+        commsIconTrayBtn.onclick = (e) => window.toggleTacticalIconTray(e);
+    }
+
+    if (closeTrayBtn) {
+        closeTrayBtn.onclick = () => window.closeTacticalIconTray();
+    }
+
+    // Dismiss tray if clicked outside
+    document.addEventListener('click', (e) => {
+        const tray = document.getElementById('tactical-icon-tray');
+        if (!tray || tray.classList.contains('hidden')) return;
+        const gBtn = document.getElementById('geo-icons-btn');
+        const cBtn = document.getElementById('comms-icons-btn');
+        if (tray.contains(e.target) || (gBtn && gBtn.contains(e.target)) || (cBtn && cBtn.contains(e.target))) {
+            return;
+        }
+        window.closeTacticalIconTray();
+    });
 
     window.dropTacticalIcon = function(lat, lng, icon, label = null, save = true) {
         if (!label) {

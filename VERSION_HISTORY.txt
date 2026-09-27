@@ -105,3 +105,19 @@ v8.75.0.0 - UTF-8 TACTICAL STAMPS SUITE & TRAY Z-INDEX ELEVATION
   - Validated full-fidelity capture of tactical stamps, DOPE rings, azimuth lines, and hybrid road labels into Intel Vault.
   - Confirmed chat payload optimization keeps Geo-Matrix card transmissions well under 180KB, enabling seamless mobile-to-PC and PC-to-mobile transmission with one-click "OPEN IN GEO-MATRIX" reconstruction.
 * Bumped Service Worker cache version v8.74 -> v8.75 for instant mobile cache eviction.
+
+============================================================
+v8.76.0.0 - DYNAMIC ANCHORED TACTICAL STAMPS DROPDOWN & HUD PLACEMENT BANNER
+* Dynamic Anchored Stamp Dropdown Menu:
+  - Replaced floating fixed top-left placement with dynamic viewport-aware bounding-rect positioning.
+  - Tapping STAMPS now opens the tactical stamp picker directly beneath the STAMPS button on both mobile and desktop viewports.
+  - Added direct inline onclick="window.toggleTacticalIconTray(event)" on both Geo-Matrix and Comms map buttons with global exposure.
+  - Added click-outside auto-dismiss listener.
+* Tactical HUD Placement Banner:
+  - Tapping any tactical stamp (e.g. 💀 ENEMY, 🦌 ANIMAL, 🎯 TRP 1, 🏥 HOSPITAL, etc.) displays a prominent glowing HUD banner directly above the map: "🎯 TAP MAP TO PLACE [STAMP] [CANCEL]".
+  - Solves lack of visual mouse cursor feedback on mobile touchscreens.
+  - Single tap anywhere on the map drops the tactical stamp marker and tactical chip badge, immediately hides the banner, and records a tactical log entry.
+  - Added quick CANCEL button on the banner to disarm placement without dropping.
+* Comms Map Stamping Support:
+  - Added click listener to commsMapInstance so tactical stamp placement works seamlessly in both Geo-Matrix and Live Comms Map.
+* Bumped Service Worker cache version v8.75 -> v8.76 and trc_core.js asset version to v=8.76 for instant mobile cache eviction.
