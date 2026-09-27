@@ -121,3 +121,17 @@ v8.76.0.0 - DYNAMIC ANCHORED TACTICAL STAMPS DROPDOWN & HUD PLACEMENT BANNER
 * Comms Map Stamping Support:
   - Added click listener to commsMapInstance so tactical stamp placement works seamlessly in both Geo-Matrix and Live Comms Map.
 * Bumped Service Worker cache version v8.75 -> v8.76 and trc_core.js asset version to v=8.76 for instant mobile cache eviction.
+
+============================================================
+v8.76.1.0 - TACTICAL STAMP & DRAWING ENGINE PERSISTENCE & 2D CARD CAPTURE UPGRADE
+* Fixed STAMPS Button Click Double-Toggle Bug:
+  - Eliminated duplicate event listeners and added timestamp debouncing (280ms threshold) in window.toggleTacticalIconTray so tapping STAMPS opens the dropdown reliably without instantaneous auto-close.
+  - Resolved Lucide DOM node replacement conflict in the outside-click dismiss listener using composedPath() check.
+* Full Visual Fidelity on Captured Intel Vault Cards:
+  - Upgraded the 2D Tactical Geo Canvas engine to scale, project, and render ALL freehand polyline drawings onto the radar display with glowing cyan/blue vectors.
+  - Rendered all placed tactical stamps (💀, 🦌, 🎯, 👁️, ✈️, 🏥, 🚁, 🛑, 🚗, 📍, ⚠️, 💧) with drop shadows and glowing color-coded tactical badges directly onto the card image.
+  - Added dedicated HUD readout panels on the card: Active Tactical Stamps summary chips and Freehand Vector Drawing counter.
+* Complete Intel Vault & Comms Chat Synchronization:
+  - Guaranteed that cards viewed via the Surveillance Camera viewer (the green bottom-left camera button in Intel Vault) and chat message previews display drawings and tactical stamps in complete fidelity.
+  - Verified window.loadVaultToMap fully reconstructs markers, freehand polylines, and tactical stamps with interactive deletion popups.
+* Bumped Service Worker cache to v8.76.1.0 for instant cache update across all devices.

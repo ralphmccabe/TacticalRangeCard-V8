@@ -1,10 +1,10 @@
-/* TRC-VERSION - v8.76 */
-const CACHE_NAME = 'trc-v8.76';
+/* TRC-VERSION - v8.76.1.0 */
+const CACHE_NAME = 'trc-v8.76.1.0';
 const ASSETS = [
     './',
-    './index.html?v=8.30',
-    './style.css?v=8.30',
-    './trc_core.js?v=8.76',
+    './index.html?v=8.76.1.0',
+    './style.css?v=8.76.1.0',
+    './trc_core.js?v=8.76.1.0',
     './js/modules/sfu_audio.js?v=8.30',
     './field_intel_logic.js?v=8.30',
     './blog_logic.js?v=8.30',

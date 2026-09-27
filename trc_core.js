@@ -3635,6 +3635,11 @@ function initializeTacticalDashboard2() {
     let mapLabelMarkers = [];
     let isDrawingMode = false;
     let allDrawings = [];
+    Object.defineProperty(window, 'allDrawings', {
+        get: () => allDrawings,
+        set: (v) => { allDrawings = v; },
+        configurable: true
+    });
     let currentDrawPath = null;
 
     function initGeoCanvas() {
@@ -4594,14 +4599,6 @@ function initializeTacticalDashboard2() {
         });
     }
 
-    const geoIconsBtn = document.getElementById('geo-icons-btn');
-    if (geoIconsBtn) {
-        geoIconsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (window.toggleTacticalIconTray) window.toggleTacticalIconTray(e);
-        });
-    }
-
     const geoModeBtn = document.getElementById('geo-mode-toggle-btn');
     if (geoModeBtn) {
         geoModeBtn.addEventListener('click', (e) => {
@@ -4668,8 +4665,9 @@ function initializeTacticalDashboard2() {
             if (typeof mapMarkers !== 'undefined' && mapMarkers.length >= 2) {
                 meta.markers = mapMarkers.map(m => m.getLatLng());
             }
-            if (typeof allDrawings !== 'undefined' && allDrawings.length > 0) {
-                meta.drawings = allDrawings.map(d => d.getLatLngs());
+            const drawingsSource = (typeof allDrawings !== 'undefined' && allDrawings.length > 0) ? allDrawings : (window.allDrawings || []);
+            if (drawingsSource && drawingsSource.length > 0) {
+                meta.drawings = drawingsSource.map(d => (typeof d.getLatLngs === 'function' ? d.getLatLngs() : d));
             }
             if (typeof window.orbitalMap !== 'undefined' && window.orbitalMap) {
                 const center = window.orbitalMap.getCenter().wrap();
@@ -4683,7 +4681,7 @@ function initializeTacticalDashboard2() {
             function buildTacticalGeoCanvas() {
                 const fb = document.createElement('canvas');
                 fb.width = 1000;
-                fb.height = 650;
+                fb.height = 760;
                 const ctx = fb.getContext('2d');
 
                 // Dark Stealth Background
@@ -4716,39 +4714,44 @@ function initializeTacticalDashboard2() {
                 ctx.strokeStyle = 'rgba(16,185,129,0.4)';
                 ctx.beginPath(); ctx.moveTo(leftX, 108); ctx.lineTo(910, 108); ctx.stroke();
 
+                let curY = 150;
+
                 // Section 1: My GPS
                 ctx.fillStyle = '#34d399';
                 ctx.font = 'bold 18px monospace';
-                ctx.fillText(`[ OPERATOR POSITION (MY GPS) ]`, leftX, 150);
+                ctx.fillText(`[ OPERATOR POSITION (MY GPS) ]`, leftX, curY);
 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 22px monospace';
                 const myPosText = meta.myCoords
                     ? `LAT: ${meta.myCoords.lat.toFixed(6)} | LON: ${meta.myCoords.lng.toFixed(6)}`
                     : (document.getElementById('geo-my-coords-display')?.textContent || 'ACQUIRING...');
-                ctx.fillText(myPosText, leftX + 20, 188);
+                ctx.fillText(myPosText, leftX + 20, curY + 38);
+                curY += 80;
 
                 // Section 2: Teammate Locator Data
                 if (meta.teammateCoords) {
                     ctx.fillStyle = '#22d3ee'; // cyan-400
                     ctx.font = 'bold 18px monospace';
-                    ctx.fillText(`[ TEAMMATE LOCATOR DATA ]`, leftX, 245);
+                    ctx.fillText(`[ TEAMMATE LOCATOR DATA ]`, leftX, curY);
 
                     ctx.fillStyle = '#ffffff';
                     ctx.font = 'bold 19px monospace';
                     const tmTooltip = meta.teammateCoords.tooltip || `COORDINATES: ${meta.teammateCoords.lat.toFixed(6)}, ${meta.teammateCoords.lng.toFixed(6)}`;
                     
-                    // Split long tooltips if necessary
                     if (tmTooltip.length > 55) {
                         const mid = tmTooltip.indexOf('|');
                         if (mid !== -1) {
-                            ctx.fillText(tmTooltip.substring(0, mid).trim(), leftX + 20, 280);
-                            ctx.fillText(tmTooltip.substring(mid + 1).trim(), leftX + 20, 312);
+                            ctx.fillText(tmTooltip.substring(0, mid).trim(), leftX + 20, curY + 35);
+                            ctx.fillText(tmTooltip.substring(mid + 1).trim(), leftX + 20, curY + 65);
+                            curY += 85;
                         } else {
-                            ctx.fillText(tmTooltip, leftX + 20, 280);
+                            ctx.fillText(tmTooltip, leftX + 20, curY + 35);
+                            curY += 65;
                         }
                     } else {
-                        ctx.fillText(tmTooltip, leftX + 20, 280);
+                        ctx.fillText(tmTooltip, leftX + 20, curY + 35);
+                        curY += 65;
                     }
                 }
 
@@ -4758,18 +4761,62 @@ function initializeTacticalDashboard2() {
                 if (distValStr) {
                     ctx.fillStyle = '#f59e0b';
                     ctx.font = 'bold 18px monospace';
-                    ctx.fillText(`[ MEASURED TARGET DISTANCE ]`, leftX, 375);
+                    ctx.fillText(`[ MEASURED TARGET DISTANCE ]`, leftX, curY);
 
                     ctx.fillStyle = '#ffffff';
                     ctx.font = 'bold 26px monospace';
-                    ctx.fillText(`${distValStr} YDS`, leftX + 20, 415);
+                    ctx.fillText(`${distValStr} YDS`, leftX + 20, curY + 40);
+                    curY += 75;
+                }
+
+                // Section 4: Tactical Stamps
+                if (meta.tacticalIcons && Array.isArray(meta.tacticalIcons) && meta.tacticalIcons.length > 0) {
+                    ctx.fillStyle = '#34d399';
+                    ctx.font = 'bold 18px monospace';
+                    ctx.fillText(`[ ACTIVE TACTICAL STAMPS (${meta.tacticalIcons.length} PLACED) ]`, leftX, curY);
+
+                    let stampBadgeX = leftX + 20;
+                    const stampBadgeY = curY + 30;
+                    meta.tacticalIcons.slice(0, 7).forEach(st => {
+                        const tag = `${st.icon} ${st.label}`;
+                        ctx.font = 'bold 14px "JetBrains Mono", monospace';
+                        const tw = ctx.measureText(tag).width + 16;
+
+                        ctx.fillStyle = 'rgba(16,185,129,0.15)';
+                        ctx.fillRect(stampBadgeX, stampBadgeY - 18, tw, 28);
+                        ctx.strokeStyle = '#10b981';
+                        ctx.lineWidth = 1.5;
+                        ctx.strokeRect(stampBadgeX, stampBadgeY - 18, tw, 28);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillText(tag, stampBadgeX + 8, stampBadgeY + 2);
+                        stampBadgeX += tw + 10;
+                    });
+                    if (meta.tacticalIcons.length > 7) {
+                        ctx.fillStyle = '#9ca3af';
+                        ctx.font = 'bold 13px monospace';
+                        ctx.fillText(`+${meta.tacticalIcons.length - 7} MORE`, stampBadgeX + 4, stampBadgeY + 2);
+                    }
+                    curY += 75;
+                }
+
+                // Section 5: Tactical Drawings
+                if (meta.drawings && Array.isArray(meta.drawings) && meta.drawings.length > 0) {
+                    ctx.fillStyle = '#60a5fa';
+                    ctx.font = 'bold 17px monospace';
+                    ctx.fillText(`[ FREEHAND TACTICAL DRAWINGS ]`, leftX, curY);
+
+                    ctx.fillStyle = '#93c5fd';
+                    ctx.font = 'bold 16px monospace';
+                    ctx.fillText(`✏️ ${meta.drawings.length} VECTOR DRAWING PATHS RECORDED ON MAP MATRIX`, leftX + 20, curY + 32);
+                    curY += 65;
                 }
 
                 // Footer Watermark
                 ctx.fillStyle = '#10b981';
                 ctx.font = 'bold 15px monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText(`TRC TACTICAL GEO MATRIX - SECURE INTEL REPORT`, fb.width / 2, fb.height - 40);
+                ctx.fillText(`TRC TACTICAL GEO MATRIX - SECURE INTEL REPORT`, fb.width / 2, fb.height - 35);
 
                 return fb;
             }
@@ -4803,7 +4850,7 @@ function initializeTacticalDashboard2() {
                 // Looks like a real tactical map: dark satellite-style bg, compass, GPS pin, range lines.
                 if (!dataUri) {
                     const fb = document.createElement('canvas');
-                    fb.width = 900; fb.height = 700;
+                    fb.width = 960; fb.height = 780;
                     const c = fb.getContext('2d');
 
                     // ── Background: dark with subtle satellite-style noise grid ──
@@ -4825,17 +4872,17 @@ function initializeTacticalDashboard2() {
                     // ── Header ──
                     c.fillStyle = '#10b981'; c.font = 'bold 22px monospace';
                     c.textAlign = 'left';
-                    c.fillText('🛰  TACTICAL GEO MATRIX INTEL', 40, 60);
+                    c.fillText('🛰  TACTICAL GEO MATRIX INTEL', 40, 58);
                     c.fillStyle = '#6b7280'; c.font = '11px monospace';
-                    c.fillText(`CARD: ${label}   ·   ${new Date().toISOString()}`, 40, 82);
+                    c.fillText(`CARD: ${label}   ·   ${new Date().toISOString()}`, 40, 80);
                     c.strokeStyle = 'rgba(16,185,129,0.35)'; c.lineWidth = 1;
-                    c.beginPath(); c.moveTo(40, 96); c.lineTo(fb.width - 40, 96); c.stroke();
+                    c.beginPath(); c.moveTo(40, 94); c.lineTo(fb.width - 40, 94); c.stroke();
 
-                    const cx = fb.width / 2, cy = fb.height / 2 + 30;
-                    const R  = Math.min(fb.width, fb.height) * 0.30;
+                    const cx = fb.width / 2, cy = 295;
+                    const R  = 175;
 
                     // ── Compass ring (top-left quadrant) ──
-                    const rX = 120, rY = 210, rR = 80;
+                    const rX = 115, rY = 195, rR = 75;
                     c.strokeStyle = '#1e40af'; c.lineWidth = 2;
                     c.beginPath(); c.arc(rX, rY, rR, 0, Math.PI * 2); c.stroke();
                     c.strokeStyle = '#3b82f6'; c.lineWidth = 1;
@@ -4846,67 +4893,131 @@ function initializeTacticalDashboard2() {
                         const tx = rX + (rR - 20) * Math.cos(rad);
                         const ty = rY + (rR - 20) * Math.sin(rad);
                         c.fillStyle = d === 'N' ? '#ef4444' : '#93c5fd';
-                        c.font = `bold ${d === 'N' ? 18 : 14}px Arial`;
+                        c.font = `bold ${d === 'N' ? 16 : 13}px Arial`;
                         c.textAlign = 'center'; c.textBaseline = 'middle';
                         c.fillText(d, tx, ty);
                     });
                     c.fillStyle = '#6b7280'; c.font = '10px monospace'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
                     c.fillText('COMPASS VECTOR', rX - rR, rY + rR + 18);
 
-                    // ── Range ring (main area) ──
+                    // ── Range rings (main radar area) ──
                     c.strokeStyle = 'rgba(59,130,246,0.5)'; c.lineWidth = 2;
                     c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.stroke();
                     c.strokeStyle = 'rgba(59,130,246,0.2)'; c.lineWidth = 1;
                     c.beginPath(); c.arc(cx, cy, R * 0.6, 0, Math.PI * 2); c.stroke();
+                    c.beginPath(); c.arc(cx, cy, R * 0.25, 0, Math.PI * 2); c.stroke();
 
-                    // ── GPS / My Position pin (center) ──
-                    if (meta.myCoords) {
-                        // Pulsing rings
-                        [0.22, 0.14, 0.08].forEach((scale, i) => {
-                            c.strokeStyle = `rgba(16,185,129,${0.2 + i*0.15})`;
-                            c.lineWidth = 1;
-                            c.beginPath(); c.arc(cx, cy, R * scale, 0, Math.PI * 2); c.stroke();
-                        });
-                        // GPS star pin
-                        c.fillStyle = '#10b981';
-                        c.beginPath(); c.arc(cx, cy, 10, 0, Math.PI * 2); c.fill();
-                        c.fillStyle = '#ffffff';
-                        c.font = 'bold 12px Arial'; c.textAlign = 'center'; c.textBaseline = 'middle';
-                        c.fillText('★', cx, cy);
+                    // Crosshair grid lines across radar
+                    c.strokeStyle = 'rgba(59,130,246,0.25)'; c.lineWidth = 1;
+                    c.beginPath(); c.moveTo(cx - R, cy); c.lineTo(cx + R, cy); c.stroke();
+                    c.beginPath(); c.moveTo(cx, cy - R); c.lineTo(cx, cy + R); c.stroke();
 
-                        // MY GPS label box
-                        c.fillStyle = 'rgba(16,185,129,0.15)';
-                        c.fillRect(cx - 200, cy + 18, 400, 50);
-                        c.strokeStyle = '#10b981'; c.lineWidth = 1;
-                        c.strokeRect(cx - 200, cy + 18, 400, 50);
-                        c.fillStyle = '#34d399'; c.font = 'bold 11px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-                        c.fillText('MY GPS POSITION', cx, cy + 34);
-                        c.fillStyle = '#ffffff'; c.font = 'bold 16px monospace';
-                        c.fillText(`${meta.myCoords.lat.toFixed(6)},  ${meta.myCoords.lng.toFixed(6)}`, cx, cy + 56);
-                    }
-
-                    // ── Range markers & lines ──
+                    // ── Distance readout panel (top-right) ──
                     const distEl = document.getElementById('live-map-dist');
                     const distValStr = (distEl && distEl.textContent !== '--.--') ? distEl.textContent : (meta.distance || null);
+                    if (distValStr) {
+                        c.fillStyle = 'rgba(245,158,11,0.12)';
+                        c.fillRect(fb.width - 235, 140, 195, 85);
+                        c.strokeStyle = '#f59e0b'; c.lineWidth = 1;
+                        c.strokeRect(fb.width - 235, 140, 195, 85);
+                        c.fillStyle = '#f59e0b'; c.font = 'bold 11px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+                        c.fillText('TARGET DISTANCE', fb.width - 235 + 97, 162);
+                        c.fillStyle = '#ffffff'; c.font = 'bold 24px monospace';
+                        c.fillText(`${distValStr} YDS`, fb.width - 235 + 97, 202);
+                    }
 
-                    if (mapMarkers && mapMarkers.length >= 2) {
-                        // Draw dashed line between virtual marker positions
-                        const angleStep = (2 * Math.PI) / mapMarkers.length;
-                        const markerCanvasPositions = mapMarkers.map((m, i) => {
-                            const angle = angleStep * i - Math.PI / 6;
-                            return { x: cx + R * 0.55 * Math.cos(angle), y: cy + R * 0.55 * Math.sin(angle), latlng: m.getLatLng() };
+                    // ── Unified Geo Coordinate Projection ──
+                    const allGeoPts = [];
+                    if (meta.myCoords && meta.myCoords.lat) allGeoPts.push({ lat: meta.myCoords.lat, lng: meta.myCoords.lng });
+                    if (meta.teammateCoords && meta.teammateCoords.lat) allGeoPts.push({ lat: meta.teammateCoords.lat, lng: meta.teammateCoords.lng });
+                    if (meta.markers && Array.isArray(meta.markers)) {
+                        meta.markers.forEach(m => { if (m && m.lat) allGeoPts.push({ lat: m.lat, lng: m.lng }); });
+                    }
+                    if (meta.drawings && Array.isArray(meta.drawings)) {
+                        meta.drawings.forEach(poly => {
+                            if (Array.isArray(poly)) {
+                                poly.forEach(pt => { if (pt && pt.lat) allGeoPts.push({ lat: pt.lat, lng: pt.lng }); });
+                            }
                         });
+                    }
+                    if (meta.tacticalIcons && Array.isArray(meta.tacticalIcons)) {
+                        meta.tacticalIcons.forEach(st => { if (st && st.lat) allGeoPts.push({ lat: st.lat, lng: st.lng }); });
+                    }
 
-                        // Draw dashed lines between markers
+                    let projCenterLat = 32.7767, projCenterLng = -96.7970, maxSpan = 0.005;
+                    if (allGeoPts.length > 0) {
+                        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+                        allGeoPts.forEach(p => {
+                            if (p.lat < minLat) minLat = p.lat;
+                            if (p.lat > maxLat) maxLat = p.lat;
+                            if (p.lng < minLng) minLng = p.lng;
+                            if (p.lng > maxLng) maxLng = p.lng;
+                        });
+                        projCenterLat = (minLat + maxLat) / 2;
+                        projCenterLng = (minLng + maxLng) / 2;
+                        const cosL = Math.cos(projCenterLat * Math.PI / 180);
+                        const spanLat = Math.max(0.0004, maxLat - minLat);
+                        const spanLng = Math.max(0.0004, (maxLng - minLng) * cosL);
+                        maxSpan = Math.max(spanLat, spanLng);
+                    } else if (meta.myCoords) {
+                        projCenterLat = meta.myCoords.lat;
+                        projCenterLng = meta.myCoords.lng;
+                    } else if (meta.centerLat) {
+                        projCenterLat = meta.centerLat;
+                        projCenterLng = meta.centerLng;
+                    }
+
+                    const cosL = Math.cos(projCenterLat * Math.PI / 180);
+                    const projScale = (R * 0.72) / (maxSpan / 2);
+
+                    const geoToCanvas = (lat, lng) => {
+                        const dx = (lng - projCenterLng) * cosL;
+                        const dy = (lat - projCenterLat);
+                        return {
+                            x: Math.max(cx - R + 14, Math.min(cx + R - 14, cx + dx * projScale)),
+                            y: Math.max(cy - R + 14, Math.min(cy + R - 14, cy - dy * projScale))
+                        };
+                    };
+
+                    // ── 1. Draw Freehand Tactical Drawings (Polylines) ──
+                    if (meta.drawings && Array.isArray(meta.drawings) && meta.drawings.length > 0) {
+                        c.save();
+                        c.strokeStyle = '#3b82f6';
+                        c.lineWidth = 4;
+                        c.lineCap = 'round';
+                        c.lineJoin = 'round';
+                        c.shadowColor = '#60a5fa';
+                        c.shadowBlur = 8;
+                        meta.drawings.forEach(poly => {
+                            if (!Array.isArray(poly) || poly.length < 2) return;
+                            c.beginPath();
+                            poly.forEach((pt, idx) => {
+                                const pos = geoToCanvas(pt.lat, pt.lng);
+                                if (idx === 0) c.moveTo(pos.x, pos.y);
+                                else c.lineTo(pos.x, pos.y);
+                            });
+                            c.stroke();
+                        });
+                        c.restore();
+                    }
+
+                    // ── 2. Draw Target Markers & Range Lines ──
+                    if (meta.markers && Array.isArray(meta.markers) && meta.markers.length >= 2) {
+                        c.save();
                         c.setLineDash([8, 5]);
-                        c.strokeStyle = '#ff1493'; c.lineWidth = 2;
+                        c.strokeStyle = '#ff1493';
+                        c.lineWidth = 2;
                         c.beginPath();
-                        markerCanvasPositions.forEach((p, i) => { if (i === 0) c.moveTo(p.x, p.y); else c.lineTo(p.x, p.y); });
+                        meta.markers.forEach((m, i) => {
+                            const p = geoToCanvas(m.lat, m.lng);
+                            if (i === 0) c.moveTo(p.x, p.y);
+                            else c.lineTo(p.x, p.y);
+                        });
                         c.stroke();
                         c.setLineDash([]);
 
-                        // Draw marker dots
-                        markerCanvasPositions.forEach((p, i) => {
+                        meta.markers.forEach((m, i) => {
+                            const p = geoToCanvas(m.lat, m.lng);
                             c.fillStyle = '#000';
                             c.beginPath(); c.arc(p.x, p.y, 7, 0, Math.PI * 2); c.fill();
                             c.strokeStyle = '#ff1493'; c.lineWidth = 2;
@@ -4914,47 +5025,158 @@ function initializeTacticalDashboard2() {
                             c.fillStyle = '#ff1493'; c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
                             c.fillText(`T${i+1}`, p.x, p.y);
                         });
-                    } else {
-                        // Just draw crosshair target marker
-                        const tx = cx + R * 0.45, ty = cy - R * 0.3;
-                        c.strokeStyle = '#ff1493'; c.lineWidth = 2;
-                        c.beginPath(); c.moveTo(cx, cy); c.lineTo(tx, ty); c.stroke();
-                        c.fillStyle = '#000';
-                        c.beginPath(); c.arc(tx, ty, 8, 0, Math.PI * 2); c.fill();
-                        c.strokeStyle = '#ff1493'; c.lineWidth = 2;
-                        c.beginPath(); c.arc(tx, ty, 8, 0, Math.PI * 2); c.stroke();
+                        c.restore();
                     }
 
-                    // ── Distance readout panel ──
-                    if (distValStr) {
-                        c.fillStyle = 'rgba(245,158,11,0.12)';
-                        c.fillRect(cx + R + 10, cy - 55, 200, 90);
-                        c.strokeStyle = '#f59e0b'; c.lineWidth = 1;
-                        c.strokeRect(cx + R + 10, cy - 55, 200, 90);
-                        c.fillStyle = '#f59e0b'; c.font = 'bold 11px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-                        c.fillText('TARGET DISTANCE', cx + R + 110, cy - 36);
-                        c.fillStyle = '#ffffff'; c.font = 'bold 28px monospace';
-                        c.fillText(`${distValStr} YDS`, cx + R + 110, cy + 4);
+                    // ── 3. Draw Operator GPS Pin ──
+                    if (meta.myCoords) {
+                        const gpsPos = geoToCanvas(meta.myCoords.lat, meta.myCoords.lng);
+                        [0.24, 0.16, 0.09].forEach((scale, i) => {
+                            c.strokeStyle = `rgba(16,185,129,${0.25 + i*0.15})`;
+                            c.lineWidth = 1;
+                            c.beginPath(); c.arc(gpsPos.x, gpsPos.y, R * scale, 0, Math.PI * 2); c.stroke();
+                        });
+                        c.fillStyle = '#10b981';
+                        c.beginPath(); c.arc(gpsPos.x, gpsPos.y, 10, 0, Math.PI * 2); c.fill();
+                        c.fillStyle = '#ffffff';
+                        c.font = 'bold 12px Arial'; c.textAlign = 'center'; c.textBaseline = 'middle';
+                        c.fillText('★', gpsPos.x, gpsPos.y);
                     }
 
-                    // ── Teammate coords ──
+                    // ── 4. Draw Teammate Locator Pin ──
+                    if (meta.teammateCoords && meta.teammateCoords.lat) {
+                        const tmPos = geoToCanvas(meta.teammateCoords.lat, meta.teammateCoords.lng);
+                        c.strokeStyle = 'rgba(34,211,238,0.4)'; c.lineWidth = 1.5;
+                        c.beginPath(); c.arc(tmPos.x, tmPos.y, 14, 0, Math.PI * 2); c.stroke();
+                        c.fillStyle = '#22d3ee';
+                        c.beginPath(); c.arc(tmPos.x, tmPos.y, 8, 0, Math.PI * 2); c.fill();
+                        c.fillStyle = '#000000';
+                        c.font = 'bold 9px Arial'; c.textAlign = 'center'; c.textBaseline = 'middle';
+                        c.fillText('🎯', tmPos.x, tmPos.y);
+                    }
+
+                    // ── 5. Draw Tactical Icon Stamps (Pure UTF-8 with Glowing Badges) ──
+                    if (meta.tacticalIcons && Array.isArray(meta.tacticalIcons) && meta.tacticalIcons.length > 0) {
+                        c.save();
+                        meta.tacticalIcons.forEach(st => {
+                            const p = geoToCanvas(st.lat, st.lng);
+                            const icon = st.icon || '📍';
+                            const lbl = (st.label || 'STAMP').toUpperCase();
+
+                            // Drop shadow and emoji icon
+                            c.font = '22px Arial, sans-serif';
+                            c.textAlign = 'center';
+                            c.textBaseline = 'bottom';
+                            c.shadowColor = '#000000';
+                            c.shadowBlur = 6;
+                            c.fillText(icon, p.x, p.y - 3);
+
+                            // Tactical badge
+                            c.font = 'bold 8.5px "JetBrains Mono", monospace';
+                            const tw = c.measureText(lbl).width;
+                            const bw = tw + 8;
+                            const bh = 14;
+                            const bx = p.x - bw / 2;
+                            const by = p.y - 2;
+
+                            const badgeColor = /ENEMY|HOSTILE/i.test(lbl) ? '#ef4444' :
+                                               /OBJECTIVE|TARGET/i.test(lbl) ? '#06b6d4' :
+                                               /ANIMAL|GAME/i.test(lbl) ? '#f59e0b' :
+                                               /MED|HOSPITAL/i.test(lbl) ? '#f43f5e' :
+                                               /WATER/i.test(lbl) ? '#38bdf8' : '#10b981';
+
+                            c.fillStyle = 'rgba(3,7,18,0.92)';
+                            c.fillRect(bx, by, bw, bh);
+                            c.strokeStyle = badgeColor;
+                            c.lineWidth = 1.5;
+                            c.strokeRect(bx, by, bw, bh);
+
+                            c.fillStyle = '#ffffff';
+                            c.textAlign = 'center';
+                            c.textBaseline = 'middle';
+                            c.fillText(lbl, p.x, by + bh / 2);
+                        });
+                        c.restore();
+                    }
+
+                    // ── Dynamic Bottom Information Panels ──
+                    let bottomY = 490;
+
+                    // Panel A: My GPS Readout
+                    if (meta.myCoords) {
+                        c.fillStyle = 'rgba(16,185,129,0.12)';
+                        c.fillRect(40, bottomY, fb.width - 80, 44);
+                        c.strokeStyle = '#10b981'; c.lineWidth = 1;
+                        c.strokeRect(40, bottomY, fb.width - 80, 44);
+                        c.fillStyle = '#34d399'; c.font = 'bold 11px monospace'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+                        c.fillText('OPERATOR POSITION (MY GPS):', 55, bottomY + 18);
+                        c.fillStyle = '#ffffff'; c.font = 'bold 14px monospace';
+                        c.fillText(`${meta.myCoords.lat.toFixed(6)},  ${meta.myCoords.lng.toFixed(6)}`, 55, bottomY + 36);
+                        bottomY += 50;
+                    }
+
+                    // Panel B: Teammate / Target Locator
                     if (meta.teammateCoords) {
                         c.fillStyle = 'rgba(34,211,238,0.1)';
-                        c.fillRect(40, 460, 820, 55);
+                        c.fillRect(40, bottomY, fb.width - 80, 46);
                         c.strokeStyle = '#22d3ee'; c.lineWidth = 1;
-                        c.strokeRect(40, 460, 820, 55);
+                        c.strokeRect(40, bottomY, fb.width - 80, 46);
                         c.fillStyle = '#22d3ee'; c.font = 'bold 11px monospace'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
-                        c.fillText('🎯 TEAMMATE / TARGET LOCATOR:', 55, 479);
-                        c.fillStyle = '#fff'; c.font = 'bold 15px monospace';
+                        c.fillText('🎯 TEAMMATE / TARGET LOCATOR:', 55, bottomY + 18);
+                        c.fillStyle = '#fff'; c.font = 'bold 13px monospace';
                         const tmText = meta.teammateCoords.tooltip || `${meta.teammateCoords.lat.toFixed(6)}, ${meta.teammateCoords.lng.toFixed(6)}`;
-                        c.fillText(tmText, 55, 500);
+                        c.fillText(tmText, 55, bottomY + 36);
+                        bottomY += 52;
+                    }
+
+                    // Panel C: Active Tactical Stamps Readout Bar
+                    if (meta.tacticalIcons && Array.isArray(meta.tacticalIcons) && meta.tacticalIcons.length > 0) {
+                        c.fillStyle = 'rgba(16,185,129,0.08)';
+                        c.fillRect(40, bottomY, fb.width - 80, 56);
+                        c.strokeStyle = '#10b981'; c.lineWidth = 1;
+                        c.strokeRect(40, bottomY, fb.width - 80, 56);
+                        c.fillStyle = '#34d399'; c.font = 'bold 11px monospace'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+                        c.fillText(`📍 ACTIVE TACTICAL STAMPS [${meta.tacticalIcons.length} PLACED]:`, 55, bottomY + 18);
+
+                        let curX = 55;
+                        const stampRowY = bottomY + 41;
+                        meta.tacticalIcons.slice(0, 8).forEach(st => {
+                            const tag = `${st.icon} ${st.label}`;
+                            c.font = 'bold 11px "JetBrains Mono", monospace';
+                            const tagW = c.measureText(tag).width + 12;
+
+                            c.fillStyle = 'rgba(3,7,18,0.9)';
+                            c.fillRect(curX, stampRowY - 14, tagW, 20);
+                            c.strokeStyle = '#059669'; c.lineWidth = 1;
+                            c.strokeRect(curX, stampRowY - 14, tagW, 20);
+
+                            c.fillStyle = '#ffffff';
+                            c.fillText(tag, curX + 6, stampRowY);
+                            curX += tagW + 8;
+                        });
+                        if (meta.tacticalIcons.length > 8) {
+                            c.fillStyle = '#9ca3af'; c.font = 'bold 10px monospace';
+                            c.fillText(`+${meta.tacticalIcons.length - 8} MORE`, curX + 4, stampRowY);
+                        }
+                        bottomY += 62;
+                    }
+
+                    // Panel D: Freehand Drawings Readout Bar
+                    if (meta.drawings && Array.isArray(meta.drawings) && meta.drawings.length > 0) {
+                        c.fillStyle = 'rgba(59,130,246,0.08)';
+                        c.fillRect(40, bottomY, fb.width - 80, 42);
+                        c.strokeStyle = '#3b82f6'; c.lineWidth = 1;
+                        c.strokeRect(40, bottomY, fb.width - 80, 42);
+                        c.fillStyle = '#60a5fa'; c.font = 'bold 11px monospace'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+                        c.fillText(`✏️ FREEHAND TACTICAL DRAWINGS: ${meta.drawings.length} VECTORS RECORDED ON MAP MATRIX`, 55, bottomY + 26);
+                        bottomY += 48;
                     }
 
                     // ── Footer ──
                     c.fillStyle = '#10b981'; c.font = 'bold 12px monospace'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-                    c.fillText('TRC TACTICAL GEO MATRIX  ·  SECURE INTEL REPORT', fb.width / 2, fb.height - 22);
+                    c.fillText('TRC TACTICAL GEO MATRIX  ·  SECURE INTEL REPORT', fb.width / 2, fb.height - 20);
 
-                    dataUri = fb.toDataURL('image/jpeg', 0.88);
+                    dataUri = fb.toDataURL('image/jpeg', 0.90);
                 }
 
                 await window.saveIntelSnapshot(label, dataUri, meta);
@@ -13780,11 +14002,19 @@ const LABEL_TO_STAMP_ICON = {
     'WATER CACHE': '\u{1F4A7}'
 };
 
+let lastTrayToggleTime = 0;
+
 window.toggleTacticalIconTray = function(e) {
     if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
+    const now = Date.now();
+    if (now - lastTrayToggleTime < 280) {
+        return; // Guard against multiple events in the same click
+    }
+    lastTrayToggleTime = now;
+
     const iconTray = document.getElementById('tactical-icon-tray');
     if (!iconTray) return;
 
@@ -13807,7 +14037,6 @@ window.toggleTacticalIconTray = function(e) {
             iconTray.style.transform = 'none';
         }
         iconTray.classList.remove('hidden');
-        if (window.lucide) window.lucide.createIcons();
         
         const geoIconTrayBtn = document.getElementById('geo-icons-btn');
         if (geoIconTrayBtn) {
@@ -13837,8 +14066,8 @@ window.closeTacticalIconTray = function() {
 
 window.cancelActiveStamp = function(e) {
     if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
     window.activeIconStamp = null;
     window.activeIconLabel = null;
@@ -13853,8 +14082,6 @@ window.cancelActiveStamp = function(e) {
 };
 
 function initTacticalIconTray() {
-    const geoIconTrayBtn = document.getElementById('geo-icons-btn');
-    const commsIconTrayBtn = document.getElementById('comms-icons-btn');
     const iconTray = document.getElementById('tactical-icon-tray');
     const closeTrayBtn = document.getElementById('close-icon-tray');
     const clearIconsBtn = document.getElementById('clear-tactical-icons-btn');
@@ -13912,24 +14139,19 @@ function initTacticalIconTray() {
         }
     }
 
-    if (geoIconTrayBtn) {
-        geoIconTrayBtn.onclick = (e) => window.toggleTacticalIconTray(e);
-    }
-    if (commsIconTrayBtn) {
-        commsIconTrayBtn.onclick = (e) => window.toggleTacticalIconTray(e);
-    }
-
     if (closeTrayBtn) {
         closeTrayBtn.onclick = () => window.closeTacticalIconTray();
     }
 
-    // Dismiss tray if clicked outside
+    // Dismiss tray if clicked outside (with composedPath check)
     document.addEventListener('click', (e) => {
+        if (Date.now() - lastTrayToggleTime < 200) return;
         const tray = document.getElementById('tactical-icon-tray');
         if (!tray || tray.classList.contains('hidden')) return;
         const gBtn = document.getElementById('geo-icons-btn');
         const cBtn = document.getElementById('comms-icons-btn');
-        if (tray.contains(e.target) || (gBtn && gBtn.contains(e.target)) || (cBtn && cBtn.contains(e.target))) {
+        const path = (typeof e.composedPath === 'function') ? e.composedPath() : [];
+        if (path.includes(tray) || path.includes(gBtn) || path.includes(cBtn) || tray.contains(e.target) || (gBtn && gBtn.contains(e.target)) || (cBtn && cBtn.contains(e.target))) {
             return;
         }
         window.closeTacticalIconTray();
