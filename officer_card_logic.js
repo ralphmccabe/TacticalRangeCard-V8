@@ -27,8 +27,9 @@ window.clearOfficerForm = function() {
     }
     
     // Re-render the form completely clean with a fresh ID
+    try { localStorage.removeItem('trc_officer_draft'); } catch(e) {}
     if (typeof window.renderOfficerForm === 'function') {
-        window.renderOfficerForm(null);
+        window.renderOfficerForm({ data: {} });
     }
     
     // Reset field inputs
@@ -60,6 +61,13 @@ window.clearOfficerForm = function() {
 window.renderOfficerForm = function(cardData = null) {
     const container = document.getElementById('ws-top-action-area');
     if (!container) return;
+
+    if (!cardData) {
+        try {
+            const draft = JSON.parse(localStorage.getItem('trc_officer_draft'));
+            if (draft) cardData = { data: draft };
+        } catch(e) {}
+    }
 
     officerRosterParties = (cardData && cardData.data && cardData.data.parties) ? cardData.data.parties : [];
     officerFirstAidList = (cardData && cardData.data && cardData.data.firstAid) ? cardData.data.firstAid : [];
@@ -136,7 +144,7 @@ window.renderOfficerForm = function(cardData = null) {
                     </div>
                 </div>
                 
-                <button type="button" onclick="window.renderWorkstationMenu()" class="text-slate-400 hover:text-white bg-slate-900 p-1 px-2 rounded border border-slate-700 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer">
+                <button type="button" onclick="window.renderWorkstationMenu(true)" class="text-slate-400 hover:text-white bg-slate-900 p-1 px-2 rounded border border-slate-700 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer">
                     <i data-lucide="x" class="w-3.5 h-3.5"></i> Close Form
                 </button>
             </div>
@@ -544,6 +552,25 @@ window.renderOfficerForm = function(cardData = null) {
     setTimeout(() => {
         window.initOfficerCanvas(existingSketch);
     }, 150);
+
+    // Auto-save Officer draft on input/change
+    const formEl = document.getElementById('officer-form-wrapper');
+    if (formEl) {
+        let draftDebounce = null;
+        const triggerOfficerDraftSave = () => {
+            if (draftDebounce) clearTimeout(draftDebounce);
+            draftDebounce = setTimeout(() => {
+                try {
+                    const card = window.collectOfficerCardData('DRAFT');
+                    if (card && card.data) {
+                        localStorage.setItem('trc_officer_draft', JSON.stringify(card.data));
+                    }
+                } catch(e) {}
+            }, 300);
+        };
+        formEl.addEventListener('input', triggerOfficerDraftSave);
+        formEl.addEventListener('change', triggerOfficerDraftSave);
+    }
 };
 
 // Scene Evidence Photo Handlers (Max 5 photos)
@@ -715,7 +742,7 @@ window.renderOfficerPartyRows = function() {
                 <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 flex-wrap gap-2">
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] text-purple-400 font-black uppercase tracking-wider">Party Role:</span>
-                        <select onchange="window.updateOfficerParty(${idx}, 'role', this.value)" class="bg-slate-900 border border-purple-500/50 rounded px-2 py-0.5 text-[10px] text-purple-300 font-black uppercase focus:outline-none">
+                        <select oninput="window.updateOfficerParty(${idx}, 'role', this.value)" onchange="window.updateOfficerParty(${idx}, 'role', this.value)" class="party-role-select bg-slate-900 border border-purple-500/50 rounded px-2 py-0.5 text-[10px] text-purple-300 font-black uppercase focus:outline-none">
                             <option value="SUSPECT" ${p.role === 'SUSPECT' ? 'selected' : ''}>SUSPECT</option>
                             <option value="DRIVER" ${p.role === 'DRIVER' ? 'selected' : ''}>DRIVER</option>
                             <option value="VICTIM" ${p.role === 'VICTIM' ? 'selected' : ''}>VICTIM</option>
@@ -725,7 +752,7 @@ window.renderOfficerPartyRows = function() {
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] text-amber-400 font-black uppercase tracking-wider">Status:</span>
-                        <select onchange="window.updateOfficerParty(${idx}, 'status', this.value)" class="bg-slate-900 border border-amber-500/50 rounded px-2 py-0.5 text-[9.5px] text-amber-300 font-black uppercase focus:outline-none">
+                        <select oninput="window.updateOfficerParty(${idx}, 'status', this.value)" onchange="window.updateOfficerParty(${idx}, 'status', this.value)" class="party-status-select bg-slate-900 border border-amber-500/50 rounded px-2 py-0.5 text-[9.5px] text-amber-300 font-black uppercase focus:outline-none">
                             <option value="UNINJURED" ${p.status === 'UNINJURED' ? 'selected' : ''}>UNINJURED</option>
                             <option value="EMS TRANSPORTED" ${p.status === 'EMS TRANSPORTED' ? 'selected' : ''}>EMS TRANSPORTED</option>
                             <option value="DETAINED" ${p.status === 'DETAINED' ? 'selected' : ''}>DETAINED</option>
@@ -747,17 +774,17 @@ window.renderOfficerPartyRows = function() {
                                 <button type="button" onclick="window.testOfficerPartyDL(${idx})" class="text-[7.5px] bg-slate-800 text-slate-300 hover:bg-slate-700 px-1 py-0.2 rounded font-mono cursor-pointer" title="Load Sample Test DL">🧪 TEST</button>
                             </div>
                         </div>
-                        <input type="text" maxlength="30" value="${p.name || ''}" onchange="window.updateOfficerParty(${idx}, 'name', this.value)" placeholder="NAME" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-bold focus:border-cyan-400 focus:outline-none">
+                        <input type="text" maxlength="30" value="${p.name || ''}" oninput="window.updateOfficerParty(${idx}, 'name', this.value)" onchange="window.updateOfficerParty(${idx}, 'name', this.value)" placeholder="NAME" class="party-name-input w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-bold focus:border-cyan-400 focus:outline-none">
                     </div>
 
                     <div>
                         <span class="text-[8px] text-slate-400 font-bold uppercase block mb-0.5">Phone / Contact</span>
-                        <input type="text" maxlength="25" value="${p.phone || ''}" onchange="window.updateOfficerParty(${idx}, 'phone', this.value)" placeholder="PHONE" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white focus:border-cyan-400 focus:outline-none">
+                        <input type="text" maxlength="25" value="${p.phone || ''}" oninput="window.updateOfficerParty(${idx}, 'phone', this.value)" onchange="window.updateOfficerParty(${idx}, 'phone', this.value)" placeholder="PHONE" class="party-phone-input w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white focus:border-cyan-400 focus:outline-none">
                     </div>
 
                     <div>
                         <span class="text-[8px] text-slate-400 font-bold uppercase block mb-0.5">DL # / State</span>
-                        <input type="text" maxlength="25" value="${p.license || ''}" onchange="window.updateOfficerParty(${idx}, 'license', this.value)" placeholder="DL NUMBER" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-mono focus:border-cyan-400 focus:outline-none">
+                        <input type="text" maxlength="25" value="${p.license || ''}" oninput="window.updateOfficerParty(${idx}, 'license', this.value)" onchange="window.updateOfficerParty(${idx}, 'license', this.value)" placeholder="DL NUMBER" class="party-license-input w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-mono focus:border-cyan-400 focus:outline-none">
                     </div>
 
                     <div>
@@ -769,7 +796,7 @@ window.renderOfficerPartyRows = function() {
                                 <button type="button" onclick="window.testOfficerPartyVIN(${idx})" class="text-[7.5px] bg-slate-800 text-slate-300 hover:bg-slate-700 px-1 py-0.2 rounded font-mono cursor-pointer" title="Load Sample Test VIN">🧪 TEST</button>
                             </div>
                         </div>
-                        <input type="text" maxlength="40" value="${p.vehicle || ''}" onchange="window.updateOfficerParty(${idx}, 'vehicle', this.value)" placeholder="MAKE/MODEL/PLATE OR VIN" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-bold focus:border-cyan-400 focus:outline-none">
+                        <input type="text" maxlength="40" value="${p.vehicle || ''}" oninput="window.updateOfficerParty(${idx}, 'vehicle', this.value)" onchange="window.updateOfficerParty(${idx}, 'vehicle', this.value)" placeholder="MAKE/MODEL/PLATE OR VIN" class="party-vehicle-input w-full bg-slate-900 border border-slate-700 rounded p-1 text-[10.5px] text-white uppercase font-bold focus:border-cyan-400 focus:outline-none">
                     </div>
                 </div>
 
@@ -1412,24 +1439,84 @@ window.clearOfficerCanvas = function() {
     }
 };
 
-// Pack Card Payload
+// Pack Card Payload with Live DOM Harvesting
 window.collectOfficerCardData = function(id = null) {
     const sketchImage = officerCanvas ? officerCanvas.toDataURL('image/png') : null;
+
+    // 1. Live harvest Parties from DOM rows
+    const partyContainer = document.getElementById('officer-parties-container');
+    if (partyContainer) {
+        const partyRows = partyContainer.querySelectorAll(':scope > div');
+        if (partyRows && partyRows.length > 0) {
+            const liveParties = [];
+            partyRows.forEach((row, i) => {
+                const existing = (officerRosterParties && officerRosterParties[i]) ? { ...officerRosterParties[i] } : {};
+                const roleEl = row.querySelector('.party-role-select') || row.querySelector('select:first-of-type');
+                const statusEl = row.querySelector('.party-status-select') || row.querySelectorAll('select')[1];
+                const nameEl = row.querySelector('.party-name-input') || row.querySelector('input[placeholder*="NAME"]');
+                const phoneEl = row.querySelector('.party-phone-input') || row.querySelector('input[placeholder*="PHONE"]');
+                const licenseEl = row.querySelector('.party-license-input') || row.querySelector('input[placeholder*="DL NUMBER"]');
+                const vehicleEl = row.querySelector('.party-vehicle-input') || row.querySelector('input[placeholder*="MAKE"]');
+
+                if (roleEl) existing.role = roleEl.value;
+                if (statusEl) existing.status = statusEl.value;
+                if (nameEl) existing.name = nameEl.value;
+                if (phoneEl) existing.phone = phoneEl.value;
+                if (licenseEl) existing.license = licenseEl.value;
+                if (vehicleEl) existing.vehicle = vehicleEl.value;
+
+                liveParties.push(existing);
+            });
+            officerRosterParties = liveParties;
+        }
+    }
+
+    // 2. Live harvest First Aid from DOM rows
+    const faContainer = document.getElementById('officer-firstaid-container');
+    if (faContainer) {
+        const faRows = faContainer.querySelectorAll(':scope > div');
+        if (faRows && faRows.length > 0) {
+            const liveFa = [];
+            faRows.forEach((row, i) => {
+                const existing = (officerFirstAidList && officerFirstAidList[i]) ? { ...officerFirstAidList[i] } : {};
+                const selects = row.querySelectorAll('select');
+                const inputs = row.querySelectorAll('input[type="text"]');
+                const textareas = row.querySelectorAll('textarea');
+                if (selects.length >= 1) existing.faType = selects[0].value;
+                if (selects.length >= 2) existing.faEvac = selects[1].value;
+                if (inputs.length >= 1) existing.faName = inputs[0].value;
+                if (inputs.length >= 2) existing.faVitals = inputs[1].value;
+                if (textareas.length >= 1) existing.faTreatment = textareas[0].value;
+                liveFa.push(existing);
+            });
+            officerFirstAidList = liveFa;
+        }
+    }
+
+    // 3. Live harvest Main Fields from DOM
+    const unitCallsign = document.getElementById('officer-unit-callsign')?.value || '';
+    const cadNumber = document.getElementById('officer-cad-number')?.value || '';
+    const sceneStatus = document.getElementById('officer-scene-status')?.value || 'ACTIVE';
+    const incidentType = document.getElementById('officer-incident-type')?.value || 'TRAFFIC ACCIDENT';
+    const tacComms = document.getElementById('officer-tac-comms')?.value || '';
+    const backupUnits = document.getElementById('officer-backup-units')?.value || '';
+    const emsHospital = document.getElementById('officer-ems-hospital')?.value || '';
+    const incidentNotes = document.getElementById('officer-incident-notes')?.value || '';
     
     return {
         id: id || Date.now(),
         timestamp: Date.now(),
         type: 'officer',
-        title: `SITREP: ${document.getElementById('officer-unit-callsign')?.value || 'UNSPECIFIED'}`,
+        title: `SITREP: ${unitCallsign || 'UNSPECIFIED'}`,
         data: {
-            unitCallsign: document.getElementById('officer-unit-callsign')?.value || '',
-            cadNumber: document.getElementById('officer-cad-number')?.value || '',
-            sceneStatus: document.getElementById('officer-scene-status')?.value || 'ACTIVE',
-            incidentType: document.getElementById('officer-incident-type')?.value || 'TRAFFIC ACCIDENT',
-            tacComms: document.getElementById('officer-tac-comms')?.value || '',
-            backupUnits: document.getElementById('officer-backup-units')?.value || '',
-            emsHospital: document.getElementById('officer-ems-hospital')?.value || '',
-            incidentNotes: document.getElementById('officer-incident-notes')?.value || '',
+            unitCallsign: unitCallsign,
+            cadNumber: cadNumber,
+            sceneStatus: sceneStatus,
+            incidentType: incidentType,
+            tacComms: tacComms,
+            backupUnits: backupUnits,
+            emsHospital: emsHospital,
+            incidentNotes: incidentNotes,
             parties: officerRosterParties || [],
             firstAid: officerFirstAidList || [],
             hazmat: officerHazmatList || [],
@@ -1468,7 +1555,8 @@ window.saveOfficerCardToWorkstation = async function(id) {
         await window.TRC_IDB.set('workstationLibrary', cardData.id, cardData);
     }
     if (typeof pushTacLog === 'function') pushTacLog(`OFFICER SITREP CARD SECURED IN WORKSTATION`, 'SUCCESS');
-    window.renderWorkstationMenu();
+    try { localStorage.removeItem('trc_officer_draft'); } catch(e) {}
+    window.renderWorkstationMenu(true);
 };
 
 // Transmit to Intel Vault
@@ -1505,9 +1593,10 @@ window.saveOfficerCardToVault = async function(id) {
         id: cardData.id,
         timestamp: cardData.timestamp,
         image: cardImageSnapshot,
-        label: `OFFICER SITREP: ${cardData.data.unitCallsign}`,
+        label: `OFFICER SITREP: ${cardData.data.unitCallsign || 'UNIT'}`,
         type: 'officer_sitrep',
-        workstationData: cardData
+        workstationData: cardData,
+        officerData: cardData.data
     };
     
     if (window.TRC_IDB) {
@@ -1520,6 +1609,35 @@ window.saveOfficerCardToVault = async function(id) {
     }
     if (typeof pushTacLog === 'function') pushTacLog(`OFFICER SITREP TRANSMITTED TO INTEL VAULT`, 'SUCCESS');
     alert("Officer SITREP Card Transmitted to Intel Vault!");
+};
+
+// Load Officer Card Back to Workstation for Editing / Rework
+window.loadOfficerCardBackToEditor = function(rawInput) {
+    if (!rawInput) return;
+    let cardData = rawInput;
+    if (rawInput.workstationData) {
+        cardData = rawInput.workstationData;
+    } else if (rawInput.officerData) {
+        cardData = { data: rawInput.officerData, id: rawInput.id, timestamp: rawInput.timestamp };
+    } else if (rawInput.data) {
+        cardData = rawInput;
+    } else {
+        cardData = { data: rawInput, id: rawInput.id || Date.now(), timestamp: rawInput.timestamp || Date.now() };
+    }
+    
+    if (typeof window.toggleFullscreen === 'function') {
+        const wsPanel = document.getElementById('panel-workstation');
+        if (wsPanel && !wsPanel.classList.contains('is-maximized')) {
+            window.toggleFullscreen('panel-workstation');
+        }
+    }
+    
+    if (typeof window.renderOfficerForm === 'function') {
+        window.renderOfficerForm(cardData);
+    }
+    
+    if (window.pushTacLog) window.pushTacLog("OFFICER SITREP LOADED BACK TO WORKSTATION FOR EDITING", "SUCCESS");
+    if (window.showToast) window.showToast("🚓 Officer SITREP loaded to editor.");
 };
 
 // Compress Base64 Image Helper for Network Broadcast (Guarantees <40KB payload with HD crispness)
@@ -1644,8 +1762,12 @@ window.sendOfficerCardToComms = window.blogOfficerCardToWire;
 // Generate Rendered Master Vertical Card HTML (Tall Cyber Navy & Gold Theme)
 window.lastRenderedOfficerCard = null;
 window.reworkCurrentOfficerCard = function() {
-    if (window.lastRenderedOfficerCard && typeof window.openWorkstationForm === 'function') {
-        window.openWorkstationForm('officer', window.lastRenderedOfficerCard);
+    if (window.lastRenderedOfficerCard) {
+        if (typeof window.loadOfficerCardBackToEditor === 'function') {
+            window.loadOfficerCardBackToEditor(window.lastRenderedOfficerCard);
+        } else if (typeof window.renderOfficerForm === 'function') {
+            window.renderOfficerForm(window.lastRenderedOfficerCard);
+        }
     }
 };
 
@@ -1655,12 +1777,31 @@ window.generateOfficerCardHTML = function(card) {
     const parties = data.parties || [];
     const photos = data.scenePhotos || [];
     
+    // Status Badge
+    const normStatus = (data.sceneStatus || 'ACTIVE').toUpperCase().trim();
     let statusBadge = `<span style="background-color: #dc2626 !important; color: #ffffff !important; border: 1px solid #f87171 !important;" class="font-mono text-[9px] px-2.5 py-1 rounded font-black uppercase animate-pulse shadow">🔴 ACTIVE SCENE</span>`;
-    if (data.sceneStatus === 'CONTAINED') {
-        statusBadge = `<span style="background-color: #d97706 !important; color: #000000 !important; border: 1px solid #fbbf24 !important;" class="font-mono text-[9px] px-2.5 py-1 rounded font-black uppercase shadow">🟡 CONTAINED</span>`;
-    } else if (data.sceneStatus === 'SECURED') {
+    if (normStatus === 'CONTAINED') {
+        statusBadge = `<span style="background-color: #d97706 !important; color: #ffffff !important; border: 1px solid #fbbf24 !important;" class="font-mono text-[9px] px-2.5 py-1 rounded font-black uppercase shadow">🟡 CONTAINED</span>`;
+    } else if (normStatus === 'SECURED') {
         statusBadge = `<span style="background-color: #059669 !important; color: #ffffff !important; border: 1px solid #34d399 !important;" class="font-mono text-[9px] px-2.5 py-1 rounded font-black uppercase shadow">🟢 SECURED</span>`;
+    } else if (normStatus === 'ENROUTE') {
+        statusBadge = `<span style="background-color: #2563eb !important; color: #ffffff !important; border: 1px solid #60a5fa !important;" class="font-mono text-[9px] px-2.5 py-1 rounded font-black uppercase shadow">🚙 ENROUTE</span>`;
+    } else if (normStatus) {
+        statusBadge = `<span style="background-color: #0284c7 !important; color: #ffffff !important; border: 1px solid #38bdf8 !important;" class="font-mono text-[9px] px-2.5 py-1 rounded font-black uppercase shadow">ℹ️ ${normStatus}</span>`;
     }
+
+    // Incident Classification Info & Icon
+    const incidentIcons = {
+        'TRAFFIC ACCIDENT': '🚗',
+        'CRIME SCENE': '🔍',
+        'ACTIVE THREAT': '🚨',
+        'SEARCH & RESCUE': '🌲',
+        'HIGH-RISK WARRANT': '🛡️',
+        'HAZMAT / FIRE': '🔥',
+        'QUESTIONS': '🗺️'
+    };
+    const incType = (data.incidentType || 'TRAFFIC ACCIDENT').trim();
+    const incIcon = incidentIcons[incType] || '📋';
 
     // Party Roster HTML
     const partiesHtml = parties.map(p => {
@@ -1680,11 +1821,35 @@ window.generateOfficerCardHTML = function(card) {
                 </div>
             `;
         }
+
+        // Distinct Party Status Badges
+        const pStatus = (p.status || 'UNINJURED').toUpperCase().trim();
+        let partyStatusBadge = `<span style="background-color: #064e3b !important; color: #6ee7b7 !important; border: 1px solid #10b981 !important;" class="font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">✓ UNINJURED</span>`;
+        if (pStatus === 'DETAINED') {
+            partyStatusBadge = `<span style="background-color: #7f1d1d !important; color: #fca5a5 !important; border: 1px solid #ef4444 !important;" class="font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">🔒 DETAINED</span>`;
+        } else if (pStatus.includes('EMS') || pStatus.includes('TRANSPORT')) {
+            partyStatusBadge = `<span style="background-color: #831843 !important; color: #f472b6 !important; border: 1px solid #ec4899 !important;" class="font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">🚑 EMS TRANSPORTED</span>`;
+        } else if (pStatus.includes('GOA') || pStatus.includes('FLED')) {
+            partyStatusBadge = `<span style="background-color: #7c2d12 !important; color: #fdba74 !important; border: 1px solid #f97316 !important;" class="font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">⚠️ G.O.A. (FLED)</span>`;
+        } else if (pStatus !== 'UNINJURED') {
+            partyStatusBadge = `<span style="background-color: #1e293b !important; color: #e2e8f0 !important; border: 1px solid #64748b !important;" class="font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">${p.status}</span>`;
+        }
+
+        // Distinct Party Role Styling
+        const pRole = (p.role || 'PARTY').toUpperCase().trim();
+        let partyRoleColor = '#c084fc';
+        let partyRolePrefix = '';
+        if (pRole === 'SUSPECT') { partyRoleColor = '#f87171'; partyRolePrefix = '🚨 '; }
+        else if (pRole === 'DRIVER') { partyRoleColor = '#38bdf8'; partyRolePrefix = '🚗 '; }
+        else if (pRole === 'VICTIM') { partyRoleColor = '#f472b6'; partyRolePrefix = '🩹 '; }
+        else if (pRole === 'WITNESS') { partyRoleColor = '#a3e635'; partyRolePrefix = '👁️ '; }
+        else if (pRole === 'REPORTING PARTY') { partyRoleColor = '#c084fc'; partyRolePrefix = '📞 '; }
+
         return `
             <div style="background-color: #020617; border: 1px solid #1e293b;" class="p-2.5 rounded-lg text-xs space-y-1">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-1">
-                    <span style="color: #c084fc;" class="font-black uppercase text-[10.5px] tracking-wide">${p.role || 'PARTY'}: ${p.name || 'UNKNOWN'}</span>
-                    <span style="color: #fbbf24;" class="font-mono text-[9px] font-black uppercase bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/40">${p.status || 'UNINJURED'}</span>
+                <div class="flex justify-between items-center border-b border-slate-800 pb-1 flex-wrap gap-1">
+                    <span style="color: ${partyRoleColor};" class="font-black uppercase text-[10.5px] tracking-wide">${partyRolePrefix}${p.role || 'PARTY'}: ${p.name || 'UNKNOWN'}</span>
+                    ${partyStatusBadge}
                 </div>
                 <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono text-slate-300 pt-1">
                     <div><span class="text-slate-400 font-bold">PHONE:</span> ${p.phone || '--'}</div>
@@ -1736,7 +1901,7 @@ window.generateOfficerCardHTML = function(card) {
             <div style="background-color: #0f172a; border: 1px solid #1e293b;" class="p-2.5 rounded-lg flex justify-between items-center flex-wrap gap-2">
                 <div>
                     <span class="text-[9px] text-slate-400 font-bold uppercase block">Incident Classification</span>
-                    <span class="text-xs font-black text-white uppercase">${data.incidentType || 'GENERAL SCENE'}</span>
+                    <span class="text-xs font-black text-cyan-300 uppercase flex items-center gap-1">${incIcon} ${incType}</span>
                 </div>
                 <div class="text-right">
                     <span class="text-[9px] text-slate-400 font-bold uppercase block">TAC Radio Channel</span>

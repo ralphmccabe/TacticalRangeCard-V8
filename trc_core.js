@@ -3152,7 +3152,11 @@ function initializeTacticalDashboard2() {
             } else if (panelId === 'panel-comms') {
                 setTimeout(() => { if(commsMapInstance) commsMapInstance.invalidateSize(); }, 600);
             } else if (panelId === 'panel-workstation') {
-                if (typeof window.renderWorkstationMenu === 'function') {
+                const hasActiveForm = document.getElementById('officer-form-wrapper') ||
+                                      document.getElementById('casefile-form-wrapper') ||
+                                      document.querySelector('.ws-active-card-form') ||
+                                      document.getElementById('master-op-form-wrapper');
+                if (!hasActiveForm && typeof window.renderWorkstationMenu === 'function') {
                     window.renderWorkstationMenu();
                 }
             }
@@ -5157,41 +5161,71 @@ function initializeTacticalDashboard2() {
                 </button>
                 ` : ''}
 
-                ${(item.label && (item.label.startsWith('GEO_') || item.label.startsWith('ROUTE'))) ? `
-                <button class="load-map-btn absolute bottom-7 left-1.5 bg-blue-600 text-white p-1.5 rounded border border-blue-400 shadow-lg hover:bg-blue-400 transition-all z-30" title="Load to Geo Matrix">
-                    <i data-lucide="map" class="w-3 h-3"></i>
-                </button>
-                ` : ''}
+                ${(() => {
+                    const isMapItem = !!(
+                        item.routeTracker ||
+                        (item.markers && item.markers.length > 0) ||
+                        (item.drawings && item.drawings.length > 0) ||
+                        item.originLat ||
+                        item.type === 'map' ||
+                        item.type === 'geomatrix' ||
+                        item.type === 'recon_map' ||
+                        item.satData ||
+                        item.geoData ||
+                        (item.label && (
+                            item.label.startsWith('GEO') ||
+                            item.label.startsWith('ROUTE') ||
+                            item.label.startsWith('RECON') ||
+                            item.label.includes('LOCATE') ||
+                            item.label.includes('MAP')
+                        ))
+                    );
 
-                ${(item.label && item.label.startsWith('VIDEO_')) ? `
-                <button class="load-video-btn absolute bottom-7 left-1.5 bg-purple-600 text-white p-1.5 rounded border border-purple-400 shadow-lg hover:bg-purple-400 transition-all z-30" title="Play Video">
-                    <i data-lucide="play" class="w-3 h-3"></i>
-                </button>
-                ` : ''}
-
-                ${(!item.remarksText && !(item.label && (item.label.startsWith('GEO_') || item.label.startsWith('ROUTE') || item.label.startsWith('VIDEO_')))) ? `
-                <button class="load-snapshot-btn absolute bottom-7 left-1.5 bg-emerald-600 text-white p-1.5 rounded border border-emerald-400 shadow-lg hover:bg-emerald-400 transition-all z-30" title="Load Snapshot to Viewer">
-                    <i data-lucide="camera" class="w-3 h-3"></i>
-                </button>
-                ` : ''}
+                    if (isMapItem) {
+                        return `
+                        <button class="load-map-btn absolute bottom-7 left-1.5 bg-blue-600 text-white p-1.5 rounded border border-blue-400 shadow-lg hover:bg-blue-400 transition-all z-30" title="Load to Geo Matrix">
+                            <i data-lucide="map" class="w-3 h-3"></i>
+                        </button>
+                        `;
+                    } else if (item.label && item.label.startsWith('VIDEO_')) {
+                        return `
+                        <button class="load-video-btn absolute bottom-7 left-1.5 bg-purple-600 text-white p-1.5 rounded border border-purple-400 shadow-lg hover:bg-purple-400 transition-all z-30" title="Play Video">
+                            <i data-lucide="play" class="w-3 h-3"></i>
+                        </button>
+                        `;
+                    } else if (!item.remarksText) {
+                        return `
+                        <button class="load-snapshot-btn absolute bottom-7 left-1.5 bg-emerald-600 text-white p-1.5 rounded border border-emerald-400 shadow-lg hover:bg-emerald-400 transition-all z-30" title="Load Snapshot to Viewer">
+                            <i data-lucide="camera" class="w-3 h-3"></i>
+                        </button>
+                        `;
+                    }
+                    return '';
+                })()}
 
                 ${(item.type === 'casefile-pdf' || item.casefileData || (item.workstationData && item.workstationData.type === 'casefile')) ? `
                 <button class="rework-casefile-btn absolute bottom-7 right-1.5 bg-blue-600 text-white p-1.5 rounded border border-blue-400 shadow-lg hover:bg-blue-400 hover:text-black transition-all z-30 flex items-center gap-1" title="Rework Casefile & Invoice">
                     <i data-lucide="file-check-2" class="w-3 h-3"></i>
                 </button>
                 ` : ''}
+
+                ${(item.type === 'officer_sitrep' || item.officerData || (item.workstationData && item.workstationData.type === 'officer')) ? `
+                <button class="rework-officer-btn absolute bottom-7 right-1.5 bg-cyan-600 text-black p-1.5 rounded border border-cyan-400 shadow-lg hover:bg-cyan-400 hover:text-white transition-all z-30 flex items-center gap-1" title="Rework First Responder SITREP">
+                    <i data-lucide="shield-alert" class="w-3 h-3"></i>
+                </button>
+                ` : ''}
             `;
             
             el.addEventListener('click', (e) => {
-                if(e.target.closest('.delete-vault-btn') || e.target.closest('.vault-export-checkbox') || e.target.closest('.load-note-btn') || e.target.closest('.load-map-btn') || e.target.closest('.load-video-btn') || e.target.closest('.load-snapshot-btn')) return;
+                if(e.target.closest('.delete-vault-btn') || 
+                   e.target.closest('.vault-export-checkbox') || 
+                   e.target.closest('.load-note-btn') || 
+                   e.target.closest('.load-map-btn') || 
+                   e.target.closest('.load-video-btn') || 
+                   e.target.closest('.load-snapshot-btn') ||
+                   e.target.closest('.rework-casefile-btn') ||
+                   e.target.closest('.rework-officer-btn')) return;
                 e.stopPropagation();
-                if (item.type === 'casefile-pdf' || item.casefileData || (item.workstationData && item.workstationData.type === 'casefile')) {
-                    const data = item.casefileData || (item.workstationData && item.workstationData.data) || item;
-                    if (window.loadCaseFileBackToEditor) {
-                        window.loadCaseFileBackToEditor(data);
-                        return;
-                    }
-                }
                 selectVaultItem(item);
             });
 
@@ -5202,6 +5236,17 @@ function initializeTacticalDashboard2() {
                     const data = item.casefileData || (item.workstationData && item.workstationData.data) || item;
                     if (window.loadCaseFileBackToEditor) {
                         window.loadCaseFileBackToEditor(data);
+                    }
+                });
+            }
+
+            const reworkOffBtn = el.querySelector('.rework-officer-btn');
+            if (reworkOffBtn) {
+                reworkOffBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const data = item.officerData || (item.workstationData && item.workstationData.data) || item.workstationData || item;
+                    if (window.loadOfficerCardBackToEditor) {
+                        window.loadOfficerCardBackToEditor(data);
                     }
                 });
             }
@@ -5289,11 +5334,11 @@ function initializeTacticalDashboard2() {
             mediaHtml = `<i data-lucide="video" class="w-20 h-20 text-purple-500 opacity-80"></i>`;
         } else if (item.type === 'casefile-pdf' || item.casefileData || (item.workstationData && item.workstationData.type === 'casefile')) {
             if (item.image) {
-                mediaHtml = `<img src="${item.image}" class="w-full h-full object-contain cursor-pointer" onclick="if(window.loadCaseFileBackToEditor) window.loadCaseFileBackToEditor(window.vaultCache.find(x => x.id == '${item.id}')?.casefileData || window.vaultCache.find(x => x.id == '${item.id}'))">`;
+                mediaHtml = `<img src="${item.image}" class="w-full h-full object-contain">`;
             } else {
                 mediaHtml = `<div class="flex items-center justify-center w-full h-full text-slate-400 font-mono text-[10px]">CASEFILE INVOICE</div>`;
             }
-        } else if (item.type === 'officer_sitrep' || item.workstationData?.type === 'officer' || item.type === 'workstation') {
+        } else if (item.type === 'officer_sitrep' || item.officerData || item.workstationData?.type === 'officer' || item.type === 'workstation') {
             if (item.image) {
                 mediaHtml = `<img src="${item.image}" class="w-full h-full object-contain">`;
             } else {
@@ -5394,6 +5439,11 @@ function initializeTacticalDashboard2() {
                     ${(item.type === 'casefile-pdf' || (item.workstationData && item.workstationData.type === 'casefile') || (item.label && item.label.includes('INVOICE'))) ? `
                     <button class="bg-blue-600 text-white border border-blue-400 p-1.5 rounded hover:bg-blue-500 transition-all shadow-[0_0_10px_rgba(59,130,246,0.5)] flex items-center gap-1 font-black text-[7px]" onclick="event.stopPropagation(); if(window.loadCaseFileBackToEditor) window.loadCaseFileBackToEditor(window.vaultCache.find(x => x.id == '${item.id}')?.casefileData || window.vaultCache.find(x => x.id == '${item.id}'))" title="Rework Invoice / Case">
                         <i data-lucide="file-check-2" class="w-2.5 h-2.5"></i> REWORK INVOICE
+                    </button>
+                    ` : ''}
+                    ${(item.type === 'officer_sitrep' || item.officerData || (item.workstationData && item.workstationData.type === 'officer') || (item.label && item.label.includes('OFFICER SITREP'))) ? `
+                    <button class="bg-cyan-600 text-black border border-cyan-400 p-1.5 rounded hover:bg-cyan-400 hover:text-white transition-all shadow-[0_0_10px_rgba(6,182,212,0.5)] flex items-center gap-1 font-black text-[7px]" onclick="event.stopPropagation(); if(window.loadOfficerCardBackToEditor) window.loadOfficerCardBackToEditor(window.vaultCache.find(x => x.id == '${item.id}')?.officerData || window.vaultCache.find(x => x.id == '${item.id}')?.workstationData || window.vaultCache.find(x => x.id == '${item.id}'))" title="Rework First Responder SITREP">
+                        <i data-lucide="shield-alert" class="w-2.5 h-2.5"></i> REWORK SITREP
                     </button>
                     ` : ''}
                     ${item.type === 'workstation' ? `
@@ -8798,6 +8848,20 @@ function initializeTacticalDashboard2() {
         const vaultModal = document.getElementById('vault-modal');
         if (vaultModal) vaultModal.classList.add('hidden');
         
+        // Ensure Workstation Window #6 is opened/maximized
+        if (typeof window.toggleFullscreen === 'function') {
+            const wsPanel = document.getElementById('panel-workstation');
+            if (wsPanel && !wsPanel.classList.contains('is-maximized')) {
+                window.toggleFullscreen('panel-workstation');
+            }
+        }
+        
+        if (cardType === 'officer' || cardType === 'officer_sitrep' || cardObj.type === 'officer_sitrep') {
+            if (typeof window.loadOfficerCardBackToEditor === 'function') {
+                window.loadOfficerCardBackToEditor(cardObj);
+                return;
+            }
+        }
         if (typeof window.openWorkstationForm === 'function') {
             window.openWorkstationForm(cardType, cardObj);
             if (window.pushTacLog) window.pushTacLog(`CARD LOADED FOR REWORK [${cardType.toUpperCase()}]`, 'SUCCESS');
@@ -9033,7 +9097,13 @@ function initializeTacticalDashboard2() {
                 // 3. Save to workstationLibrary IDB if it's a workstation card
                 if (wsCardData && window.TRC_IDB) {
                     window.TRC_IDB.set('workstationLibrary', cardId.toString(), wsCardData).then(() => {
-                        if (typeof window.renderWorkstationMenu === 'function') window.renderWorkstationMenu();
+                        const hasActiveForm = document.getElementById('officer-form-wrapper') ||
+                                              document.getElementById('casefile-form-wrapper') ||
+                                              document.querySelector('.ws-active-card-form') ||
+                                              document.getElementById('master-op-form-wrapper');
+                        if (!hasActiveForm && typeof window.renderWorkstationMenu === 'function') {
+                            window.renderWorkstationMenu();
+                        }
                     }).catch(e => console.error("Error auto-saving incoming workstation card to library:", e));
                 }
 

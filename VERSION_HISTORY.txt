@@ -30,3 +30,20 @@ v8.71.0.0 - BOLO / CARD SYSTEM BUG FIX PASS
 * Fixed Service Worker cache strategy — all app logic .js files moved to network-first
   so code fixes deploy immediately without requiring manual SW unregister.
 * Bumped SW cache version v8.70 -> v8.71 to force old cache eviction on all clients.
+
+============================================================
+v8.72.0.0 - FIRST RESPONDER SITREP, INTEL VAULT & WHITEBOARD RESTORATION
+* Restored missing Whiteboard / Sketchpad icon across mobile screens and desktop header.
+* Fixed Geo-Matrix card buttons in Intel Vault (properly detects all geolocated/satellite maps and displays blue map button).
+* Fixed spontaneous Workstation form closing & timeouts on First Responder and Executive Casefiles:
+  - Added active form guards preventing background syncs and maximize toggles from wiping open forms.
+  - Implemented real-time draft auto-save and recovery in localStorage ('trc_casefile_draft' and 'trc_officer_draft').
+* Fixed First Responder SITREP flags stuck on defaults:
+  - Added ENROUTE scene threat status badge handling ('🚙 ENROUTE').
+  - Added dynamic incident classification icon badges (Traffic Accident, Crime Scene, Active Threat, Search & Rescue, HazMat, Warrant).
+  - Added live DOM harvesting for parties and first-aid registries so selections are captured instantly without relying on keyboard blur events.
+  - Added distinct color-coded party badges (Locked Detained, EMS Transported, G.O.A., Uninjured).
+* Fixed Intel Vault card click behavior:
+  - Clicking any card in the grid now silently displays inside Window #4 (Intel Vault viewer) instead of jumping to Window #6.
+  - Dedicated corner buttons and Window #4 actuator buttons ('REWORK INVOICE' and 'REWORK SITREP') open cards for editing in Window #6.
+* Bumped Service Worker cache version v8.71 -> v8.72 for instant mobile cache eviction.

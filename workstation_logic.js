@@ -58,10 +58,11 @@ window.sendCheckedWsCardsToVault = async function() {
                         id: card.id,
                         timestamp: card.timestamp,
                         image: card.image || '',
-                        label: card.title || card.type,
-                        type: card.type === 'casefile' ? 'casefile-pdf' : 'workstation',
+                        label: card.title || (card.type === 'officer' ? `OFFICER SITREP: ${card.data?.unitCallsign || 'UNIT'}` : card.type),
+                        type: card.type === 'casefile' ? 'casefile-pdf' : (card.type === 'officer' ? 'officer_sitrep' : 'workstation'),
                         workstationData: card,
-                        casefileData: card.type === 'casefile' ? card.data : null
+                        casefileData: card.type === 'casefile' ? card.data : null,
+                        officerData: card.type === 'officer' ? card.data : null
                     };
                     await window.TRC_IDB.set('intelVault', card.id.toString(), vaultMetadata);
                     if (window.vaultCache) {
@@ -82,9 +83,19 @@ window.sendCheckedWsCardsToVault = async function() {
 };
 
 // Main menu renderer
-window.renderWorkstationMenu = async function() {
+window.renderWorkstationMenu = async function(force = false) {
     const container = document.getElementById('workstation-container');
     if (!container) return;
+
+    // GUARD: Do NOT overwrite an active form in progress unless explicitly forced by user action
+    const hasActiveForm = document.getElementById('officer-form-wrapper') ||
+                          document.getElementById('casefile-form-wrapper') ||
+                          document.querySelector('.ws-active-card-form') ||
+                          document.getElementById('master-op-form-wrapper');
+    if (!force && hasActiveForm) {
+        console.log('[TRC-WS] Suppressing menu render to protect active form in progress.');
+        return;
+    }
 
     // Fetch existing workstation intel to show in the library at the bottom
     let savedCardsHtml = '';
@@ -338,7 +349,13 @@ window.openWorkstationForm = function(type, rawCardData = null) {
             </div>`;
     } else if (type === 'casefile') {
         headerIcon = 'file-check-2'; headerColor = 'text-slate-300'; headerTitle = 'EXECUTIVE CASE FILE & INVOICE';
-        const cData = cardData?.data || cardData?.casefileData || cardData?.workstationData?.data || cardData?.workstationData?.casefileData || cardData || {};
+        let cData = cardData?.data || cardData?.casefileData || cardData?.workstationData?.data || cardData?.workstationData?.casefileData || cardData || {};
+        if (!cardData || Object.keys(cardData).length === 0) {
+            try {
+                const draft = JSON.parse(localStorage.getItem('trc_casefile_draft'));
+                if (draft) cData = draft;
+            } catch(e) {}
+        }
         const invoiceNotesVal = cData.invoice_notes || '';
         const servicesPerformedVal = cData.services_performed || '';
         const isPaid = cData.is_paid === true || cData.status === 'PAID';
@@ -484,9 +501,9 @@ window.openWorkstationForm = function(type, rawCardData = null) {
     }
 
     container.innerHTML = `
-        <div class="h-full flex flex-col w-full max-w-4xl mx-auto relative overflow-hidden">
+        <div id="${type === 'casefile' ? 'casefile-form-wrapper' : 'ws-form-' + type}" class="ws-active-card-form h-full flex flex-col w-full max-w-4xl mx-auto relative overflow-hidden">
             <div class="flex items-center justify-between mb-3 pb-2 border-b border-gray-800 shrink-0 flex-wrap gap-1 bg-slate-950/95 sticky top-0 z-30 pt-1">
-                <button type="button" onclick="window.renderWorkstationMenu()" style="color: var(--accent-color, #38bdf8);" class="hover:brightness-150 flex items-center gap-1 text-[10px] uppercase font-bold transition-all cursor-pointer">
+                <button type="button" onclick="window.renderWorkstationMenu(true)" style="color: var(--accent-color, #38bdf8);" class="hover:brightness-150 flex items-center gap-1 text-[10px] uppercase font-bold transition-all cursor-pointer">
                     <i data-lucide="chevron-left" class="w-4 h-4"></i> BACK
                 </button>
                 <div class="flex items-center gap-1.5">
@@ -595,6 +612,39 @@ window.openWorkstationForm = function(type, rawCardData = null) {
     if (type === 'casefile') {
         const cData = cardData?.data || cardData?.casefileData || cardData?.workstationData?.data || cardData?.workstationData?.casefileData || cardData || {};
         window.renderCasefileExhibitsSelector(cData.attachedExhibits);
+
+        const caseWrapper = document.getElementById('casefile-form-wrapper');
+        if (caseWrapper) {
+            let debounceTimer = null;
+            const saveDraft = () => {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    try {
+                        const isPaidChecked = document.getElementById('ws-status-paid')?.checked;
+                        const draftData = {
+                            op_name: document.getElementById('ws-op_name')?.value || '',
+                            op_agency: document.getElementById('ws-op_agency')?.value || '',
+                            op_license: document.getElementById('ws-op_license')?.value || '',
+                            op_quals: document.getElementById('ws-op_quals')?.value || '',
+                            billed_to: document.getElementById('ws-billed_to')?.value || '',
+                            paid_by: document.getElementById('ws-paid_by')?.value || '',
+                            case_number: document.getElementById('ws-case_number')?.value || '',
+                            invoice_type: document.getElementById('ws-invoice_type')?.value || '',
+                            services_performed: document.getElementById('ws-services_performed')?.value || '',
+                            status: isPaidChecked ? 'PAID' : 'UNPAID',
+                            is_paid: !!isPaidChecked,
+                            bounty: document.getElementById('ws-bounty')?.value || '',
+                            expenses: document.getElementById('ws-expenses')?.value || '',
+                            invoice_notes: document.getElementById('ws-invoice_notes')?.value || '',
+                            mainAttachedImage: document.getElementById('ws-image-data')?.value || ''
+                        };
+                        localStorage.setItem('trc_casefile_draft', JSON.stringify(draftData));
+                    } catch(e) {}
+                }, 300);
+            };
+            caseWrapper.addEventListener('input', saveDraft);
+            caseWrapper.addEventListener('change', saveDraft);
+        }
     }
     } catch(err) {
         console.error('[TRC-WS] Error inside openWorkstationForm:', err);
@@ -1312,8 +1362,10 @@ window.saveWorkstationCard = async function(type, id) {
         }
 
         window.pushTacLog("WORKSTATION CARD SAVED & SYNCED TO VAULT", "SUCCESS");
-        if (window.showToast) window.showToast('💾 Card Saved & Synced to Intel Vault!');
-        renderWorkstationMenu();
+        if (type === 'casefile') {
+            try { localStorage.removeItem('trc_casefile_draft'); } catch(e) {}
+        }
+        window.renderWorkstationMenu(true);
     } catch (e) {
         console.error("Failed to save workstation card:", e);
         alert('Failed to save card. See console for details.');
