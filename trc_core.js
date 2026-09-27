@@ -13731,33 +13731,129 @@ window.tacticalIconData = [];
 window.activeIconStamp = null;
 window.activeIconLabel = null;
 
+const TACTICAL_STAMPS_DEF = [
+    { icon: '\u{1F480}', label: 'ENEMY', title: 'Enemy / Hostile Position', border: 'border-red-500/50', hoverBorder: 'hover:border-red-400', hoverBg: 'hover:bg-red-950/80', textColor: 'text-red-400', badgeColor: '#ef4444' },
+    { icon: '\u{1F98C}', label: 'ANIMAL', title: 'Animal / Wildlife', border: 'border-amber-500/50', hoverBorder: 'hover:border-amber-400', hoverBg: 'hover:bg-amber-950/80', textColor: 'text-amber-400', badgeColor: '#f59e0b' },
+    { icon: '\u{1F3AF}', label: 'TRP 1', title: 'Target Reference Point 1', border: 'border-blue-500/50', hoverBorder: 'hover:border-blue-400', hoverBg: 'hover:bg-blue-950/80', textColor: 'text-blue-400', badgeColor: '#3b82f6' },
+    { icon: '\u{1F441}\u{FE0F}', label: 'OP/HIDE', title: 'Observation Post / Hide Site', border: 'border-emerald-500/50', hoverBorder: 'hover:border-emerald-400', hoverBg: 'hover:bg-emerald-950/80', textColor: 'text-emerald-400', badgeColor: '#10b981' },
+    { icon: '\u{2708}\u{FE0F}', label: 'AIRSTRIP', title: 'Airstrip / Runway', border: 'border-cyan-500/50', hoverBorder: 'hover:border-cyan-400', hoverBg: 'hover:bg-cyan-950/80', textColor: 'text-cyan-400', badgeColor: '#06b6d4' },
+    { icon: '\u{1F3E5}', label: 'HOSPITAL', title: 'Hospital / ER / Medical', border: 'border-rose-500/50', hoverBorder: 'hover:border-rose-400', hoverBg: 'hover:bg-rose-950/80', textColor: 'text-rose-400', badgeColor: '#f43f5e' },
+    { icon: '\u{1F681}', label: 'MEDEVAC', title: 'Medevac LZ', border: 'border-emerald-400/50', hoverBorder: 'hover:border-emerald-300', hoverBg: 'hover:bg-emerald-950/80', textColor: 'text-emerald-300', badgeColor: '#10b981' },
+    { icon: '\u{1F6D1}', label: 'DEAD SPACE', title: 'Dead Space / Defilade', border: 'border-purple-500/50', hoverBorder: 'hover:border-purple-400', hoverBg: 'hover:bg-purple-950/80', textColor: 'text-purple-400', badgeColor: '#a855f7' },
+    { icon: '\u{1F697}', label: 'VEHICLE', title: 'Vehicle / Convoy', border: 'border-yellow-500/50', hoverBorder: 'hover:border-yellow-400', hoverBg: 'hover:bg-yellow-950/80', textColor: 'text-yellow-400', badgeColor: '#eab308' },
+    { icon: '\u{1F4CD}', label: 'WAYPOINT', title: 'Target Waypoint', border: 'border-pink-500/50', hoverBorder: 'hover:border-pink-400', hoverBg: 'hover:bg-pink-950/80', textColor: 'text-pink-400', badgeColor: '#ec4899' },
+    { icon: '\u{26A0}\u{FE0F}', label: 'HAZARD', title: 'Hazard / Danger', border: 'border-orange-500/50', hoverBorder: 'hover:border-orange-400', hoverBg: 'hover:bg-orange-950/80', textColor: 'text-orange-400', badgeColor: '#f97316' },
+    { icon: '\u{1F4A7}', label: 'WATER', title: 'Water Source / Cache', border: 'border-sky-500/50', hoverBorder: 'hover:border-sky-400', hoverBg: 'hover:bg-sky-950/80', textColor: 'text-sky-400', badgeColor: '#38bdf8' }
+];
+
+const LABEL_TO_STAMP_ICON = {
+    'ENEMY': '\u{1F480}',
+    'ANIMAL': '\u{1F98C}',
+    'TRP 1': '\u{1F3AF}',
+    'OP/HIDE': '\u{1F441}\u{FE0F}',
+    'OP / HIDE': '\u{1F441}\u{FE0F}',
+    'AIRSTRIP': '\u{2708}\u{FE0F}',
+    'HOSPITAL': '\u{1F3E5}',
+    'MEDEVAC': '\u{1F681}',
+    'MEDEVAC LZ': '\u{1F681}',
+    'DEAD SPACE': '\u{1F6D1}',
+    'VEHICLE': '\u{1F697}',
+    'WAYPOINT': '\u{1F4CD}',
+    'HAZARD': '\u{26A0}\u{FE0F}',
+    'WATER': '\u{1F4A7}',
+    'WATER CACHE': '\u{1F4A7}'
+};
+
 function initTacticalIconTray() {
     const geoIconTrayBtn = document.getElementById('geo-icons-btn');
     const commsIconTrayBtn = document.getElementById('comms-icons-btn');
     const iconTray = document.getElementById('tactical-icon-tray');
     const closeTrayBtn = document.getElementById('close-icon-tray');
-    const stampBtns = document.querySelectorAll('.tactical-stamp-btn');
     const clearIconsBtn = document.getElementById('clear-tactical-icons-btn');
+
+    function deactivateStamp() {
+        window.activeIconStamp = null;
+        window.activeIconLabel = null;
+        const allBtns = document.querySelectorAll('.tactical-stamp-btn');
+        allBtns.forEach(btn => {
+            btn.classList.remove('ring-2', 'ring-emerald-500', 'ring-green-500', 'bg-emerald-950/80', 'bg-green-900/50');
+        });
+        if (window.orbitalMap) {
+            window.orbitalMap.getContainer().style.cursor = '';
+        }
+        if (window.commsMapInstance) {
+            window.commsMapInstance.getContainer().style.cursor = '';
+        }
+    }
+
+    // Populate stamp buttons dynamically with clean Unicode characters
+    if (iconTray) {
+        const gridEl = document.getElementById('tactical-stamps-grid') || iconTray.querySelector('.grid');
+        if (gridEl) {
+            gridEl.innerHTML = '';
+            TACTICAL_STAMPS_DEF.forEach(stamp => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `tactical-stamp-btn bg-gray-900/90 ${stamp.hoverBg} border ${stamp.border} ${stamp.hoverBorder} rounded-lg p-1.5 flex flex-col items-center justify-center transition-all cursor-pointer group`;
+                btn.setAttribute('data-icon', stamp.icon);
+                btn.setAttribute('data-label', stamp.label);
+                btn.title = stamp.title;
+                btn.innerHTML = `
+                    <span class="text-2xl leading-none select-none">${stamp.icon}</span>
+                    <span class="text-[8px] font-black ${stamp.textColor} uppercase mt-1 tracking-wider font-mono">${stamp.label}</span>
+                `;
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.activeIconStamp === stamp.icon) {
+                        deactivateStamp();
+                    } else {
+                        deactivateStamp();
+                        window.activeIconStamp = stamp.icon;
+                        window.activeIconLabel = stamp.label;
+                        btn.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-950/80');
+                        if (window.orbitalMap) {
+                            window.orbitalMap.getContainer().style.cursor = 'crosshair';
+                        }
+                        if (window.commsMapInstance) {
+                            window.commsMapInstance.getContainer().style.cursor = 'crosshair';
+                        }
+                    }
+                    
+                    if (window.innerWidth < 768 && iconTray) {
+                        iconTray.classList.add('hidden');
+                        if (geoIconTrayBtn) {
+                            geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
+                            geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
+                        }
+                        if (commsIconTrayBtn) {
+                            commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
+                        }
+                    }
+                });
+                gridEl.appendChild(btn);
+            });
+        }
+    }
 
     const toggleTray = (e) => {
         e.stopPropagation();
         if (iconTray.classList.contains('hidden')) {
             iconTray.classList.remove('hidden');
             if (window.lucide) window.lucide.createIcons();
-            if(geoIconTrayBtn) {
+            if (geoIconTrayBtn) {
                 geoIconTrayBtn.classList.replace('text-gray-300', 'text-emerald-400');
                 geoIconTrayBtn.classList.replace('border-gray-700', 'border-emerald-500');
             }
-            if(commsIconTrayBtn) {
+            if (commsIconTrayBtn) {
                 commsIconTrayBtn.classList.replace('text-gray-300', 'text-emerald-400');
             }
         } else {
             iconTray.classList.add('hidden');
-            if(geoIconTrayBtn) {
+            if (geoIconTrayBtn) {
                 geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
                 geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
             }
-            if(commsIconTrayBtn) {
+            if (commsIconTrayBtn) {
                 commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
             }
             deactivateStamp();
@@ -13770,82 +13866,24 @@ function initTacticalIconTray() {
     if (closeTrayBtn && iconTray) {
         closeTrayBtn.addEventListener('click', () => {
             iconTray.classList.add('hidden');
-            if(geoIconTrayBtn) {
+            if (geoIconTrayBtn) {
                 geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
                 geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
             }
-            if(commsIconTrayBtn) {
+            if (commsIconTrayBtn) {
                 commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
             }
             deactivateStamp();
         });
     }
 
-    function deactivateStamp() {
-        window.activeIconStamp = null;
-        window.activeIconLabel = null;
-        stampBtns.forEach(btn => {
-            btn.classList.remove('ring-2', 'ring-emerald-500', 'ring-green-500', 'bg-emerald-950/80', 'bg-green-900/50');
-        });
-        if (window.orbitalMap) {
-            window.orbitalMap.getContainer().style.cursor = '';
-        }
-        if (window.commsMapInstance) {
-            window.commsMapInstance.getContainer().style.cursor = '';
-        }
-    }
-
-    stampBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const icon = btn.getAttribute('data-icon');
-            const label = btn.getAttribute('data-label') || '';
-            
-            if (window.activeIconStamp === icon) {
-                deactivateStamp();
-            } else {
-                deactivateStamp();
-                window.activeIconStamp = icon;
-                window.activeIconLabel = label;
-                btn.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-950/80');
-                if (window.orbitalMap) {
-                    window.orbitalMap.getContainer().style.cursor = 'crosshair';
-                }
-                if (window.commsMapInstance) {
-                    window.commsMapInstance.getContainer().style.cursor = 'crosshair';
-                }
-            }
-            
-            if (window.innerWidth < 768 && iconTray) {
-                iconTray.classList.add('hidden');
-                if(geoIconTrayBtn) {
-                    geoIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-                    geoIconTrayBtn.classList.replace('border-emerald-500', 'border-gray-700');
-                }
-                if(commsIconTrayBtn) {
-                    commsIconTrayBtn.classList.replace('text-emerald-400', 'text-gray-300');
-                }
-            }
-        });
-    });
-
     window.dropTacticalIcon = function(lat, lng, icon, label = null, save = true) {
         if (!label) {
-            const stampMap = {
-                '💀': 'ENEMY',
-                '🦌': 'ANIMAL',
-                '🎯': 'TRP 1',
-                '👁️': 'OP/HIDE',
-                '✈️': 'AIRSTRIP',
-                '🏥': 'HOSPITAL',
-                '🚁': 'MEDEVAC',
-                '🛑': 'DEAD SPACE',
-                '🚗': 'VEHICLE',
-                '📍': 'WAYPOINT',
-                '⚠️': 'HAZARD',
-                '💧': 'WATER'
-            };
-            label = stampMap[icon] || 'TARGET';
+            const stampMatch = TACTICAL_STAMPS_DEF.find(s => s.icon === icon);
+            label = stampMatch ? stampMatch.label : 'TARGET';
+        }
+        if ((!icon || icon.includes('?')) && LABEL_TO_STAMP_ICON[label]) {
+            icon = LABEL_TO_STAMP_ICON[label];
         }
 
         const badgeColor = (function(lbl) {
@@ -13900,7 +13938,7 @@ function initTacticalIconTray() {
         if (save) {
             window.tacticalIconData.push({ id: stampId, lat, lng, icon, label });
             saveTacticalIcons();
-            if(window.pushTacLog) window.pushTacLog(`TACTICAL STAMP [${icon} ${label}] PLACED`, 'SUCCESS');
+            if (window.pushTacLog) window.pushTacLog(`TACTICAL STAMP [${icon} ${label}] PLACED`, 'SUCCESS');
         }
     };
 
@@ -13915,7 +13953,7 @@ function initTacticalIconTray() {
         });
         window.tacticalIconData = window.tacticalIconData.filter(d => d.id !== stampId);
         saveTacticalIcons();
-        if(window.pushTacLog) window.pushTacLog('TACTICAL STAMP REMOVED', 'WARNING');
+        if (window.pushTacLog) window.pushTacLog('TACTICAL STAMP REMOVED', 'WARNING');
     };
 
     if (clearIconsBtn) {
@@ -13929,7 +13967,7 @@ function initTacticalIconTray() {
                 window.tacticalIconLayers = [];
                 window.tacticalIconData = [];
                 saveTacticalIcons();
-                if(window.pushTacLog) window.pushTacLog('TACTICAL STAMPS CLEARED', 'WARNING');
+                if (window.pushTacLog) window.pushTacLog('TACTICAL STAMPS CLEARED', 'WARNING');
             }
         });
     }
@@ -13943,7 +13981,12 @@ function initTacticalIconTray() {
             const saved = JSON.parse(localStorage.getItem('tacticalIconsData') || '[]');
             if (saved.length > 0 && window.dropTacticalIcon) {
                 saved.forEach(item => {
-                    window.dropTacticalIcon(item.lat, item.lng, item.icon, item.label, false);
+                    let ic = item.icon;
+                    let lbl = item.label || 'TARGET';
+                    if ((!ic || ic.includes('?')) && LABEL_TO_STAMP_ICON[lbl]) {
+                        ic = LABEL_TO_STAMP_ICON[lbl];
+                    }
+                    window.dropTacticalIcon(item.lat, item.lng, ic, lbl, false);
                 });
             }
         } catch(e) {

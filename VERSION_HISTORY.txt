@@ -91,3 +91,17 @@ v8.74.0.0 - FIRST RESPONDER SITREP CHAT TRANSMISSION & DIAGRAM PRESERVATION
   - Fixed saveChatCardToVault to store thumbnail preview and complete officerData / workstationData structures.
   - Updated loadSnapshotToViewer and generateOfficerCardHTML to recognize all received card schemas and immediately render the Crime Scene Tactical Diagram in full fidelity.
 * Bumped Service Worker cache version v8.73 -> v8.74 for instant mobile cache eviction.
+
+============================================================
+v8.75.0.0 - UTF-8 TACTICAL STAMPS SUITE & TRAY Z-INDEX ELEVATION
+* Fixed Tactical Stamp UTF-8 Character Encoding & Display:
+  - Replaced corrupted multibyte emoji literals with robust, 7-bit ASCII JavaScript Unicode escape sequences (\u{1F480}, \u{1F98C}, \u{1F3AF}, etc.).
+  - Completely immune to Windows / PowerShell / Git multibyte character translation issues.
+  - Dynamically builds the tactical icon picker grid via initTacticalIconTray with visual selection rings and live crosshair cursor.
+  - Implemented auto-healing for any previously corrupted "??" stamps stored in localStorage or card metadata.
+* Fixed Tactical Stamp Tray Z-Index Hierarchy:
+  - Elevated #tactical-icon-tray to z-index: 999999 !important; so the stamp picker consistently appears on top of maximized Geo-Matrix panels across both desktop and mobile viewports.
+* Verified Intel Vault & Comms Chat Synchronization:
+  - Validated full-fidelity capture of tactical stamps, DOPE rings, azimuth lines, and hybrid road labels into Intel Vault.
+  - Confirmed chat payload optimization keeps Geo-Matrix card transmissions well under 180KB, enabling seamless mobile-to-PC and PC-to-mobile transmission with one-click "OPEN IN GEO-MATRIX" reconstruction.
+* Bumped Service Worker cache version v8.74 -> v8.75 for instant mobile cache eviction.
