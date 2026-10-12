@@ -1,10 +1,10 @@
-/* TRC-VERSION - v8.76.5.0 */
-const CACHE_NAME = 'trc-v8.76.5.0';
+/* TRC-VERSION - v8.77.1.0 */
+const CACHE_NAME = 'trc-v8.77.1.0';
 const ASSETS = [
     './',
-    './index.html?v=8.76.5.0',
-    './style.css?v=8.76.5.0',
-    './trc_core.js?v=8.76.5.0',
+    './index.html?v=8.77.1.0',
+    './style.css?v=8.77.1.0',
+    './trc_core.js?v=8.77.1.0',
     './js/modules/sfu_audio.js?v=8.30',
     './field_intel_logic.js?v=8.30',
     './blog_logic.js?v=8.30',
@@ -75,6 +75,7 @@ self.addEventListener('fetch', event => {
         'us-states.json',
         'colorado_2026.json',       // large data files — never cache
         'arcgisonline.com',         // map tiles — browser handles its own cache
+        'rainviewer.com',           // live weather radar tiles & api
         'qrserver.com',
         'proxy_stream',             // TRC local audio proxy
         'trackstreamer.com',        // live rail audio streams

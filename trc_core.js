@@ -3595,7 +3595,14 @@ function initializeTacticalDashboard2() {
                         document.getElementById("bal-input-baro").value = inHg.toFixed(2);
                         document.getElementById("bal-input-wind").value = Math.round(c.wind_speed_10m);
                         document.getElementById("bal-input-wind-dir").value = Math.round(c.wind_direction_10m);
+                        window.currentTacticalWind = {
+                            speedMph: Math.round(c.wind_speed_10m || 0),
+                            dirDeg: Math.round(c.wind_direction_10m || 0)
+                        };
                         if (typeof runSolverMatrix === "function") runSolverMatrix(); // Force instant re-calculation so HUD updates
+                        if (typeof drawMapLine === "function" && typeof mapMarkers !== "undefined" && mapMarkers.length >= 2) {
+                            drawMapLine();
+                        }
                         
 
                         // Success State Update
@@ -3693,12 +3700,14 @@ function initializeTacticalDashboard2() {
             // 2. Initialize Multi-Layer Engine (Satellite, Hybrid Roads & Names, Topo Contours)
             window.satTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
+                maxNativeZoom: 18,
                 attribution: 'Tiles &copy; Esri',
                 crossOrigin: true
             });
 
             window.roadsTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
+                maxNativeZoom: 18,
                 attribution: 'Esri Transportation',
                 crossOrigin: true,
                 opacity: 0.95
@@ -3706,6 +3715,7 @@ function initializeTacticalDashboard2() {
 
             window.labelsTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
+                maxNativeZoom: 18,
                 attribution: 'Esri Places',
                 crossOrigin: true,
                 opacity: 0.95
@@ -3713,6 +3723,7 @@ function initializeTacticalDashboard2() {
 
             window.topoTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
+                maxNativeZoom: 18,
                 attribution: 'Esri Topo',
                 crossOrigin: true
             });
@@ -3754,6 +3765,482 @@ function initializeTacticalDashboard2() {
                 } else {
                     window.setGeoMapLayer('sat');
                 }
+            };
+
+            // 2.5 Live Weather Radar & Satellite Layer Engine (RainViewer API)
+            window.currentWeatherMode = 'off'; // 'off' | 'radar' | 'clouds'
+            window.weatherRadarTileLayer = null;
+            window.weatherCloudsTileLayer = null;
+            window.cachedRainViewerData = null;
+            window.lastRainViewerFetch = 0;
+
+            async function getRainViewerMetadata() {
+                const now = Date.now();
+                if (window.cachedRainViewerData && (now - window.lastRainViewerFetch < 180000)) {
+                    return window.cachedRainViewerData;
+                }
+                const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                window.cachedRainViewerData = data;
+                window.lastRainViewerFetch = now;
+                return data;
+            }
+
+            window.setGeoWeatherLayer = async function(mode) {
+                if (!orbitalMap) return;
+                const btn = document.getElementById('geo-weather-toggle-btn');
+                const lbl = document.getElementById('geo-weather-label');
+                const icon = document.getElementById('geo-weather-icon');
+                const leg = document.getElementById('geo-radar-legend');
+
+                // Remove existing weather layers immediately to free memory
+                if (window.weatherRadarTileLayer && orbitalMap.hasLayer(window.weatherRadarTileLayer)) {
+                    orbitalMap.removeLayer(window.weatherRadarTileLayer);
+                    window.weatherRadarTileLayer = null;
+                }
+                if (window.weatherCloudsTileLayer && orbitalMap.hasLayer(window.weatherCloudsTileLayer)) {
+                    orbitalMap.removeLayer(window.weatherCloudsTileLayer);
+                    window.weatherCloudsTileLayer = null;
+                }
+
+                if (mode === 'radar') {
+                    if (lbl) lbl.textContent = '⏳ RADAR SCAN...';
+                    if (leg) leg.classList.remove('hidden');
+                    if (btn) {
+                        btn.className = 'bg-cyan-950/80 border border-cyan-500 text-cyan-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)] cursor-pointer';
+                    }
+                    try {
+                        const data = await getRainViewerMetadata();
+                        if (!data || !data.radar || !data.radar.past || data.radar.past.length === 0) {
+                            throw new Error('Radar frames unavailable');
+                        }
+                        const latest = data.radar.past[data.radar.past.length - 1];
+                        const radarUrl = `https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
+
+                        window.weatherRadarTileLayer = L.tileLayer(radarUrl, {
+                            tileSize: 256,
+                            opacity: 0.72,
+                            zIndex: 400,
+                            maxZoom: 19,
+                            maxNativeZoom: 7,
+                            crossOrigin: true,
+                            attribution: 'RainViewer'
+                        });
+                        window.weatherRadarTileLayer.addTo(orbitalMap);
+                        window.currentWeatherMode = 'radar';
+
+                        const scanDate = new Date(latest.time * 1000);
+                        const timeStr = scanDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        if (lbl) lbl.textContent = `🌧️ RADAR (${timeStr})`;
+                        if (btn) {
+                            btn.className = 'bg-cyan-950/90 border border-cyan-400 text-cyan-200 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer';
+                            btn.title = `Live Doppler Radar: Rain, Snow & Ice Active (${timeStr}). Click to cycle.`;
+                        }
+                        if (icon) {
+                            icon.setAttribute('data-lucide', 'cloud-rain');
+                            icon.className = 'w-4 h-4 text-cyan-300 animate-pulse';
+                        }
+                        if (window.lucide && btn) window.lucide.createIcons({ root: btn });
+                        if (window.pushTacLog) window.pushTacLog(`RADAR ACTIVE: ${timeStr} (RAIN/SNOW/ICE)`, 'SYS');
+                        if (window.showToast) window.showToast(`Live Doppler Radar Active (${timeStr})`);
+                    } catch (err) {
+                        console.error('RainViewer Radar Error:', err);
+                        window.currentWeatherMode = 'off';
+                        if (leg) leg.classList.add('hidden');
+                        if (lbl) lbl.textContent = '🌧️ RADAR OFF';
+                        if (btn) {
+                            btn.className = 'bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-cyan-400 hover:border-cyan-500 transition-all cursor-pointer shadow-sm';
+                            btn.title = 'Toggle Live Doppler Weather Radar (Rain / Snow / Clouds / Off)';
+                        }
+                        if (icon) {
+                            icon.setAttribute('data-lucide', 'cloud-rain');
+                            icon.className = 'w-4 h-4 text-gray-400';
+                        }
+                        if (window.lucide && btn) window.lucide.createIcons({ root: btn });
+                        if (window.pushTacLog) window.pushTacLog('WEATHER RADAR: FEED UNREACHABLE / OFFLINE', 'WARN');
+                        if (window.showToast) window.showToast('Radar Offline: Feed unreachable');
+                    }
+                } else if (mode === 'clouds') {
+                    if (lbl) lbl.textContent = '⏳ SATELLITE...';
+                    if (leg) leg.classList.add('hidden');
+                    try {
+                        const data = await getRainViewerMetadata();
+                        if (data && data.satellite && data.satellite.infrared && data.satellite.infrared.length > 0) {
+                            const latestSat = data.satellite.infrared[data.satellite.infrared.length - 1];
+                            const cloudUrl = `https://tilecache.rainviewer.com${latestSat.path}/256/{z}/{x}/{y}/0/0_0.png`;
+
+                            window.weatherCloudsTileLayer = L.tileLayer(cloudUrl, {
+                                tileSize: 256,
+                                opacity: 0.60,
+                                zIndex: 400,
+                                maxZoom: 19,
+                                maxNativeZoom: 7,
+                                crossOrigin: true,
+                                attribution: 'RainViewer'
+                            });
+                            window.weatherCloudsTileLayer.addTo(orbitalMap);
+                            window.currentWeatherMode = 'clouds';
+
+                            const satDate = new Date(latestSat.time * 1000);
+                            const satTimeStr = satDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            if (lbl) lbl.textContent = `☁️ CLOUDS (${satTimeStr})`;
+                            if (btn) {
+                                btn.className = 'bg-sky-950/90 border border-sky-400 text-sky-200 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(56,189,248,0.4)] cursor-pointer';
+                                btn.title = `Infrared Satellite Cloud Cover (${satTimeStr}). Click to turn off.`;
+                            }
+                            if (icon) {
+                                icon.setAttribute('data-lucide', 'cloud');
+                                icon.className = 'w-4 h-4 text-sky-300';
+                            }
+                            if (window.lucide && btn) window.lucide.createIcons({ root: btn });
+                            if (window.pushTacLog) window.pushTacLog(`SATELLITE CLOUDS ACTIVE: ${satTimeStr}`, 'SYS');
+                            if (window.showToast) window.showToast(`Satellite Clouds Active (${satTimeStr})`);
+                        } else {
+                            window.setGeoWeatherLayer('off');
+                        }
+                    } catch (err) {
+                        console.error('RainViewer Clouds Error:', err);
+                        window.setGeoWeatherLayer('off');
+                    }
+                } else {
+                    window.currentWeatherMode = 'off';
+                    if (leg) leg.classList.add('hidden');
+                    if (lbl) lbl.textContent = '🌧️ RADAR OFF';
+                    if (btn) {
+                        btn.className = 'bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-cyan-400 hover:border-cyan-500 transition-all cursor-pointer shadow-sm';
+                        btn.title = 'Toggle Live Doppler Weather Radar (Rain / Snow / Clouds / Off)';
+                    }
+                    if (icon) {
+                        icon.setAttribute('data-lucide', 'cloud-rain');
+                        icon.className = 'w-4 h-4 text-gray-400';
+                    }
+                    if (window.lucide && btn) window.lucide.createIcons({ root: btn });
+                    if (window.pushTacLog) window.pushTacLog('WEATHER RADAR: DEACTIVATED', 'SYS');
+                }
+            };
+
+            window.cycleGeoWeatherLayer = function() {
+                if (window.currentWeatherMode === 'off') {
+                    window.setGeoWeatherLayer('radar');
+                } else if (window.currentWeatherMode === 'radar') {
+                    if (window.cachedRainViewerData && window.cachedRainViewerData.satellite && 
+                        window.cachedRainViewerData.satellite.infrared && 
+                        window.cachedRainViewerData.satellite.infrared.length > 0) {
+                        window.setGeoWeatherLayer('clouds');
+                    } else {
+                        window.setGeoWeatherLayer('off');
+                    }
+                } else {
+                    window.setGeoWeatherLayer('off');
+                }
+            };
+
+            // === SOLAR AZIMUTH & SUN POSITION VECTOR ENGINE ===
+            window.getSolarPosition = function(lat, lng, date = new Date()) {
+                const rad = Math.PI / 180;
+                const deg = 180 / Math.PI;
+                const d = (date.getTime() / 86400000) - 10957.5; // days since J2000
+                const L = (280.460 + 0.9856474 * d) % 360;
+                const g = (357.528 + 0.9856003 * d) * rad;
+                const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+                const eps = 23.439 * rad;
+                const sinDelta = Math.sin(eps) * Math.sin(lambda);
+                const delta = Math.asin(sinDelta);
+                const gmst = (18.697374558 + 24.06570982441908 * d) % 24;
+                const lmst = ((gmst * 15 + lng) % 360 + 360) % 360;
+                const alpha = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda)) * deg;
+                const H = ((lmst - alpha + 360) % 360) * rad;
+                const phi = lat * rad;
+                const sinAlt = Math.sin(phi) * Math.sin(delta) + Math.cos(phi) * Math.cos(delta) * Math.cos(H);
+                const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt))) * deg;
+                const cosAz = (Math.sin(delta) - Math.sin(phi) * sinAlt) / (Math.cos(phi) * Math.cos(Math.asin(sinAlt)));
+                let az = Math.acos(Math.max(-1, Math.min(1, cosAz))) * deg;
+                if (Math.sin(H) > 0) az = 360 - az;
+                return {
+                    azimuth: Math.round((az + 360) % 360),
+                    altitude: Math.round(alt),
+                    isDaylight: alt > -6
+                };
+            };
+
+            window.isSolarVectorActive = false;
+            window.solarVectorLayer = null;
+            window.solarShadowLayer = null;
+            let lastSolarToggleTime = 0;
+
+            window.renderSolarVector = function() {
+                if (!orbitalMap) return;
+                if (window.solarVectorLayer && orbitalMap.hasLayer(window.solarVectorLayer)) {
+                    orbitalMap.removeLayer(window.solarVectorLayer);
+                    window.solarVectorLayer = null;
+                }
+                if (window.solarShadowLayer && orbitalMap.hasLayer(window.solarShadowLayer)) {
+                    orbitalMap.removeLayer(window.solarShadowLayer);
+                    window.solarShadowLayer = null;
+                }
+                if (!window.isSolarVectorActive) return;
+
+                const center = (typeof mapMarkers !== 'undefined' && mapMarkers.length > 0) 
+                    ? mapMarkers[0].getLatLng() 
+                    : (window.myLatestCoords ? L.latLng(window.myLatestCoords.lat, window.myLatestCoords.lng) : orbitalMap.getCenter());
+
+                const sun = window.getSolarPosition(center.lat, center.lng);
+                const sunRad = sun.azimuth * Math.PI / 180;
+                const shadowRad = ((sun.azimuth + 180) % 360) * Math.PI / 180;
+
+                // Scale line length dynamically to 35% of visible screen span (minimum 800m)
+                let spanMeters = 1500;
+                try {
+                    const b = orbitalMap.getBounds();
+                    const latM = Math.abs(b.getNorth() - b.getSouth()) * 111320;
+                    spanMeters = Math.max(latM * 0.35, 800);
+                } catch(e) { spanMeters = 1500; }
+
+                const sunDistM = spanMeters;
+                const shadowDistM = spanMeters * 0.65;
+
+                const sunEndLat = center.lat + (sunDistM / 111320) * Math.cos(sunRad);
+                const sunEndLng = center.lng + (sunDistM / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(sunRad);
+                const shadowEndLat = center.lat + (shadowDistM / 111320) * Math.cos(shadowRad);
+                const shadowEndLng = center.lng + (shadowDistM / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(shadowRad);
+
+                const sunLine = L.polyline([center, [sunEndLat, sunEndLng]], {
+                    color: '#fbbf24',
+                    weight: 3.5,
+                    dashArray: '8, 6',
+                    opacity: 0.95
+                });
+
+                const shadowLine = L.polyline([center, [shadowEndLat, shadowEndLng]], {
+                    color: '#818cf8',
+                    weight: 2.5,
+                    dashArray: '4, 6',
+                    opacity: 0.85
+                });
+
+                const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+                const sunCard = cardinals[Math.round(sun.azimuth / 22.5) % 16];
+
+                const sunIcon = L.divIcon({
+                    html: `<div style="background:rgba(0,0,0,0.92); border:2px solid #fbbf24; border-radius:4px; padding:3px 8px; box-shadow:0 0 14px rgba(251,191,36,0.8); font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:900; color:#fbbf24; white-space:nowrap; transform:translate(-50%,-50%); pointer-events:none;">☀️ SUN ${sun.azimuth.toString().padStart(3,'0')}° ${sunCard} • ${sun.altitude}° ALT</div>`,
+                    className: 'geo-sun-label',
+                    iconSize: [1, 1],
+                    iconAnchor: [0, 0]
+                });
+                const sunMarker = L.marker([sunEndLat, sunEndLng], { icon: sunIcon });
+
+                const shadowIcon = L.divIcon({
+                    html: `<div style="background:rgba(0,0,0,0.90); border:1.5px solid #818cf8; border-radius:4px; padding:2px 6px; box-shadow:0 0 10px rgba(129,140,248,0.6); font-family:'JetBrains Mono', monospace; font-size:9.5px; font-weight:800; color:#c7d2fe; white-space:nowrap; transform:translate(-50%,-50%); pointer-events:none;">🌑 SHADOW ${((sun.azimuth + 180) % 360).toString().padStart(3,'0')}°</div>`,
+                    className: 'geo-shadow-label',
+                    iconSize: [1, 1],
+                    iconAnchor: [0, 0]
+                });
+                const shadowMarker = L.marker([shadowEndLat, shadowEndLng], { icon: shadowIcon });
+
+                window.solarVectorLayer = L.layerGroup([sunLine, sunMarker]).addTo(orbitalMap);
+                window.solarShadowLayer = L.layerGroup([shadowLine, shadowMarker]).addTo(orbitalMap);
+
+                const btn = document.getElementById('geo-solar-toggle-btn');
+                const lbl = document.getElementById('geo-solar-label');
+                if (btn) btn.className = 'bg-amber-950/80 border border-amber-500 text-amber-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(245,158,11,0.3)] cursor-pointer';
+                if (lbl) lbl.textContent = `☀️ SUN (${sun.azimuth}°)`;
+            };
+
+            window.toggleSolarAzimuth = function() {
+                const now = Date.now();
+                if (now - lastSolarToggleTime < 250) return;
+                lastSolarToggleTime = now;
+
+                if (!orbitalMap) return;
+                window.isSolarVectorActive = !window.isSolarVectorActive;
+                const btn = document.getElementById('geo-solar-toggle-btn');
+                const lbl = document.getElementById('geo-solar-label');
+
+                if (window.isSolarVectorActive) {
+                    window.renderSolarVector();
+                    const center = (typeof mapMarkers !== 'undefined' && mapMarkers.length > 0) 
+                        ? mapMarkers[0].getLatLng() 
+                        : (window.myLatestCoords ? L.latLng(window.myLatestCoords.lat, window.myLatestCoords.lng) : orbitalMap.getCenter());
+                    const sun = window.getSolarPosition(center.lat, center.lng);
+                    const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+                    const sunCard = cardinals[Math.round(sun.azimuth / 22.5) % 16];
+                    if (window.pushTacLog) window.pushTacLog(`SOLAR AZIMUTH ACTIVE: ${sun.azimuth}° ${sunCard} (ELEV ${sun.altitude}°)`, "SYS");
+                    if (window.showToast) window.showToast(`Sun Position: ${sun.azimuth}° ${sunCard} • Alt ${sun.altitude}°`);
+                } else {
+                    if (window.solarVectorLayer && orbitalMap.hasLayer(window.solarVectorLayer)) {
+                        orbitalMap.removeLayer(window.solarVectorLayer);
+                        window.solarVectorLayer = null;
+                    }
+                    if (window.solarShadowLayer && orbitalMap.hasLayer(window.solarShadowLayer)) {
+                        orbitalMap.removeLayer(window.solarShadowLayer);
+                        window.solarShadowLayer = null;
+                    }
+                    if (btn) btn.className = 'bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-amber-400 hover:border-amber-500 transition-all cursor-pointer shadow-sm';
+                    if (lbl) lbl.textContent = '☀️ SUN';
+                    if (window.pushTacLog) window.pushTacLog('SOLAR VECTOR: DEACTIVATED', "SYS");
+                }
+            };
+
+            orbitalMap.on('zoomend', () => {
+                if (window.isSolarVectorActive && window.renderSolarVector) {
+                    window.renderSolarVector();
+                }
+            });
+
+            // === TERRAIN ELEVATION PROFILE & LINE-OF-SIGHT ENGINE ===
+            window.openElevationProfileModal = async function() {
+                if (!mapMarkers || mapMarkers.length < 2) {
+                    alert("Place at least 2 points (Shooter and Target) on the Geo-Matrix map first to analyze terrain elevation.");
+                    return;
+                }
+
+                const modal = document.getElementById('geo-elev-modal');
+                const loading = document.getElementById('geo-elev-loading');
+                const body = document.getElementById('geo-elev-body');
+                if (!modal) return;
+
+                modal.classList.remove('hidden');
+                if (loading) loading.classList.remove('hidden');
+                if (body) body.classList.add('hidden');
+                if (window.lucide) window.lucide.createIcons({ root: modal });
+
+                const origin = mapMarkers[0].getLatLng();
+                const target = mapMarkers[1].getLatLng();
+
+                try {
+                    const samples = [];
+                    const count = 11;
+                    for (let i = 0; i < count; i++) {
+                        const t = i / (count - 1);
+                        samples.push({
+                            lat: origin.lat + t * (target.lat - origin.lat),
+                            lng: origin.lng + t * (target.lng - origin.lng)
+                        });
+                    }
+
+                    const latStr = samples.map(s => s.lat.toFixed(5)).join(',');
+                    const lngStr = samples.map(s => s.lng.toFixed(5)).join(',');
+                    const apiUrl = `https://api.open-meteo.com/v1/elevation?latitude=${latStr}&longitude=${lngStr}`;
+
+                    const res = await fetch(apiUrl);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    const elevationsM = data.elevation || [];
+                    if (elevationsM.length < 2) throw new Error('Invalid elevation payload');
+
+                    const isMetric = (typeof geoDistanceUnit !== 'undefined' && geoDistanceUnit === 'M');
+                    const elevFactor = isMetric ? 1 : 3.28084; // meters to feet
+                    const elevUnit = isMetric ? 'M' : 'FT';
+                    const elevations = elevationsM.map(e => e * elevFactor);
+
+                    const originElev = elevations[0];
+                    const targetElev = elevations[elevations.length - 1];
+                    const deltaH = targetElev - originElev;
+
+                    const totalDistM = origin.distanceTo(target);
+                    const totalDist = isMetric ? totalDistM : (totalDistM * 1.09361);
+                    const distUnit = isMetric ? 'MTR' : 'YDS';
+
+                    // Incline Angle & Cosine Factor
+                    const deltaHInDistUnits = isMetric ? (elevationsM[elevationsM.length - 1] - elevationsM[0]) : (deltaH / 3);
+                    const angleRad = Math.asin(Math.max(-1, Math.min(1, deltaHInDistUnits / totalDist)));
+                    const angleDeg = (angleRad * 180 / Math.PI).toFixed(1);
+                    const cosine = Math.cos(angleRad).toFixed(3);
+                    const flatRange = (totalDist * Math.cos(angleRad)).toFixed(1);
+
+                    // Update Metrics
+                    const mOrig = document.getElementById('elev-metric-origin');
+                    const mTgt = document.getElementById('elev-metric-target');
+                    const mDiff = document.getElementById('elev-metric-diff');
+                    const mAngle = document.getElementById('elev-metric-angle');
+
+                    if (mOrig) mOrig.textContent = `${Math.round(originElev)} ${elevUnit}`;
+                    if (mTgt) mTgt.textContent = `${Math.round(targetElev)} ${elevUnit}`;
+                    if (mDiff) mDiff.textContent = `${deltaH >= 0 ? '+' : ''}${Math.round(deltaH)} ${elevUnit} (${deltaH >= 0 ? 'UPHILL' : 'DOWNHILL'})`;
+                    if (mAngle) mAngle.textContent = `${angleDeg}° (COS ${cosine}) → ${flatRange} ${distUnit}`;
+
+                    // Check Line of Sight Obstruction (Dead Space)
+                    let isBlocked = false;
+                    let maxBlockDiff = 0;
+                    for (let i = 1; i < count - 1; i++) {
+                        const t = i / (count - 1);
+                        const losElev = originElev + t * (targetElev - originElev);
+                        const diff = elevations[i] - losElev;
+                        if (diff > 1.0) {
+                            isBlocked = true;
+                            if (diff > maxBlockDiff) maxBlockDiff = diff;
+                        }
+                    }
+
+                    const losBanner = document.getElementById('elev-los-banner');
+                    if (losBanner) {
+                        if (isBlocked) {
+                            losBanner.className = 'p-2.5 rounded border border-red-500 bg-red-950/80 text-red-300 text-xs font-black uppercase text-center tracking-wider flex items-center justify-center gap-2';
+                            losBanner.innerHTML = `⚠️ DEAD SPACE DETECTED: INTERMEDIATE RIDGE BLOCKS LINE-OF-SIGHT (+${Math.round(maxBlockDiff)} ${elevUnit})`;
+                        } else {
+                            losBanner.className = 'p-2.5 rounded border border-emerald-500 bg-emerald-950/80 text-emerald-300 text-xs font-black uppercase text-center tracking-wider flex items-center justify-center gap-2';
+                            losBanner.innerHTML = `✅ CLEAR LINE-OF-SIGHT CONFIRMED (${totalDist.toFixed(1)} ${distUnit} • ${angleDeg}° INCLINE)`;
+                        }
+                    }
+
+                    // Generate 2D SVG Profile Chart
+                    const chartContainer = document.getElementById('geo-elev-chart-container');
+                    if (chartContainer) {
+                        const svgW = 540;
+                        const svgH = 180;
+                        const padX = 40;
+                        const padY = 25;
+
+                        const minE = Math.min(...elevations);
+                        const maxE = Math.max(...elevations);
+                        const rangeE = Math.max(10, maxE - minE);
+
+                        const getX = (idx) => padX + (idx / (count - 1)) * (svgW - 2 * padX);
+                        const getY = (elev) => (svgH - padY) - ((elev - minE) / rangeE) * (svgH - 2 * padY);
+
+                        const pts = elevations.map((e, idx) => `${getX(idx).toFixed(1)},${getY(e).toFixed(1)}`);
+                        const polyPoints = `${getX(0)},${svgH - padY} ${pts.join(' ')} ${getX(count - 1)},${svgH - padY}`;
+                        const losColor = isBlocked ? '#ef4444' : '#06b6d4';
+
+                        chartContainer.innerHTML = `
+                            <svg viewBox="0 0 ${svgW} ${svgH}" class="w-full h-full overflow-visible">
+                                <defs>
+                                    <linearGradient id="terrainGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#15803d" stop-opacity="0.6"/>
+                                        <stop offset="100%" stop-color="#052e16" stop-opacity="0.1"/>
+                                    </linearGradient>
+                                </defs>
+                                <polygon points="${polyPoints}" fill="url(#terrainGrad)" />
+                                <polyline points="${pts.join(' ')}" fill="none" stroke="#22c55e" stroke-width="2.5" />
+                                <line x1="${getX(0)}" y1="${getY(originElev)}" x2="${getX(count - 1)}" y2="${getY(targetElev)}" 
+                                      stroke="${losColor}" stroke-width="2" stroke-dasharray="5,5" />
+                                <circle cx="${getX(0)}" cy="${getY(originElev)}" r="4.5" fill="#10b981" stroke="#fff" stroke-width="1.5"/>
+                                <text x="${getX(0)}" y="${getY(originElev) - 8}" fill="#10b981" font-size="8.5" font-family="monospace" font-weight="bold" text-anchor="middle">OP</text>
+                                <circle cx="${getX(count - 1)}" cy="${getY(targetElev)}" r="4.5" fill="${losColor}" stroke="#fff" stroke-width="1.5"/>
+                                <text x="${getX(count - 1)}" y="${getY(targetElev) - 8}" fill="${losColor}" font-size="8.5" font-family="monospace" font-weight="bold" text-anchor="middle">TGT</text>
+                                <line x1="${padX}" y1="${svgH - padY}" x2="${svgW - padX}" y2="${svgH - padY}" stroke="#374151" stroke-width="1"/>
+                            </svg>
+                        `;
+                    }
+
+                    if (loading) loading.classList.add('hidden');
+                    if (body) body.classList.remove('hidden');
+
+                } catch (err) {
+                    console.error('Elevation Profile Error:', err);
+                    if (loading) {
+                        loading.innerHTML = `
+                            <div class="text-red-400 font-bold text-xs uppercase mb-1">⚠️ ELEVATION DATA UNREACHABLE</div>
+                            <div class="text-[10px] text-gray-500">Could not retrieve digital elevation profile. Check internet connectivity.</div>
+                        `;
+                    }
+                }
+            };
+
+            window.closeElevationProfileModal = function() {
+                const modal = document.getElementById('geo-elev-modal');
+                if (modal) modal.classList.add('hidden');
             };
 
             // Default to rich Hybrid with road names, highways, and places
@@ -3970,35 +4457,90 @@ function initializeTacticalDashboard2() {
         input.value = '';
     };
 
-    function syncMapToGps() {
-        if (!navigator.geolocation) return;
+    async function syncMapToGps() {
         if (window.isGhostMode) {
             window.pushTacLog("GHOST MODE ACTIVE. GPS SYNC DENIED.", "WARNING");
             return;
         }
         
         const btn = document.getElementById('geo-live-gps-btn');
-        const origHtml = btn.innerHTML;
-        btn.innerHTML = `<span class="animate-pulse">🛰️ LOCATING...</span>`;
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) btn.innerHTML = `<span class="animate-pulse">🛰️ LOCATING...</span>`;
 
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                if (orbitalMap) {
-                    orbitalMap.setView([lat, lon], 17); // High Zoom
-                }
-                btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> GPS LOCKED`;
+        function onCoordsSuccess(lat, lon, source) {
+            window.myLatestCoords = { lat, lng: lon };
+            if (orbitalMap) {
+                orbitalMap.setView([lat, lon], 17);
+            }
+            if (btn) {
+                btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> ${source || 'GPS'} LOCKED`;
                 if (window.lucide) window.lucide.createIcons();
-                setTimeout(() => { btn.innerHTML = origHtml; if (window.lucide) window.lucide.createIcons(); }, 2000);
-            },
-            (err) => {
-                console.error(err);
-                btn.innerHTML = `❌ GPS FAIL`;
-                setTimeout(() => { btn.innerHTML = origHtml; if (window.lucide) window.lucide.createIcons(); }, 2000);
-            },
-            { enableHighAccuracy: true }
-        );
+                setTimeout(() => { if (btn) { btn.innerHTML = origHtml; if (window.lucide) window.lucide.createIcons(); } }, 2500);
+            }
+            if (window.pushTacLog) window.pushTacLog(`POSITION LOCKED (${source}): LAT ${lat.toFixed(5)} LON ${lon.toFixed(5)}`, "SUCCESS");
+            if (window.showToast) window.showToast(`Position Locked (${source})`);
+        }
+
+        async function fallbackIpGeo() {
+            try {
+                if (btn) btn.innerHTML = `<span class="animate-pulse">🌐 IP LOCATING...</span>`;
+                const res = await fetch('https://ipapi.co/json/');
+                if (!res.ok) throw new Error('IP Geo failed');
+                const data = await res.json();
+                if (data && data.latitude && data.longitude) {
+                    onCoordsSuccess(data.latitude, data.longitude, 'IP NET');
+                    return true;
+                }
+            } catch (err) {
+                console.warn('IP Geo fallback 1 failed, trying fallback 2:', err);
+            }
+            try {
+                const res2 = await fetch('https://get.geojs.io/v1/ip/geo.json');
+                const data2 = await res2.json();
+                if (data2 && data2.latitude && data2.longitude) {
+                    onCoordsSuccess(parseFloat(data2.latitude), parseFloat(data2.longitude), 'IP NET');
+                    return true;
+                }
+            } catch (err2) {
+                console.error('All Geo fallbacks failed:', err2);
+            }
+            return false;
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    onCoordsSuccess(pos.coords.latitude, pos.coords.longitude, 'GPS');
+                },
+                (err) => {
+                    console.warn("High-accuracy GPS failed, trying Wi-Fi/cached geolocation:", err.message);
+                    navigator.geolocation.getCurrentPosition(
+                        (pos2) => {
+                            onCoordsSuccess(pos2.coords.latitude, pos2.coords.longitude, 'WIFI LOC');
+                        },
+                        async (err2) => {
+                            console.warn("Device geolocation unavailable, activating IP Network fallback:", err2.message);
+                            const ok = await fallbackIpGeo();
+                            if (!ok) {
+                                if (btn) {
+                                    btn.innerHTML = `❌ GPS FAIL`;
+                                    setTimeout(() => { if (btn) { btn.innerHTML = origHtml; if (window.lucide) window.lucide.createIcons(); } }, 2500);
+                                }
+                                if (window.showToast) window.showToast('Location unavailable: Check browser permissions');
+                            }
+                        },
+                        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+                    );
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+            );
+        } else {
+            const ok = await fallbackIpGeo();
+            if (!ok && btn) {
+                btn.innerHTML = `❌ NO GPS`;
+                setTimeout(() => { if (btn) { btn.innerHTML = origHtml; if (window.lucide) window.lucide.createIcons(); } }, 2000);
+            }
+        }
     }
 
     function handleMapClick(e) {
@@ -4221,9 +4763,54 @@ function initializeTacticalDashboard2() {
             }
             lastDisplayDistance = displayDistance;
 
-            const labelHtml = `<div style="background:rgba(3,7,18,0.88); border:1.5px solid #ff1493; border-radius:5px; padding:3px 8px; box-shadow:0 0 14px rgba(255,20,147,0.6); display:flex; flex-direction:column; align-items:center; white-space:nowrap; transform:translate(-50%, -50%); pointer-events:none;">
+            // === BALLISTIC CROSSWIND & WIND CALL ===
+            let windSpeed = 0;
+            let windDir = 0;
+            if (window.currentTacticalWind && window.currentTacticalWind.speedMph) {
+                windSpeed = window.currentTacticalWind.speedMph;
+                windDir = window.currentTacticalWind.dirDeg;
+            } else {
+                const wSpdEl = document.getElementById("bal-input-wind") || document.getElementById("wx-wind-speed");
+                const wDirEl = document.getElementById("bal-input-wind-dir");
+                if (wSpdEl) windSpeed = parseFloat(wSpdEl.value || wSpdEl.textContent) || 0;
+                if (wDirEl) windDir = parseFloat(wDirEl.value || wDirEl.textContent) || 0;
+            }
+
+            let windBadgeHtml = '';
+            if (windSpeed > 0) {
+                const deltaDeg = (windDir - bearing + 360) % 360;
+                const deltaRad = deltaDeg * Math.PI / 180;
+                const crosswindMph = (windSpeed * Math.sin(deltaRad)).toFixed(1);
+                const absCrosswind = Math.abs(crosswindMph);
+                const xWindDir = crosswindMph > 0 ? 'R→L' : (crosswindMph < 0 ? 'L→R' : 'NONE');
+                const clockHour = Math.round(deltaDeg / 30) || 12;
+
+                windBadgeHtml = `<span style="color:#38bdf8; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:10px; letter-spacing:0.5px; text-shadow:0 0 6px rgba(56,189,248,0.6); margin-top:2px;">💨 X-WIND ${absCrosswind} MPH (${xWindDir}) • ${clockHour}:00 (${windSpeed}M @ ${windDir.toString().padStart(3,'0')}°)</span>`;
+            } else {
+                windBadgeHtml = `<span style="color:#94a3b8; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:9.5px; letter-spacing:0.5px; margin-top:2px;">💨 WIND: CALM (0 MPH)</span>`;
+            }
+
+            // === SOLAR AZIMUTH & SCOPE GLARE WARNING ===
+            let solarBadgeHtml = '';
+            if (typeof window.getSolarPosition === 'function') {
+                const sunPos = window.getSolarPosition(origin.lat, origin.lng, new Date());
+                if (sunPos) {
+                    const cardinals = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+                    const sunCard = cardinals[Math.round(sunPos.azimuth / 22.5) % 16];
+                    const diffAz = Math.min(Math.abs(sunPos.azimuth - bearing), 360 - Math.abs(sunPos.azimuth - bearing));
+                    if (diffAz <= 25 && sunPos.altitude > 4 && sunPos.altitude < 40) {
+                        solarBadgeHtml = `<span style="color:#f59e0b; font-family:'JetBrains Mono', monospace; font-weight:900; font-size:9.5px; letter-spacing:0.6px; margin-top:2px; background:rgba(245,158,11,0.28); padding:1px 5px; border-radius:3px; border:1px solid #f59e0b; text-shadow:0 0 6px #f59e0b;">⚠️ ☀️ SUN IN SCOPE (AZ ${sunPos.azimuth.toString().padStart(3,'0')}° • ALT ${sunPos.altitude}°)</span>`;
+                    } else {
+                        solarBadgeHtml = `<span style="color:#fbbf24; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:9.5px; letter-spacing:0.5px; text-shadow:0 0 5px rgba(251,191,36,0.6); margin-top:2px;">☀️ SUN ${sunPos.azimuth.toString().padStart(3,'0')}° ${sunCard} • ${sunPos.altitude}° ALT</span>`;
+                    }
+                }
+            }
+
+            const labelHtml = `<div style="background:rgba(3,7,18,0.92); border:1.5px solid #ff1493; border-radius:6px; padding:4px 8px; box-shadow:0 0 16px rgba(255,20,147,0.6); display:flex; flex-direction:column; align-items:center; white-space:nowrap; transform:translate(-50%, -50%); pointer-events:none;">
                 <span style="color:#ff1493; font-family:'JetBrains Mono', monospace; font-weight:900; font-size:18px; letter-spacing:0.5px; text-shadow:0 0 8px #ff1493; line-height:1.1;">${displayDistance} ${displayUnit}</span>
                 <span style="color:#00e5ff; font-family:'JetBrains Mono', monospace; font-weight:800; font-size:11px; letter-spacing:0.8px; text-shadow:0 0 4px #00e5ff; margin-top:2px;">AZ ${azimuthStr}</span>
+                ${windBadgeHtml}
+                ${solarBadgeHtml}
             </div>`;
             const customIcon = L.divIcon({
                 html: labelHtml,
@@ -4353,6 +4940,7 @@ function initializeTacticalDashboard2() {
                 const url = 'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
                 stateBoundariesLayer = L.tileLayer(url, {
                     maxZoom: 19,
+                    maxNativeZoom: 18,
                     attribution: 'Esri, HERE, Garmin',
                     zIndex: 200,
                     opacity: 1.0
@@ -4614,6 +5202,30 @@ function initializeTacticalDashboard2() {
         geoRingsBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (window.toggleDopeRings) window.toggleDopeRings();
+        });
+    }
+
+    const geoWeatherBtn = document.getElementById('geo-weather-toggle-btn');
+    if (geoWeatherBtn) {
+        geoWeatherBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.cycleGeoWeatherLayer) window.cycleGeoWeatherLayer();
+        });
+    }
+
+    const geoSolarBtn = document.getElementById('geo-solar-toggle-btn');
+    if (geoSolarBtn) {
+        geoSolarBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.toggleSolarAzimuth) window.toggleSolarAzimuth();
+        });
+    }
+
+    const geoElevBtn = document.getElementById('geo-elev-profile-btn');
+    if (geoElevBtn) {
+        geoElevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (window.openElevationProfileModal) window.openElevationProfileModal();
         });
     }
 
@@ -13607,55 +14219,88 @@ if (window.DeviceOrientationEvent) {
 // MY GPS SYNC & TEAMMATE LOCATOR JUMP LOGIC
 // ==============================================
 window.geoSyncGPS = function() {
-    if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your device browser.");
-        return;
-    }
     const displayEl = document.getElementById('geo-my-coords-display');
     const badgeEl = document.getElementById('geo-my-coords-badge');
     if (displayEl) displayEl.textContent = "ACQUIRING...";
     if (badgeEl) badgeEl.classList.remove('hidden');
 
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            window.myLatestCoords = { lat, lng };
+    function applyCoords(lat, lng, source) {
+        window.myLatestCoords = { lat, lng };
+        const latStr = lat.toFixed(6);
+        const lngStr = lng.toFixed(6);
+        const coordText = `${latStr}, ${lngStr}`;
 
-            const latStr = lat.toFixed(6);
-            const lngStr = lng.toFixed(6);
-            const coordText = `${latStr}, ${lngStr}`;
+        if (displayEl) displayEl.textContent = `${coordText} (${source})`;
+        const hudLat = document.getElementById('hud-gps-lat');
+        const hudLon = document.getElementById('hud-gps-lon');
+        if (hudLat) hudLat.textContent = latStr;
+        if (hudLon) hudLon.textContent = lngStr;
 
-            if (displayEl) displayEl.textContent = coordText;
-            const hudLat = document.getElementById('hud-gps-lat');
-            const hudLon = document.getElementById('hud-gps-lon');
-            if (hudLat) hudLat.textContent = latStr;
-            if (hudLon) hudLon.textContent = lngStr;
-
-            if (window.orbitalMap) {
-                window.orbitalMap.setView([lat, lng], 17);
-                if (window.mySelfPositionMarker) {
-                    window.mySelfPositionMarker.setLatLng([lat, lng]);
-                } else {
-                    const icon = L.divIcon({
-                        className: 'custom-div-icon',
-                        html: `<div class="relative w-4 h-4 flex items-center justify-center"><div class="absolute w-full h-full rounded-full bg-emerald-500 animate-ping opacity-75"></div><div class="relative w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center text-[5px] text-white font-black">★</div></div>`,
-                        iconSize: [16, 16]
-                    });
-                    window.mySelfPositionMarker = L.marker([lat, lng], { icon }).addTo(window.orbitalMap);
-                    window.mySelfPositionMarker.bindTooltip(`MY POSITION: ${coordText}`, { permanent: true, direction: 'top', className: 'tactical-tooltip' });
-                }
+        if (window.orbitalMap) {
+            window.orbitalMap.setView([lat, lng], 17);
+            if (window.mySelfPositionMarker) {
+                window.mySelfPositionMarker.setLatLng([lat, lng]);
+                window.mySelfPositionMarker.setTooltipContent(`MY POSITION: ${coordText}`);
+            } else {
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="relative w-4 h-4 flex items-center justify-center"><div class="absolute w-full h-full rounded-full bg-emerald-500 animate-ping opacity-75"></div><div class="relative w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center text-[5px] text-white font-black">★</div></div>`,
+                    iconSize: [16, 16]
+                });
+                window.mySelfPositionMarker = L.marker([lat, lng], { icon }).addTo(window.orbitalMap);
+                window.mySelfPositionMarker.bindTooltip(`MY POSITION: ${coordText}`, { permanent: true, direction: 'top', className: 'tactical-tooltip' });
             }
+        }
+        if (window.pushTacLog) window.pushTacLog(`MY GPS SYNC COMPLETE (${source}): LAT ${latStr} | LON ${lngStr}`, "SUCCESS");
+        if (window.showToast) window.showToast(`GPS Position Locked (${source})`);
+    }
 
-            if (window.pushTacLog) window.pushTacLog(`MY GPS SYNC COMPLETE: LAT ${latStr} | LON ${lngStr}`, "SUCCESS");
-        },
-        (err) => {
-            console.warn("GPS Sync error:", err);
-            if (displayEl) displayEl.textContent = "GPS ERROR / DENIED";
-            alert("Could not acquire GPS position. Ensure location services are enabled.");
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+    async function fallbackIpGeo() {
+        try {
+            if (displayEl) displayEl.textContent = "IP GEO...";
+            const res = await fetch('https://ipapi.co/json/');
+            if (!res.ok) throw new Error('IP Geo failed');
+            const data = await res.json();
+            if (data && data.latitude && data.longitude) {
+                applyCoords(data.latitude, data.longitude, 'IP');
+                return true;
+            }
+        } catch(e) { console.warn('IP Geo 1 failed:', e); }
+        try {
+            const res2 = await fetch('https://get.geojs.io/v1/ip/geo.json');
+            const data2 = await res2.json();
+            if (data2 && data2.latitude && data2.longitude) {
+                applyCoords(parseFloat(data2.latitude), parseFloat(data2.longitude), 'IP');
+                return true;
+            }
+        } catch(e2) { console.error('All IP Geo failed:', e2); }
+        return false;
+    }
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                applyCoords(pos.coords.latitude, pos.coords.longitude, 'GPS');
+            },
+            (err) => {
+                console.warn("High-accuracy GPS failed, trying Wi-Fi:", err.message);
+                navigator.geolocation.getCurrentPosition(
+                    (pos2) => {
+                        applyCoords(pos2.coords.latitude, pos2.coords.longitude, 'WIFI');
+                    },
+                    async (err2) => {
+                        console.warn("Hardware geolocation failed, falling back to IP:", err2.message);
+                        const ok = await fallbackIpGeo();
+                        if (!ok && displayEl) displayEl.textContent = "GPS ERROR / DENIED";
+                    },
+                    { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+                );
+            },
+            { enableHighAccuracy: true, timeout: 6000, maximumAge: 10000 }
+        );
+    } else {
+        fallbackIpGeo();
+    }
 };
 
 window.teammateLocatorMarker = null;

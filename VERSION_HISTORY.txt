@@ -191,3 +191,52 @@ v8.76.5.0 - INTEL VAULT GRID RECOVERY & LIGHTHOUSE DOM AUDIT POLISH
   - Added explicit `autocomplete="off"` and `autocomplete="username"` attributes to Comms form input controls (`#comms-team`, `#comms-callsign`, `#comms-role`).
   - Eliminates Chrome DOM heuristics warnings and secures 100/100 Lighthouse Best Practices and Accessibility scores.
 * Bumped Service Worker and main script cache tags to v8.76.5.0 to force clean client cache eviction.
+
+============================================================
+v8.77.0.0 - GEO-MATRIX TACTICAL SITUATIONAL AWARENESS & WEATHER SUITE
+* Real-Time Doppler Precipitation Radar (Rain, Snow, Ice, Clouds):
+  - Integrated high-speed RainViewer Doppler Radar Tile Engine into Geo-Matrix orbitalMap.
+  - Automatically isolates and color-codes active precipitation: rain (green -> yellow -> red) and freezing precipitation/snow (cyan -> blue -> purple).
+  - Configured with calibrated 0.72 opacity and crossOrigin: true, preserving high-visibility underlying satellite imagery, hybrid roads, and sniper DOPE rings.
+  - Added live on-map Doppler Radar Legend Chip HUD displaying color categories (LIGHT RAIN -> SQUALL -> STORM -> SNOW/ICE).
+  - Resolved RainViewer API zoom limit: Set maxNativeZoom: 7 and maxZoom: 19 so zooming into local close-up areas (levels 8-19) smoothly upscales and interpolates radar without displaying RainViewer's "Zoom Level Not Supported" placeholder tiles.
+* 3-State Tactical Weather Toolbar Toggle:
+  - Added [🌧️ RADAR OFF] / [🌧️ RADAR (Time)] / [☁️ CLOUDS] quick-cycle button directly into Geo-Matrix toolbar.
+  - Instant one-tap activation with pulsing cyan tactical HUD border and live Doppler timestamp readout (e.g. "RADAR (05:30 PM)").
+  - Seamless fallback to infrared satellite cloud cover when available.
+  - Offline-safe architecture with graceful exception handling and status feedback ("RADAR OFFLINE / FEED UNREACHABLE") without freezing or crashing.
+  - Added rainviewer.com to Service Worker bypassPatterns to avoid local cache contamination.
+* Esri "Zoom Level Not Supported" Gray Tiles Fix:
+  - Applied maxNativeZoom: 18 to satellite, transportation/roads, places labels, and topographic layers.
+  - Enables Leaflet to smoothly interpolate and over-zoom into zoom levels 19+ in desert, rural, and border sectors (e.g., Presidio/Ojinaga) where Esri lacks native level 19 raster imagery, eliminating blank gray placeholder tiles.
+* Live Ballistic Crosswind & Optic Glare Analysis on Vector Lines:
+  - Vector line midpoint HUD now computes real-time ballistic crosswind component (mph) and direction (L->R or R->L) based on line azimuth vs. station wind direction.
+  - Displays firing solution clock position (e.g. "9 O'CLOCK" or "2 O'CLOCK") for rapid spotter-to-shooter corrections.
+  - Integrated optic glare warning ("☀️ SUN IN SCOPE" / "☀️ SEVERE GLARE") when firing line aligns within 25 degrees of solar azimuth and sun altitude is below 35 degrees.
+* Astronomical Solar Azimuth & Shadow Vector Engine ([ ☀️ SUN ]):
+  - Toolbar toggle [ ☀️ SUN ] draws real-time solar vector (gold dashed ray towards sun azimuth & altitude) and shadow vector (indigo dashed ray 180° opposite).
+  - Uses astronomical UTC solar position algorithms calculating precise local sun azimuth and altitude without external network dependencies.
+* Terrain Elevation Profile & Line-of-Sight (LOS) Modal ([ ⛰️ ELEV PROFILE ]):
+  - Added dedicated terrain modal sampling elevation along the shooter-target vector via Open-Meteo elevation API.
+  - Computes shooter elevation, target elevation, net elevation delta (ft), slope angle θ (deg), and cosine angle compensation factor for ballistic drop calculations.
+  - Line-of-sight (LOS) obstacle analysis detects terrain crests between shooter and target, calculating whether dead space obstruction exists.
+  - Renders interactive high-contrast 2D SVG terrain cross-section profile with color-coded line-of-sight trajectory (green CLEAR vs. red OBSTRUCTED).
+* Local file:/// Protocol & Missing Scanner Page Fix:
+  - Resolved CORS/ES module blocks on local disk (file:///) by converting scanner_module.js, sfu_audio.js, redteam.js, and mission_board.js to deferred scripts with defensive window namespaces.
+  - Fixed workstation form loader preventing undefined template crashes.
+* Bumped Service Worker cache version to v8.77.0.0 for immediate mobile and desktop cache eviction.
+
+============================================================
+v8.77.1.0 - SOLAR VECTOR ENGINE POLISH & RESILIENT GPS MULTI-TIER FALLBACK
+* Solar Azimuth Vector Engine Optimization:
+  - Eliminated duplicate click event triggers on [#geo-solar-toggle-btn] with 250ms debouncing guard.
+  - Implemented dynamic viewport scaling: Solar vector and shadow rays dynamically size to 35% of visible screen span with live map zoom tracking, ensuring prominent visibility across both 300-mile regional scales and 300-yard tactical target lanes.
+  - Vector line midpoint HUD now always renders live solar bearing (☀️ SUN Azimuth • Altitude) and ballistic wind status (💨 X-WIND or CALM).
+* Resilient Multi-Tier GPS Fallback (Desktop & Mobile):
+  - Upgraded Geo-Matrix SYNC and SYNC GPS buttons with automatic cascading fallback:
+    High-Accuracy Device GPS -> Wi-Fi / Cell Triangulation -> Fast Network IP Geolocation.
+  - Resolves desktop location timeouts and mobile insecure HTTP origin rejections, ensuring position locking always succeeds without error popups.
+* Local Mobile Testing Dev Server:
+  - Added serve_mobile.js and START_MOBILE_SERVER.bat providing simultaneous HTTP (:8080) and HTTPS (:8443) testing.
+  - HTTPS mode enables full mobile browser Secure Context for native hardware GPS, compass, and camera access on physical phones.
+* Service Worker and cache tags bumped to v8.77.1.0 for instant cache refresh.

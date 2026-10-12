@@ -203,7 +203,7 @@ setInterval(() => {
     if (updated) renderHostileList();
 }, 30000);
 
-export function initRedTeam() {
+function initRedTeam() {
     console.log('[V8 ENGINE] Red Team module starting...');
     buildRedTeamPanel();
     document.addEventListener('click', (e) => {
@@ -222,4 +222,8 @@ export function initRedTeam() {
             console.log('[V8 ENGINE] Red Team map hooks active.');
         }
     }, 300);
+}
+
+if (typeof window !== 'undefined') {
+    window.initRedTeam = initRedTeam;
 }

@@ -1808,4 +1808,6 @@ if (document.readyState === 'loading') {
     window.TacticalScanner.init();
 }
 
-export { TacticalScannerController };
+if (typeof window !== 'undefined') {
+    window.TacticalScannerController = TacticalScannerController;
+}

@@ -74,7 +74,7 @@ function enforceRoleUI() {
     }
 }
 
-export function initMissionBoard() {
+function initMissionBoard() {
     console.log('[V8 ENGINE] Mission Status Board starting...');
     
     // Poll for Supabase and Role changes
@@ -129,4 +129,8 @@ export function initMissionBoard() {
             console.log('[V8 ENGINE] Mission Board Channel live.');
         }
     }, 500);
+}
+
+if (typeof window !== 'undefined') {
+    window.initMissionBoard = initMissionBoard;
 }

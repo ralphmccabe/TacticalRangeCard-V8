@@ -5904,6 +5904,18 @@ try {
                                         <i data-lucide="map-pin" class="w-4 h-4"></i> <span id="geo-icons-label">STAMPS</span>
                                     </button>
 
+                                    <button id="geo-weather-toggle-btn" class="bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-cyan-400 hover:border-cyan-500 transition-all cursor-pointer shadow-sm" title="Toggle Live Doppler Weather Radar (Rain / Snow / Clouds / Off)">
+                                        <i id="geo-weather-icon" data-lucide="cloud-rain" class="w-4 h-4 text-gray-400"></i> <span id="geo-weather-label">🌧️ RADAR OFF</span>
+                                    </button>
+
+                                    <button id="geo-solar-toggle-btn" class="bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-amber-400 hover:border-amber-500 transition-all cursor-pointer shadow-sm" title="Toggle Solar Azimuth &amp; Sun Direction Vector">
+                                        <i id="geo-solar-icon" data-lucide="sun" class="w-4 h-4 text-amber-400"></i> <span id="geo-solar-label">☀️ SUN</span>
+                                    </button>
+
+                                    <button id="geo-elev-profile-btn" onclick="window.openElevationProfileModal()" class="bg-gray-800 border border-gray-700 text-gray-300 text-[11px] px-3 py-2 rounded font-black uppercase flex items-center gap-1.5 hover:text-emerald-400 hover:border-emerald-500 transition-all cursor-pointer shadow-sm" title="Analyze Terrain Elevation Profile &amp; Line-of-Sight between Shooter and Target">
+                                        <i data-lucide="mountain-snow" class="w-4 h-4 text-emerald-400"></i> <span>⛰️ ELEV PROFILE</span>
+                                    </button>
+
                                     <!-- CROSS-ROAD & ADDRESS GEOCODER / COORDINATE JUMP -->
                                     <div class="flex items-center gap-1 bg-black/80 border border-cyan-700/80 rounded px-2 py-1" style="min-width:270px;">
                                         <i data-lucide="search" class="w-3.5 h-3.5 text-cyan-400 shrink-0"></i>
@@ -5995,6 +6007,16 @@ try {
                                 <div id="geo-stamp-banner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-emerald-950/95 border-2 border-emerald-400 text-white text-xs font-mono font-black px-4 py-2 rounded-xl shadow-[0_0_25px_rgba(16,185,129,0.7)] flex items-center gap-3 backdrop-blur-md pointer-events-auto" style="z-index: 10001;">
                                     <span id="geo-stamp-banner-text" class="flex items-center gap-1.5 text-emerald-300">🎯 TAP MAP TO PLACE <span id="geo-stamp-active-label" class="text-white font-extrabold underline">ENEMY</span></span>
                                     <button type="button" onclick="if(window.cancelActiveStamp) window.cancelActiveStamp(event)" class="bg-red-900/90 hover:bg-red-700 text-red-200 border border-red-500 text-[10px] px-2.5 py-1 rounded uppercase font-bold cursor-pointer transition-colors">CANCEL</button>
+                                </div>
+
+                                <!-- ACTIVE DOPPLER RADAR COLOR LEGEND CHIP -->
+                                <div id="geo-radar-legend" class="hidden absolute top-3 left-3 bg-black/85 border border-cyan-500/80 rounded-md px-2.5 py-1 text-[9px] font-mono flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.3)] backdrop-blur-md pointer-events-none" style="z-index: 1000;">
+                                    <span class="text-cyan-400 font-black tracking-wider">RADAR:</span>
+                                    <span class="text-green-400 font-bold">● RAIN</span>
+                                    <span class="text-yellow-400 font-bold">● SQUALL</span>
+                                    <span class="text-red-500 font-bold">● STORM</span>
+                                    <span class="text-cyan-300 font-bold">● SNOW</span>
+                                    <span class="text-purple-400 font-bold">● ICE</span>
                                 </div>
 
                                 
@@ -6774,7 +6796,7 @@ try {
     <script src="lib/Sortable.min.js" defer></script>
 
     <!-- MAIN SCRIPTS -->
-    <script src="./trc_core.js?v=8.76.5.0" defer></script>
+    <script src="./trc_core.js?v=8.77.1.0" defer></script>
     <script src="./workstation_logic.js?v=8.30" defer></script>
     <script src="./field_intel_logic.js?v=8.30" defer></script>
     <script src="./officer_card_logic.js?v=8.30" defer></script>
@@ -6785,6 +6807,83 @@ try {
     <script src="./supply_depot_logic.js?v=8.30" defer></script>
 
     
+
+    <!-- GEO-MATRIX TERRAIN ELEVATION PROFILE & LINE-OF-SIGHT MODAL -->
+    <div id="geo-elev-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[1000000] flex items-center justify-center p-3 sm:p-5 font-mono">
+        <div class="bg-slate-950 border-2 border-emerald-500/80 rounded-xl max-w-2xl w-full p-4 sm:p-6 shadow-[0_0_35px_rgba(16,185,129,0.3)] flex flex-col max-h-[92vh] overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800 shrink-0">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="mountain-snow" class="w-5 h-5 text-emerald-400"></i>
+                    <div>
+                        <h3 class="text-xs sm:text-sm font-black text-white uppercase tracking-wider">TERRAIN ELEVATION PROFILE &amp; LINE-OF-SIGHT</h3>
+                        <div class="text-[9px] text-emerald-400/80 font-bold tracking-widest uppercase">BALLISTIC INCLINE • DEAD SPACE RADAR</div>
+                    </div>
+                </div>
+                <button type="button" onclick="window.closeElevationProfileModal()" class="text-gray-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer" title="Close">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div id="geo-elev-content" class="flex-1 overflow-y-auto py-3 space-y-3">
+                <div id="geo-elev-loading" class="py-12 text-center text-gray-400">
+                    <div class="animate-spin text-emerald-400 text-2xl mb-2">⟳</div>
+                    <div class="text-xs font-bold text-emerald-300 uppercase tracking-widest">SAMPLING TERRAIN ELEVATIONS...</div>
+                    <div class="text-[10px] text-gray-500 mt-1">Acquiring digital elevation model along line of fire</div>
+                </div>
+
+                <div id="geo-elev-body" class="hidden space-y-3">
+                    <!-- Ballistic Metrics Summary Bar -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div class="bg-black/60 border border-gray-800 rounded p-2 text-center">
+                            <div class="text-[8px] text-gray-400 uppercase tracking-wider">SHOOTER ELEV</div>
+                            <div id="elev-metric-origin" class="text-sm font-black text-white">--</div>
+                        </div>
+                        <div class="bg-black/60 border border-gray-800 rounded p-2 text-center">
+                            <div class="text-[8px] text-gray-400 uppercase tracking-wider">TARGET ELEV</div>
+                            <div id="elev-metric-target" class="text-sm font-black text-cyan-300">--</div>
+                        </div>
+                        <div class="bg-black/60 border border-gray-800 rounded p-2 text-center">
+                            <div class="text-[8px] text-gray-400 uppercase tracking-wider">ELEV DIFF (ΔH)</div>
+                            <div id="elev-metric-diff" class="text-sm font-black text-yellow-400">--</div>
+                        </div>
+                        <div class="bg-black/60 border border-gray-800 rounded p-2 text-center">
+                            <div class="text-[8px] text-gray-400 uppercase tracking-wider">INCLINE / COSINE</div>
+                            <div id="elev-metric-angle" class="text-sm font-black text-emerald-400">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Line of Sight Status Banner -->
+                    <div id="elev-los-banner" class="p-2.5 rounded border text-xs font-black uppercase text-center tracking-wider flex items-center justify-center gap-2">
+                        <span>LINE OF SIGHT: CHECKING...</span>
+                    </div>
+
+                    <!-- 2D SVG Profile Chart Container -->
+                    <div class="bg-black/80 border border-gray-800 rounded-lg p-3 relative">
+                        <div class="flex justify-between text-[8px] text-gray-400 mb-1">
+                            <span>◄ SHOOTER (OP)</span>
+                            <span class="text-emerald-400 font-bold uppercase tracking-wider">TERRAIN PROFILE</span>
+                            <span>TARGET ►</span>
+                        </div>
+                        <div id="geo-elev-chart-container" class="w-full h-44 sm:h-52 flex items-center justify-center">
+                            <!-- Injected SVG -->
+                        </div>
+                    </div>
+
+                    <!-- Tactical Note -->
+                    <div class="text-[9px] text-gray-400 bg-slate-900/60 p-2.5 rounded border border-gray-800/80 leading-relaxed">
+                        <span class="text-amber-400 font-bold uppercase">Tactical DOPE Note:</span> For steep angle shooting (uphill or downhill), gravity only accelerates the bullet across the horizontal distance (<span class="text-emerald-300 font-bold">Line-of-Sight × Cosine</span>). Dial your dope for the corrected horizontal range.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="pt-3 border-t border-gray-800 flex justify-end gap-2 shrink-0">
+                <button type="button" onclick="window.closeElevationProfileModal()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded uppercase transition-colors cursor-pointer">CLOSE</button>
+            </div>
+        </div>
+    </div>
 
     <!-- CUSTOM SAVE PROFILE MODAL -->
 
@@ -9199,20 +9298,23 @@ try {
         </div>
     </div>
 
-    <!-- V8 RED TEAM MODULE (Non-blocking idle init) -->
-    <script type="module">
-        import { initRedTeam } from './js/modules/redteam.js';
-        const startRedTeam = () => { initRedTeam(); console.log('[V8 ENGINE] Red Team module loaded.'); };
-        if ('requestIdleCallback' in window) requestIdleCallback(startRedTeam, { timeout: 2000 });
-        else setTimeout(startRedTeam, 100);
-    </script>
-
-    <!-- V8 MISSION STATUS BOARD MODULE (Non-blocking idle init) -->
-    <script type="module">
-        import { initMissionBoard } from './js/modules/mission_board.js';
-        const startMissionBoard = () => { initMissionBoard(); };
-        if ('requestIdleCallback' in window) requestIdleCallback(startMissionBoard, { timeout: 2000 });
-        else setTimeout(startMissionBoard, 150);
+    <!-- V8 STANDALONE MODULES (CORS-Free & file:/// Compatible) -->
+    <script src="js/modules/redteam.js?v=8.77.0.0" defer></script>
+    <script src="js/modules/mission_board.js?v=8.77.0.0" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const startV8Modules = () => {
+                if (typeof window.initRedTeam === 'function') {
+                    window.initRedTeam();
+                    console.log('[V8 ENGINE] Red Team module loaded.');
+                }
+                if (typeof window.initMissionBoard === 'function') {
+                    window.initMissionBoard();
+                }
+            };
+            if ('requestIdleCallback' in window) requestIdleCallback(startV8Modules, { timeout: 2000 });
+            else setTimeout(startV8Modules, 200);
+        });
     </script>
 
     <!-- V8 COMMS MANUAL -->
@@ -9243,8 +9345,8 @@ try {
             }
         };
     </script>
-    <script type="module" src="js/modules/scanner_module.js?v=8.70"></script>
-    <script type="module" src="js/modules/sfu_audio.js?v=8.38"></script>
+    <script src="js/modules/scanner_module.js?v=8.77.0.0" defer></script>
+    <script src="js/modules/sfu_audio.js?v=8.77.0.0" defer></script>
 </body>
 
 </html>

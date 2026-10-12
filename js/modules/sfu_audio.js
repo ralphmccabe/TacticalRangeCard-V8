@@ -498,4 +498,6 @@ var _dialCheck = setInterval(function() {
     }
 }, 500);
 
-export { connectToLiveKit };
+if (typeof window !== 'undefined') {
+    window.connectToLiveKit = connectToLiveKit;
+}

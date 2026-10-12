@@ -296,6 +296,15 @@ window.openWorkstationForm = function(type, rawCardData = null) {
             if (window.TacticalScanner) {
                 window.TacticalScanner.renderDeck(container);
                 return;
+            } else {
+                console.warn('[TRC-WS] TacticalScanner module not ready yet.');
+                container.innerHTML = `
+                    <div class="p-8 text-center text-slate-300 font-mono">
+                        <div class="text-cyan-400 font-bold text-sm mb-2 uppercase tracking-wider">📻 TAC SCANNER & DISPATCH</div>
+                        <p class="text-xs text-gray-400 mb-6">Scanner deck is initializing. If you opened the file directly without a web server, ensure scripts are unblocked.</p>
+                        <button onclick="window.closeWorkstationForm()" class="bg-gray-800 hover:bg-gray-700 text-white text-xs px-4 py-2 rounded font-bold uppercase transition-all cursor-pointer">BACK TO WORKSTATION</button>
+                    </div>`;
+                return;
             }
         }
 
