@@ -137,7 +137,7 @@ try {
 
     <!-- CUSTOM CSS -->
 
-    <link rel="stylesheet" href="style.css?v=8.77.4.6">
+    <link rel="stylesheet" href="style.css?v=8.77.4.7">
 
 
 
@@ -5391,15 +5391,21 @@ try {
 
             <div class="dash-panel dash-viewport" id="panel-mainview">
 
-                <div class="dash-panel-header absolute top-0 inset-x-0 z-20 bg-gradient-to-b from-black/90 to-transparent border-none pt-2 px-2 pb-6 flex justify-between items-start pointer-events-none">
+                <div class="dash-panel-header absolute top-0 inset-x-0 z-40 bg-gradient-to-b from-black/95 via-black/70 to-transparent border-none pt-2 px-2 pb-6 flex justify-between items-start pointer-events-none" style="z-index: 40 !important;">
 
-                    <!-- LEFT SIDE: Kill Button -->
+                    <!-- LEFT SIDE: Kill & Exit Mirror Buttons -->
 
-                    <div class="pointer-events-auto z-30 shrink-0">
+                    <div class="pointer-events-auto z-50 shrink-0 flex items-center gap-2">
 
-                        <button id="feed-kill-btn" class="bg-red-950/90 border border-red-700 px-3 py-1.5 rounded-full text-[10px] text-red-100 hover:bg-red-600 font-black uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all hidden" aria-label="Action Button">
+                        <button id="feed-kill-btn" class="bg-red-950/90 border border-red-700 px-3 py-1.5 rounded-full text-[10px] text-red-100 hover:bg-red-600 font-black uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all hidden cursor-pointer" aria-label="Stop Surveillance">
 
                             <i data-lucide="video-off" class="w-4 h-4 shrink-0"></i> <span class="whitespace-nowrap">STOP</span>
+
+                        </button>
+
+                        <button id="isr-topview-exit-btn" onclick="window.stopIsrMainViewport()" style="display: none; background: #dc2626 !important; border: 2px solid #f87171 !important; box-shadow: 0 0 20px rgba(220,38,38,0.8) !important; color: white !important; font-weight: 900 !important;" class="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest flex items-center gap-1.5 cursor-pointer transition-all hover:brightness-125" title="Exit ISR Mirror and return to Dashboard">
+
+                            <i data-lucide="x-circle" class="w-4 h-4 shrink-0"></i> <span class="whitespace-nowrap">EXIT CAMERA FEED</span>
 
                         </button>
 
@@ -5462,7 +5468,10 @@ try {
                     <img id="surveillance-snapshot-viewer" alt="Surveillance Snapshot" class="w-full h-full object-contain hidden z-10 bg-black absolute inset-0 p-0 pointer-events-none">
 
                     <div id="surveillance-card-viewer" class="w-full h-full hidden z-20 bg-[#090d16] absolute inset-0 p-3 sm:p-6 overflow-y-auto custom-scrollbar text-white flex flex-col justify-between"></div>
-                    <canvas id="mainview-isr-canvas" class="w-full h-full object-cover hidden z-20 absolute inset-0 bg-black cursor-crosshair"></canvas>
+                    <canvas id="mainview-isr-canvas" class="w-full h-full object-cover hidden absolute inset-0 bg-black cursor-crosshair" style="z-index: 10 !important;"></canvas>
+                    <button id="isr-canvas-floating-exit-btn" onclick="window.stopIsrMainViewport()" style="z-index: 50 !important; display: none; background: rgba(220, 38, 38, 0.95); border: 2px solid #ef4444; box-shadow: 0 0 20px rgba(239,68,68,0.8);" class="absolute top-2 right-12 text-white font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xl transition-all hover:bg-red-500" title="Exit Live ISR Feed">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i> <span>EXIT FEED</span>
+                    </button>
 
                     
 
@@ -6814,8 +6823,8 @@ try {
 
                                 <div class="flex items-center gap-2">
                                     <span id="isr-active-telemetry" class="text-[10px] text-emerald-400 font-mono font-bold hidden sm:inline">1080P 30FPS • BAT: 84% • SIGNAL: 98%</span>
-                                    <button type="button" onclick="window.displayIsrInMainViewport()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Mirror this feed to the top Main Viewport">
-                                        <i data-lucide="tv" class="w-3 h-3 text-cyan-400"></i> TOP SCREEN
+                                    <button type="button" id="isr-top-screen-btn" onclick="window.displayIsrInMainViewport()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Mirror this feed to the top Main Viewport">
+                                        <i data-lucide="tv" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-top-screen-btn-text">TOP SCREEN</span>
                                     </button>
                                 </div>
                             </div>
@@ -7189,7 +7198,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.4.6';
+        window.APP_VERSION = 'v8.77.4.7';
 
         if(document.getElementById('header-version-display')) {
 
@@ -9756,7 +9765,7 @@ try {
     <!-- Include Blog Logic -->
     <script src="blog_logic.js?v=8.77.3.4" defer></script>
     <!-- Include Tactical ISR Logic -->
-    <script src="isr_logic.js?v=8.77.4.6" defer></script>
+    <script src="isr_logic.js?v=8.77.4.7" defer></script>
 
     <!-- TACTICAL ICON TRAY (GLOBAL) -->
     <div id="tactical-icon-tray" class="hidden fixed bg-gray-950/95 border-2 border-emerald-500/80 rounded-xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] flex flex-col gap-2 w-72 backdrop-blur-md" style="z-index: 10000000 !important;">

@@ -626,26 +626,66 @@
         }
     }
 
+    // --- Update Window 7 Button Status ---
+    function updateTopScreenButton() {
+        const btn = document.getElementById('isr-top-screen-btn');
+        if (!btn) return;
+        if (isMirroredToMain) {
+            btn.className = "bg-red-600 hover:bg-red-500 text-white border-2 border-red-400 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-pulse";
+            btn.innerHTML = `<i data-lucide="x" class="w-3.5 h-3.5 text-white"></i> <span>EXIT TOP</span>`;
+        } else {
+            btn.className = "bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow";
+            btn.innerHTML = `<i data-lucide="tv" class="w-3.5 h-3.5 text-cyan-400"></i> <span>TOP SCREEN</span>`;
+        }
+        if (window.lucide) window.lucide.createIcons();
+    }
+
     // --- Main Viewport Mirror Controls ---
     window.displayIsrInMainViewport = function() {
+        if (isMirroredToMain) {
+            // Toggle off if already mirrored!
+            window.stopIsrMainViewport();
+            return;
+        }
+
         isMirroredToMain = true;
         const mainCanvas = document.getElementById('mainview-isr-canvas');
         const placeholder = document.getElementById('surveillance-placeholder');
         const killBtn = document.getElementById('feed-kill-btn');
+        const exitBtn = document.getElementById('isr-topview-exit-btn');
+        const floatExit = document.getElementById('isr-canvas-floating-exit-btn');
         const label = document.getElementById('feed-label-source');
 
-        if (mainCanvas) mainCanvas.classList.remove('hidden');
-        if (placeholder) placeholder.classList.add('hidden');
+        if (mainCanvas) {
+            mainCanvas.classList.remove('hidden');
+            mainCanvas.style.display = 'block';
+        }
+        if (placeholder) {
+            placeholder.classList.add('hidden');
+            placeholder.style.display = 'none';
+        }
         if (killBtn) {
             killBtn.classList.remove('hidden');
+            killBtn.style.display = 'flex';
             killBtn.onclick = window.stopIsrMainViewport;
+        }
+        if (exitBtn) {
+            exitBtn.classList.remove('hidden');
+            exitBtn.style.display = 'flex';
+        }
+        if (floatExit) {
+            floatExit.classList.remove('hidden');
+            floatExit.style.display = 'flex';
         }
 
         const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
         if (label) label.textContent = `SQUAD ISR: ${feed.name}`;
 
-        showToast(`📺 MIRRORING ${feed.name} TO MAIN TOP SCREEN!`);
+        updateTopScreenButton();
+
+        showToast(`📺 MIRRORING ${feed.name} TO TOP COMMAND SCREEN!`);
         renderCurrentActiveView();
+        if (window.lucide) window.lucide.createIcons();
     };
 
     window.stopIsrMainViewport = function() {
@@ -653,15 +693,44 @@
         const mainCanvas = document.getElementById('mainview-isr-canvas');
         const placeholder = document.getElementById('surveillance-placeholder');
         const killBtn = document.getElementById('feed-kill-btn');
+        const exitBtn = document.getElementById('isr-topview-exit-btn');
+        const floatExit = document.getElementById('isr-canvas-floating-exit-btn');
         const label = document.getElementById('feed-label-source');
 
-        if (mainCanvas) mainCanvas.classList.add('hidden');
-        if (placeholder) placeholder.classList.remove('hidden');
-        if (killBtn) killBtn.classList.add('hidden');
+        if (mainCanvas) {
+            mainCanvas.classList.add('hidden');
+            mainCanvas.style.display = 'none';
+        }
+        if (placeholder) {
+            placeholder.classList.remove('hidden');
+            placeholder.style.display = '';
+        }
+        if (killBtn) {
+            killBtn.classList.add('hidden');
+            killBtn.style.display = 'none';
+        }
+        if (exitBtn) {
+            exitBtn.classList.add('hidden');
+            exitBtn.style.display = 'none';
+        }
+        if (floatExit) {
+            floatExit.classList.add('hidden');
+            floatExit.style.display = 'none';
+        }
         if (label) label.textContent = 'OFFLINE';
 
-        showToast('TOP SCREEN RESTORED TO DEFAULT HUD');
+        updateTopScreenButton();
+
+        showToast('⏹️ TOP SCREEN RESTORED TO DEFAULT DASHBOARD');
+        if (window.lucide) window.lucide.createIcons();
     };
+
+    // ESC key closes mirror
+    window.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isMirroredToMain) {
+            window.stopIsrMainViewport();
+        }
+    });
 
     function renderMainviewMirror(img, telemetry) {
         const canvas = document.getElementById('mainview-isr-canvas');
