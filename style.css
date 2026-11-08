@@ -1623,4 +1623,272 @@ body.light-mode #ammoLibraryList > div {
     color: #0f172a !important;
 }
 
+/* 20. Intel Vault Filter Buttons & Snapshot Database Controls */
+body.light-mode #panel-vault {
+    background-color: #ffffff !important;
+}
+
+body.light-mode #panel-vault .dash-panel-header {
+    background-color: #f8fafc !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+body.light-mode #vault-import-btn {
+    background-color: #eff6ff !important;
+    border: 1.5px solid #3b82f6 !important;
+    color: #1d4ed8 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-export-btn {
+    background-color: #ecfdf5 !important;
+    border: 1.5px solid #10b981 !important;
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-delete-btn {
+    background-color: #fef2f2 !important;
+    border: 1.5px solid #ef4444 !important;
+    color: #b91c1c !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-to-ammo-btn {
+    background-color: #fffbeb !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-to-brief-btn {
+    background-color: #eef2ff !important;
+    border: 1.5px solid #6366f1 !important;
+    color: #3730a3 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-to-dope-btn {
+    background-color: #f1f5f9 !important;
+    border: 1.5px solid #64748b !important;
+    color: #0f172a !important;
+    font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-mode #vault-to-sat-btn {
+    background-color: #f0fdf4 !important;
+    border: 1.5px solid #22c55e !important;
+    color: #166534 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-mode #vault-chats-btn {
+    background-color: #faf5ff !important;
+    border: 1.5px solid #a855f7 !important;
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-to-cards-btn {
+    background-color: #faf5ff !important;
+    border: 1.5px solid #a855f7 !important;
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-geomatrix-btn {
+    background-color: #ecfeff !important;
+    border: 1.5px solid #06b6d4 !important;
+    color: #0e7490 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-to-bolo-btn {
+    background-color: #fff1f2 !important;
+    border: 1.5px solid #f43f5e !important;
+    color: #9f1239 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-mode #vault-to-gametag-btn {
+    background-color: #fffbeb !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-to-license-btn {
+    background-color: #ecfdf5 !important;
+    border: 1.5px solid #10b981 !important;
+    color: #065f46 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #vault-to-workstation-btn {
+    background-color: #faf5ff !important;
+    border: 1.5px solid #a855f7 !important;
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-mode #vault-to-whiteboard-btn {
+    background-color: #ecfeff !important;
+    border: 1.5px solid #06b6d4 !important;
+    color: #0e7490 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #panel-vault button[onclick*="intel-vault-guide-modal"] {
+    background-color: #ecfdf5 !important;
+    border: 1.5px solid #10b981 !important;
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode button[onclick*="refreshVaultGrid"] {
+    background-color: #10b981 !important;
+    border: 1.5px solid #059669 !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3) !important;
+}
+
+body.light-mode #panel-vault .border-dashed {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+}
+
+/* 21. Two-Way Field Voice & Speech Translator (TAP TO TALK) */
+body.light-mode #field-translator-section {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+
+body.light-mode #field-translator-section .bg-emerald-950\/80 {
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+}
+
+/* TAP TO TALK (Speaker 1 - English/Officer) */
+body.light-mode #field-trans-mic1:not(.animate-pulse):not(.bg-red-600) {
+    background-color: #0284c7 !important;
+    border: 2px solid #0369a1 !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3) !important;
+}
+body.light-mode #field-trans-mic1:not(.animate-pulse):not(.bg-red-600) i,
+body.light-mode #field-trans-mic1:not(.animate-pulse):not(.bg-red-600) span {
+    color: #ffffff !important;
+}
+body.light-mode #field-trans-mic1:hover {
+    background-color: #0369a1 !important;
+}
+
+/* TAP TO TALK (Speaker 2 - Spanish/Customer/Citizen) */
+body.light-mode #field-trans-mic2:not(.animate-pulse):not(.bg-red-600) {
+    background-color: #059669 !important;
+    border: 2px solid #047857 !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3) !important;
+}
+body.light-mode #field-trans-mic2:not(.animate-pulse):not(.bg-red-600) i,
+body.light-mode #field-trans-mic2:not(.animate-pulse):not(.bg-red-600) span {
+    color: #ffffff !important;
+}
+body.light-mode #field-trans-mic2:hover {
+    background-color: #047857 !important;
+}
+
+/* When actively listening/recording, highlight bold red */
+body.light-mode #field-trans-mic1.animate-pulse,
+body.light-mode #field-trans-mic1.bg-red-600,
+body.light-mode #field-trans-mic2.animate-pulse,
+body.light-mode #field-trans-mic2.bg-red-600 {
+    background-color: #dc2626 !important;
+    border: 2px solid #b91c1c !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+}
+
+/* Translator Speaker Containers */
+body.light-mode #field-translator-section .bg-slate-950\/80 {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-mode #field-trans-lang1,
+body.light-mode #field-trans-lang2 {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #94a3b8 !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #field-trans-src-text,
+body.light-mode #field-trans-target-text {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-size: 13px !important;
+}
+body.light-mode #field-trans-src-text::placeholder,
+body.light-mode #field-trans-target-text::placeholder {
+    color: #64748b !important;
+}
+
+/* Toolbar Buttons */
+body.light-mode #field-trans-auto-speak-btn {
+    background-color: #ecfdf5 !important;
+    border: 1.5px solid #10b981 !important;
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #field-trans-voice-mode-btn {
+    background-color: #f0f9ff !important;
+    border: 1.5px solid #38bdf8 !important;
+    color: #0369a1 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #field-trans-engine-badge {
+    background-color: #f1f5f9 !important;
+    border: 1px solid #94a3b8 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode button[onclick*="swapFieldTranslatorLanguages"] {
+    background-color: #f0f9ff !important;
+    border: 1.5px solid #38bdf8 !important;
+    color: #0284c7 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode button[onclick*="speakFieldText"],
+body.light-mode button[onclick*="copyFieldTranslatorText"] {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
+    font-weight: 700 !important;
+}
+body.light-mode button[onclick*="speakFieldText"]:hover,
+body.light-mode button[onclick*="copyFieldTranslatorText"]:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode button[onclick*="executeFieldTranslation"] {
+    font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+
 
