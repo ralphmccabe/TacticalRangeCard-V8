@@ -1151,4 +1151,476 @@ body.light-mode .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #64748b !important;
 }
 
+/* 15. Front Page Header & Action Bar Title Buttons */
+body.light-mode #main-sidebar-header {
+    background-color: #ffffff !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+/* Day/Night Toggle Button in Light Mode (Click to switch to Night) */
+body.light-mode #theme-toggle-btn {
+    background-color: #f1f5f9 !important;
+    border: 1.5px solid #94a3b8 !important;
+    color: #0f172a !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+body.light-mode #theme-toggle-btn #theme-toggle-label {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+body.light-mode #theme-toggle-btn #theme-toggle-icon {
+    color: #0284c7 !important;
+}
+
+/* Tier 1 Action Icon Buttons (Calendar, Briefing, Hints, Calc, Remarks, Whiteboard) */
+body.light-mode #main-sidebar-header .flex-wrap button:not(#theme-toggle-btn):not(#openGameTagBtn):not(#openLicenseBtn):not(#openBoloBtn):not(#openScannerBtn) {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+    transition: all 0.2s ease !important;
+}
+body.light-mode #main-sidebar-header .flex-wrap button:not(#theme-toggle-btn):not(#openGameTagBtn):not(#openLicenseBtn):not(#openBoloBtn):not(#openScannerBtn):hover {
+    background-color: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Emergency Siren Button */
+body.light-mode #siren-deterrent-btn {
+    background-color: #fef2f2 !important;
+    border-color: #fca5a5 !important;
+    color: #dc2626 !important;
+}
+body.light-mode #siren-deterrent-btn i {
+    color: #dc2626 !important;
+}
+
+/* Tier 2: Dedicated Specialty Title Buttons (FIELD TAG, LICENSES, MOST WANTED, SCANNER) */
+body.light-mode #openGameTagBtn {
+    background-color: #fffbeb !important;
+    border: 2px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 5px rgba(245, 158, 11, 0.15) !important;
+}
+body.light-mode #openGameTagBtn i {
+    color: #d97706 !important;
+}
+body.light-mode #openGameTagBtn:hover {
+    background-color: #fef3c7 !important;
+    color: #78350f !important;
+}
+
+body.light-mode #openLicenseBtn {
+    background-color: #ecfdf5 !important;
+    border: 2px solid #10b981 !important;
+    color: #065f46 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.15) !important;
+}
+body.light-mode #openLicenseBtn i {
+    color: #059669 !important;
+}
+body.light-mode #openLicenseBtn:hover {
+    background-color: #d1fae5 !important;
+    color: #044e39 !important;
+}
+
+body.light-mode #openBoloBtn {
+    background-color: #fff7ed !important;
+    border: 2px solid #f97316 !important;
+    color: #9a3412 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 5px rgba(249, 115, 22, 0.15) !important;
+}
+body.light-mode #openBoloBtn i {
+    color: #ea580c !important;
+}
+body.light-mode #openBoloBtn:hover {
+    background-color: #ffedd5 !important;
+    color: #7c2d12 !important;
+}
+
+body.light-mode #openScannerBtn {
+    background-color: #ecfeff !important;
+    border: 2px solid #06b6d4 !important;
+    color: #0e7490 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 5px rgba(6, 182, 212, 0.15) !important;
+}
+body.light-mode #openScannerBtn i {
+    color: #0891b2 !important;
+}
+body.light-mode #openScannerBtn:hover {
+    background-color: #cffafe !important;
+    color: #155e75 !important;
+}
+
+/* Front Page Intel Logbook Read Button */
+body.light-mode #blogBookContainer .bg-amber-500\/20 {
+    background-color: #fef3c7 !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blogBookContainer .bg-amber-500\/20:hover {
+    background-color: #f59e0b !important;
+    color: #000000 !important;
+}
+
+/* Front Page Flavor Cycle Button */
+body.light-mode #colorCycleBtn {
+    background-color: #f0f9ff !important;
+    border: 1.5px solid #38bdf8 !important;
+    color: #0284c7 !important;
+    font-weight: 900 !important;
+}
+
+/* 16. Operations Command Dashboard & Operators Workstation */
+body.light-mode #tacticalDashboard {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #dash-header {
+    background-color: #ffffff !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-mode #dash-header h2 {
+    color: #047857 !important;
+}
+
+body.light-mode #dash-header button:not(#exitDashboardBtn) {
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    color: #334155 !important;
+}
+
+body.light-mode #dash-clock {
+    color: #334155 !important;
+}
+
+body.light-mode #exitDashboardBtn {
+    background-color: #fee2e2 !important;
+    border: 1.5px solid #ef4444 !important;
+    color: #b91c1c !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.15) !important;
+}
+body.light-mode #exitDashboardBtn:hover {
+    background-color: #fca5a5 !important;
+    color: #7f1d1d !important;
+}
+
+/* Dashboard Panel Headers & CLOSE WINDOW Buttons */
+body.light-mode .dash-panel-header {
+    background-color: #f8fafc !important;
+    border-bottom: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode .dash-panel-header .dash-panel-title {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode .close-label {
+    background-color: #fee2e2 !important;
+    border: 1.5px solid #ef4444 !important;
+    color: #b91c1c !important;
+    font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(239, 68, 68, 0.15) !important;
+}
+body.light-mode .maximize-btn:hover .close-label {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+/* Operators Workstation & Officer Form */
+body.light-mode #ws-top-action-area {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #ws-top-action-area .bg-slate-900\/90,
+body.light-mode #ws-top-action-area .bg-slate-900,
+body.light-mode #ws-top-action-area .bg-slate-950 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+/* Crime Scene Sketchpad Palette & Stamp Buttons */
+body.light-mode #officer-sketch-tools-palette {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+
+body.light-mode .sketch-tool-btn {
+    background-color: #ffffff !important;
+    border-width: 2px !important;
+    font-weight: 900 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-mode .sketch-tool-btn:hover {
+    filter: brightness(0.95);
+    transform: translateY(-1px);
+}
+
+/* Make low-contrast stamp buttons ultra readable in light mode */
+body.light-mode [id^="sketch-tool-Pen"] {
+    color: #0f172a !important;
+    border-color: #475569 !important;
+    background-color: #f1f5f9 !important;
+}
+body.light-mode [id^="sketch-tool-Road"] {
+    color: #44403c !important;
+    border-color: #78716c !important;
+    background-color: #f5f5f4 !important;
+}
+body.light-mode [id^="sketch-tool-Building"] {
+    color: #334155 !important;
+    border-color: #64748b !important;
+}
+body.light-mode [id^="sketch-tool-House"] {
+    color: #854d0e !important;
+    border-color: #ca8a04 !important;
+}
+body.light-mode [id^="sketch-tool-Car"] {
+    color: #0284c7 !important;
+    border-color: #0284c7 !important;
+}
+body.light-mode [id^="sketch-tool-Plane"] {
+    color: #0891b2 !important;
+    border-color: #0891b2 !important;
+}
+body.light-mode [id^="sketch-tool-Water"] {
+    color: #0369a1 !important;
+    border-color: #0284c7 !important;
+}
+body.light-mode [id^="sketch-tool-ByStand"] {
+    color: #0f766e !important;
+    border-color: #0d9488 !important;
+}
+body.light-mode [id^="sketch-tool-Witness"] {
+    color: #3f6212 !important;
+    border-color: #65a30d !important;
+}
+body.light-mode [id^="sketch-tool-Equip"] {
+    color: #3f6212 !important;
+    border-color: #65a30d !important;
+}
+body.light-mode [id^="sketch-tool-Evidence"] {
+    color: #b45309 !important;
+    border-color: #f59e0b !important;
+}
+body.light-mode [id^="sketch-tool-Accident"] {
+    color: #c2410c !important;
+    border-color: #ea580c !important;
+}
+body.light-mode [id^="sketch-tool-Victim"] {
+    color: #be123c !important;
+    border-color: #f43f5e !important;
+}
+body.light-mode [id^="sketch-tool-Officer"] {
+    color: #1d4ed8 !important;
+    border-color: #3b82f6 !important;
+}
+
+body.light-mode #add-custom-sketch-tool-btn {
+    background-color: #f1f5f9 !important;
+    border: 1.5px solid #94a3b8 !important;
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+/* 17. Mission Briefing Modal Legibility & Title Buttons */
+body.light-mode #missionBriefingModal > div {
+    background-color: #ffffff !important;
+    border: 2px solid #059669 !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-mode #missionBriefingModal h2 {
+    color: #065f46 !important;
+}
+
+body.light-mode #missionBriefingModal .bg-gray-950,
+body.light-mode #missionBriefingModal .bg-gray-900 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-mode #missionBriefingModal .bg-gray-900\/50 {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+/* Mission Briefing Phase Headers */
+body.light-mode #missionBriefingModal .text-blue-400 {
+    color: #1d4ed8 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #missionBriefingModal .text-emerald-400 {
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+/* Assignment & Debrief Textareas (Fixing invisible light text!) */
+body.light-mode #briefing-assignment-text {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border: 1.5px solid #94a3b8 !important;
+    font-weight: 600 !important;
+}
+body.light-mode #briefing-assignment-text::placeholder {
+    color: #64748b !important;
+}
+
+body.light-mode #briefing-debrief-text {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border: 1.5px solid #94a3b8 !important;
+    font-weight: 600 !important;
+}
+body.light-mode #briefing-debrief-text::placeholder {
+    color: #64748b !important;
+}
+
+body.light-mode #briefing-mission-name,
+body.light-mode #briefing-commander {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #94a3b8 !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #briefing-timestamp {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+
+/* Top Action Buttons in Briefing Header */
+body.light-mode #rework-briefing-btn {
+    background-color: #fffbeb !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+body.light-mode #rework-briefing-btn:hover {
+    background-color: #fef3c7 !important;
+}
+
+body.light-mode #briefing-to-vault-btn-top {
+    background-color: #faf5ff !important;
+    border: 1.5px solid #a855f7 !important;
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #briefing-to-vault-btn-top:hover {
+    background-color: #f3e8ff !important;
+}
+
+body.light-mode #closeBriefingBtn {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+body.light-mode #closeBriefingBtn:hover {
+    background-color: #fee2e2 !important;
+    color: #dc2626 !important;
+}
+
+/* Saved Briefings Cards in Right Column */
+body.light-mode #briefingLibraryList > div {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+body.light-mode #briefingLibraryList > div:hover {
+    border-color: #059669 !important;
+}
+body.light-mode #briefingLibraryList h4 {
+    color: #0f172a !important;
+    text-shadow: none !important;
+}
+
+/* 18. Operational Calendar Modal & Title Buttons */
+body.light-mode #calendarModal > div {
+    background-color: #ffffff !important;
+    border: 2px solid #0284c7 !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2) !important;
+}
+body.light-mode #calendarModal h2 {
+    color: #0369a1 !important;
+}
+body.light-mode #rework-calendar-btn {
+    background-color: #fffbeb !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+body.light-mode #calendar-to-vault-btn-top {
+    background-color: #faf5ff !important;
+    border: 1.5px solid #a855f7 !important;
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #closeCalendarBtn {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+body.light-mode #closeCalendarBtn:hover {
+    background-color: #fee2e2 !important;
+    color: #dc2626 !important;
+}
+body.light-mode #calendarModal .bg-gray-950,
+body.light-mode #calendarModal .bg-gray-900 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+body.light-mode #calendarLibraryList > div {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+body.light-mode #calendarLibraryList h4 {
+    color: #0f172a !important;
+}
+
+/* 19. Repository & Ammo Library Modals */
+body.light-mode #libraryModal > div,
+body.light-mode #ammoLibraryModal > div {
+    background-color: #ffffff !important;
+    border: 2px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+body.light-mode #libraryModalTitle,
+body.light-mode #ammoLibraryModal h2 {
+    color: #0f172a !important;
+}
+body.light-mode #closeLibraryBtn,
+body.light-mode #closeAmmoLibraryBtn {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+body.light-mode #closeLibraryBtn:hover,
+body.light-mode #closeAmmoLibraryBtn:hover {
+    background-color: #fee2e2 !important;
+    color: #dc2626 !important;
+}
+body.light-mode #libraryList > div,
+body.light-mode #ammoLibraryList > div {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
 
