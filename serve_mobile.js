@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-let HTTP_PORT = parseInt(process.env.PORT, 10) || 8000;
+const HTTP_PORTS = [8080, 8000];
 const HTTPS_PORT = 8443;
 const ROOT = __dirname;
 
@@ -29,14 +29,21 @@ const ACTIVE_ISR_STREAMS = {};
 
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
+    // Prefer 192.168.12.x or physical WiFi
+    let fallback = '127.0.0.1';
     for (const name of Object.keys(interfaces)) {
         for (const iface of interfaces[name]) {
             if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
+                if (iface.address.startsWith('192.168.12.')) {
+                    return iface.address;
+                }
+                if (!iface.address.startsWith('192.168.56.')) {
+                    fallback = iface.address;
+                }
             }
         }
     }
-    return '127.0.0.1';
+    return fallback;
 }
 
 function handleRequest(req, res) {
@@ -144,47 +151,40 @@ function handleRequest(req, res) {
 
 function startServers() {
     const localIp = getLocalIp();
-    const httpServer = http.createServer(handleRequest);
 
-    httpServer.on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            console.log(`[!] Port ${HTTP_PORT} in use, trying 8446...`);
-            HTTP_PORT = 8446;
-            httpServer.listen(HTTP_PORT, '0.0.0.0');
-        } else {
-            console.error('Server error:', err);
-        }
+    console.log('========================================================');
+    console.log('[*] TACTICAL RANGE CARD V8 - MOBILE & ISR RELAY SERVER');
+    console.log('========================================================');
+
+    HTTP_PORTS.forEach(port => {
+        const s = http.createServer(handleRequest);
+        s.on('error', (err) => {
+            console.warn(`[!] HTTP Port ${port} warning: ${err.message}`);
+        });
+        s.listen(port, '0.0.0.0', () => {
+            console.log(`[*] HTTP Active:     http://localhost:${port} & http://${localIp}:${port}`);
+        });
     });
 
-    httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
-        console.log('========================================================');
-        console.log('[*] TACTICAL RANGE CARD V8 - MOBILE & ISR RELAY SERVER');
-        console.log('========================================================');
-        console.log(`[*] PC Browser:       http://localhost:${HTTP_PORT}`);
-        console.log(`[*] Mobile Phone:     http://${localIp}:${HTTP_PORT}`);
-
-        // 2. HTTPS Server (Enables Phone Hardware Camera & GPS)
-        const certPath = path.join(ROOT, 'cert.pem');
-        const keyPath = path.join(ROOT, 'key.pem');
-        if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-            try {
-                const httpsOptions = {
-                    key: fs.readFileSync(keyPath),
-                    cert: fs.readFileSync(certPath)
-                };
-                const httpsServer = https.createServer(httpsOptions, handleRequest);
-                httpsServer.on('error', (e) => console.warn('HTTPS warning:', e.message));
-                httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
-                    console.log('--------------------------------------------------------');
-                    console.log(`[*] Mobile HTTPS:     https://${localIp}:${HTTPS_PORT}`);
-                    console.log('[*] (Use HTTPS on phone for direct Camera & GPS permissions!)');
-                    console.log('========================================================');
-                });
-            } catch (e) {
-                console.warn('Could not start HTTPS server:', e.message);
-            }
+    // HTTPS Server for mobile camera & GPS permissions
+    const certPath = path.join(ROOT, 'cert.pem');
+    const keyPath = path.join(ROOT, 'key.pem');
+    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+        try {
+            const httpsOptions = {
+                key: fs.readFileSync(keyPath),
+                cert: fs.readFileSync(certPath)
+            };
+            const httpsServer = https.createServer(httpsOptions, handleRequest);
+            httpsServer.on('error', (e) => console.warn(`[!] HTTPS Port ${HTTPS_PORT} warning: ${e.message}`));
+            httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+                console.log(`[*] HTTPS (Camera):  https://localhost:${HTTPS_PORT} & https://${localIp}:${HTTPS_PORT}`);
+                console.log('========================================================');
+            });
+        } catch (e) {
+            console.warn('Could not start HTTPS server:', e.message);
         }
-    });
+    }
 }
 
 startServers();
