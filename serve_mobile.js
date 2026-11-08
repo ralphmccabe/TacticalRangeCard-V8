@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const HTTP_PORT = 8080;
+let HTTP_PORT = parseInt(process.env.PORT, 10) || 8000;
 const HTTPS_PORT = 8443;
 const ROOT = __dirname;
 
@@ -25,6 +25,8 @@ const MIME_TYPES = {
     '.txt': 'text/plain; charset=utf-8'
 };
 
+const ACTIVE_ISR_STREAMS = {};
+
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
@@ -34,10 +36,81 @@ function getLocalIp() {
             }
         }
     }
-    return 'localhost';
+    return '127.0.0.1';
 }
 
 function handleRequest(req, res) {
+    // Universal CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+
+    // High Speed ISR Camera Frame Relay
+    if (req.url.startsWith('/api/isr_frame')) {
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    const feedId = data.feedId || 'feed-body-1';
+                    ACTIVE_ISR_STREAMS[feedId] = {
+                        image: data.image,
+                        telemetry: data.telemetry || {},
+                        ts: Date.now()
+                    };
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'ok' }));
+                } catch (e) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: e.message }));
+                }
+            });
+            return;
+        } else if (req.method === 'GET') {
+            const parsedUrl = new URL(req.url, 'http://localhost');
+            const feedId = parsedUrl.searchParams.get('feedId') || 'feed-body-1';
+            const stream = ACTIVE_ISR_STREAMS[feedId];
+
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store'
+            });
+
+            if (stream && (Date.now() - stream.ts < 4000)) {
+                res.end(JSON.stringify({
+                    active: true,
+                    feedId: feedId,
+                    image: stream.image,
+                    telemetry: stream.telemetry,
+                    ageMs: Date.now() - stream.ts
+                }));
+            } else {
+                res.end(JSON.stringify({ active: false }));
+            }
+            return;
+        }
+    }
+
+    if (req.url.startsWith('/api/isr_active')) {
+        const now = Date.now();
+        const activeList = [];
+        for (const [fid, s] of Object.entries(ACTIVE_ISR_STREAMS)) {
+            if (now - s.ts < 4000) {
+                activeList.push({ feedId: fid, telemetry: s.telemetry, ageMs: now - s.ts });
+            }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache, no-store' });
+        res.end(JSON.stringify({ activeStreams: activeList }));
+        return;
+    }
+
     let reqPath = decodeURI(req.url.split('?')[0]);
     if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
@@ -69,36 +142,49 @@ function handleRequest(req, res) {
     });
 }
 
-// 1. HTTP Server
-const httpServer = http.createServer(handleRequest);
-httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
+function startServers() {
     const localIp = getLocalIp();
-    console.log('========================================================');
-    console.log('[*] TACTICAL RANGE CARD V8 - LOCAL MOBILE TEST SERVER');
-    console.log('========================================================');
-    console.log(`[*] PC HTTP:         http://localhost:${HTTP_PORT}`);
-    console.log(`[*] Phone HTTP:      http://${localIp}:${HTTP_PORT}`);
+    const httpServer = http.createServer(handleRequest);
 
-    // 2. HTTPS Server (Enables Phone Hardware GPS & Sensors)
-    const certPath = path.join(ROOT, 'cert.pem');
-    const keyPath = path.join(ROOT, 'key.pem');
-    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-        try {
-            const httpsOptions = {
-                key: fs.readFileSync(keyPath),
-                cert: fs.readFileSync(certPath)
-            };
-            const httpsServer = https.createServer(httpsOptions, handleRequest);
-            httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
-                console.log('--------------------------------------------------------');
-                console.log(`[*] Phone HTTPS (GPS): https://${localIp}:${HTTPS_PORT}`);
-                console.log('[*] (Use HTTPS on phone for REAL hardware GPS accuracy!)');
-                console.log('========================================================');
-            });
-        } catch (e) {
-            console.warn('Could not start HTTPS server:', e.message);
+    httpServer.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log(`[!] Port ${HTTP_PORT} in use, trying 8446...`);
+            HTTP_PORT = 8446;
+            httpServer.listen(HTTP_PORT, '0.0.0.0');
+        } else {
+            console.error('Server error:', err);
         }
-    } else {
+    });
+
+    httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
         console.log('========================================================');
-    }
-});
+        console.log('[*] TACTICAL RANGE CARD V8 - MOBILE & ISR RELAY SERVER');
+        console.log('========================================================');
+        console.log(`[*] PC Browser:       http://localhost:${HTTP_PORT}`);
+        console.log(`[*] Mobile Phone:     http://${localIp}:${HTTP_PORT}`);
+
+        // 2. HTTPS Server (Enables Phone Hardware Camera & GPS)
+        const certPath = path.join(ROOT, 'cert.pem');
+        const keyPath = path.join(ROOT, 'key.pem');
+        if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+            try {
+                const httpsOptions = {
+                    key: fs.readFileSync(keyPath),
+                    cert: fs.readFileSync(certPath)
+                };
+                const httpsServer = https.createServer(httpsOptions, handleRequest);
+                httpsServer.on('error', (e) => console.warn('HTTPS warning:', e.message));
+                httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
+                    console.log('--------------------------------------------------------');
+                    console.log(`[*] Mobile HTTPS:     https://${localIp}:${HTTPS_PORT}`);
+                    console.log('[*] (Use HTTPS on phone for direct Camera & GPS permissions!)');
+                    console.log('========================================================');
+                });
+            } catch (e) {
+                console.warn('Could not start HTTPS server:', e.message);
+            }
+        }
+    });
+}
+
+startServers();

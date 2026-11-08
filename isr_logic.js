@@ -1,6 +1,6 @@
 /**
  * Tactical Range Card - Window 7: Tactical ISR & Multi-Feed Matrix Logic
- * Handles Drone feeds, Bodycams, Trail-Cams, and K9 Hound Telemetry
+ * Handles Drone feeds, Bodycams, Trail-Cams, Real Device Camera Broadcasts, and K9 Hound Telemetry
  */
 
 (function() {
@@ -117,8 +117,67 @@
     let currentOpMode = 'SQUAD'; // 'LONE' or 'SQUAD'
     let feeds = [...DEFAULT_FEEDS];
     let hounds = [...DEFAULT_HOUNDS];
-    let streamMuted = true;
     let isRecording = false;
+
+    // Real Broadcasting State
+    let activeMediaStream = null;
+    let broadcastInterval = null;
+    let isBroadcasting = false;
+    let broadcastRoleId = 'feed-body-1';
+    let broadcastFacingMode = 'environment';
+    let broadcastFps = 10;
+    let deviceSensors = {
+        battery: '95%',
+        heading: '0° N',
+        speed: '0 MPH',
+        lat: 31.9542,
+        lng: -102.1784
+    };
+
+    // Live Viewer State
+    let viewerPollInterval = null;
+    let lastReceivedFrame = null;
+    let lastReceivedTelemetry = null;
+    let isMirroredToMain = false;
+
+    // --- Device Sensor Listeners ---
+    function initDeviceSensors() {
+        // Battery Status
+        if (navigator.getBattery) {
+            navigator.getBattery().then(bat => {
+                const updateBat = () => {
+                    deviceSensors.battery = `${Math.round(bat.level * 100)}%${bat.charging ? ' (CHG)' : ''}`;
+                };
+                updateBat();
+                bat.addEventListener('levelchange', updateBat);
+                bat.addEventListener('chargingchange', updateBat);
+            }).catch(() => {});
+        }
+
+        // Compass / Orientation
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', (e) => {
+                if (e.alpha !== null && e.alpha !== undefined) {
+                    const deg = Math.round(e.alpha);
+                    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+                    const dir = dirs[Math.round(deg / 45) % 8];
+                    deviceSensors.heading = `${deg}° ${dir}`;
+                }
+            }, true);
+        }
+
+        // GPS Geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((pos) => {
+                deviceSensors.lat = pos.coords.latitude;
+                deviceSensors.lng = pos.coords.longitude;
+                if (pos.coords.speed !== null && pos.coords.speed !== undefined) {
+                    const mph = Math.round(pos.coords.speed * 2.23694);
+                    deviceSensors.speed = `${mph} MPH`;
+                }
+            }, () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
+        }
+    }
 
     // --- Switch Active Feed ---
     window.switchIsrFeed = function(feedId) {
@@ -128,7 +187,6 @@
         const titleEl = document.getElementById('isr-active-cam-title');
         const teleEl = document.getElementById('isr-active-telemetry');
         const badgeEl = document.getElementById('isr-active-source-badge');
-        const viewportCanvas = document.getElementById('isr-stream-canvas');
 
         if (titleEl) titleEl.textContent = feed.name;
         if (teleEl) teleEl.textContent = `${feed.resolution} • BAT: ${feed.battery} • SIGNAL: ${feed.signal}`;
@@ -145,12 +203,229 @@
             }
         });
 
-        // Redraw canvas frame
-        renderCanvasFrame(feed);
+        // Trigger immediate render
+        renderCurrentActiveView();
     };
 
-    // --- Render Viewport Frame with Simulated HUD ---
-    function renderCanvasFrame(feed) {
+    // --- Broadcast Setup Modal Controls ---
+    window.openBroadcastSetupModal = function() {
+        const m = document.getElementById('modal-isr-broadcast');
+        if (m) {
+            m.style.setProperty('display', 'flex', 'important');
+            m.style.setProperty('z-index', '100000070', 'important');
+            m.classList.remove('hidden');
+        }
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    window.closeBroadcastSetupModal = function() {
+        const m = document.getElementById('modal-isr-broadcast');
+        if (m) {
+            m.style.setProperty('display', 'none', 'important');
+            m.classList.add('hidden');
+        }
+    };
+
+    // --- Start Broadcasting From Local Device Camera ---
+    window.startLocalBroadcasting = async function() {
+        const roleSelect = document.getElementById('isr-broadcast-role-select');
+        const facingSelect = document.getElementById('isr-broadcast-facing-select');
+        if (roleSelect) broadcastRoleId = roleSelect.value;
+        if (facingSelect) broadcastFacingMode = facingSelect.value;
+
+        window.closeBroadcastSetupModal();
+
+        try {
+            // Stop existing if any
+            if (activeMediaStream) {
+                activeMediaStream.getTracks().forEach(t => t.stop());
+            }
+
+            const constraints = {
+                video: {
+                    facingMode: broadcastFacingMode,
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                },
+                audio: false
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            activeMediaStream = stream;
+            isBroadcasting = true;
+
+            let video = document.getElementById('isr-broadcaster-video');
+            if (!video) {
+                video = document.createElement('video');
+                video.id = 'isr-broadcaster-video';
+                video.setAttribute('autoplay', '');
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.muted = true;
+                video.style.display = 'none';
+                document.body.appendChild(video);
+            }
+            video.srcObject = stream;
+            await video.play();
+
+            // Create offscreen canvas for frame capture
+            let captureCanvas = document.getElementById('isr-broadcaster-canvas');
+            if (!captureCanvas) {
+                captureCanvas = document.createElement('canvas');
+                captureCanvas.id = 'isr-broadcaster-canvas';
+                captureCanvas.width = 480;
+                captureCanvas.height = 360;
+                captureCanvas.style.display = 'none';
+                document.body.appendChild(captureCanvas);
+            }
+            const captureCtx = captureCanvas.getContext('2d');
+
+            // Show floating broadcasting HUD on this device
+            showBroadcastingHud(broadcastRoleId);
+
+            // Transmit frames periodically
+            if (broadcastInterval) clearInterval(broadcastInterval);
+            const intervalMs = Math.round(1000 / broadcastFps);
+
+            broadcastInterval = setInterval(() => {
+                if (!isBroadcasting || !video || video.readyState < 2) return;
+
+                captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+                const dataUrl = captureCanvas.toDataURL('image/jpeg', 0.55);
+
+                const payload = {
+                    feedId: broadcastRoleId,
+                    image: dataUrl,
+                    telemetry: {
+                        battery: deviceSensors.battery,
+                        heading: deviceSensors.heading,
+                        speed: deviceSensors.speed,
+                        lat: deviceSensors.lat,
+                        lng: deviceSensors.lng,
+                        fps: `${broadcastFps} FPS`
+                    }
+                };
+
+                // POST to local server
+                fetch('/api/isr_frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).catch(() => {});
+            }, intervalMs);
+
+            showToast(`🟢 BROADCASTING LIVE AS ${broadcastRoleId.toUpperCase()}!`);
+            window.switchIsrFeed(broadcastRoleId);
+
+        } catch (err) {
+            console.error('Camera access error:', err);
+            showToast(`⚠️ CAMERA ACCESS ERROR: ${err.message || 'Permission denied'}`);
+        }
+    };
+
+    // --- Stop Broadcasting ---
+    window.stopLocalBroadcasting = function() {
+        isBroadcasting = false;
+        if (broadcastInterval) {
+            clearInterval(broadcastInterval);
+            broadcastInterval = null;
+        }
+        if (activeMediaStream) {
+            activeMediaStream.getTracks().forEach(t => t.stop());
+            activeMediaStream = null;
+        }
+        const video = document.getElementById('isr-broadcaster-video');
+        if (video) video.srcObject = null;
+
+        const hud = document.getElementById('isr-broadcasting-hud');
+        if (hud) hud.classList.add('hidden');
+
+        showToast('⏹️ CAMERA TRANSMISSION TERMINATED');
+        renderCurrentActiveView();
+    };
+
+    function showBroadcastingHud(roleId) {
+        let hud = document.getElementById('isr-broadcasting-hud');
+        if (hud) {
+            hud.classList.remove('hidden');
+            const lbl = document.getElementById('isr-broadcasting-hud-label');
+            if (lbl) lbl.textContent = `🔴 LIVE: ${roleId.replace('feed-', '').toUpperCase()}`;
+        }
+    }
+
+    // --- Viewer Frame Poller ---
+    function startViewerPolling() {
+        if (viewerPollInterval) clearInterval(viewerPollInterval);
+
+        viewerPollInterval = setInterval(async () => {
+            // Check if current active feed has a live stream
+            try {
+                const res = await fetch(`/api/isr_frame?feedId=${currentActiveFeedId}`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.active && data.image) {
+                    lastReceivedFrame = data.image;
+                    lastReceivedTelemetry = data.telemetry;
+                    renderLiveFrame(data.image, data.telemetry);
+                } else {
+                    lastReceivedFrame = null;
+                    lastReceivedTelemetry = null;
+                    // Render simulation
+                    const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+                    renderSimulationFrame(feed);
+                }
+            } catch (e) {
+                // Server down or offline: render simulation
+                const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+                renderSimulationFrame(feed);
+            }
+        }, 120);
+    }
+
+    function renderCurrentActiveView() {
+        if (lastReceivedFrame && lastReceivedTelemetry) {
+            renderLiveFrame(lastReceivedFrame, lastReceivedTelemetry);
+        } else {
+            const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+            renderSimulationFrame(feed);
+        }
+    }
+
+    // --- Render Live Camera Frame With Tactical HUD ---
+    function renderLiveFrame(imageDataUrl, telemetry) {
+        const canvas = document.getElementById('isr-stream-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const img = new Image();
+        img.onload = function() {
+            const w = canvas.width = canvas.clientWidth || 640;
+            const h = canvas.height = canvas.clientHeight || 360;
+
+            // Draw incoming camera image
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // Overlay subtle scanlines
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            for (let y = 0; y < h; y += 4) {
+                ctx.fillRect(0, y, w, 1);
+            }
+
+            // Tactical Green Reticle
+            drawTacticalHud(ctx, w, h, telemetry, true);
+
+            // Mirror to main viewport if active
+            if (isMirroredToMain) {
+                renderMainviewMirror(img, telemetry);
+            }
+        };
+        img.src = imageDataUrl;
+    }
+
+    // --- Render Simulation Tactical HUD Frame ---
+    function renderSimulationFrame(feed) {
         const canvas = document.getElementById('isr-stream-canvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -159,9 +434,9 @@
         const w = canvas.width = canvas.clientWidth || 640;
         const h = canvas.height = canvas.clientHeight || 360;
 
-        // Background gradient
+        // Background
         const grad = ctx.createLinearGradient(0, 0, 0, h);
-        grad.addColorStop(0, feed.placeholderColor || '#0f172a');
+        grad.addColorStop(0, feed.placeholderColor || '#064e3b');
         grad.addColorStop(1, '#020617');
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
@@ -176,52 +451,150 @@
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
         }
 
-        // Tactical HUD Overlays
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 1.5;
+        // Tactical HUD
+        drawTacticalHud(ctx, w, h, {
+            battery: feed.battery,
+            heading: '315° NW',
+            speed: '12 MPH'
+        }, false);
 
-        // Center reticle
-        const cx = w / 2;
-        const cy = h / 2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
-        ctx.moveTo(cx - 45, cy); ctx.lineTo(cx - 15, cy);
-        ctx.moveTo(cx + 15, cy); ctx.lineTo(cx + 45, cy);
-        ctx.moveTo(cx, cy - 45); ctx.lineTo(cx, cy - 15);
-        ctx.moveTo(cx, cy + 15); ctx.lineTo(cx, cy + 45);
-        ctx.stroke();
-
-        // Corner brackets
-        const bSize = 20;
-        ctx.strokeStyle = '#34d399';
-        // Top-left
-        ctx.beginPath(); ctx.moveTo(20, 20 + bSize); ctx.lineTo(20, 20); ctx.lineTo(20 + bSize, 20); ctx.stroke();
-        // Top-right
-        ctx.beginPath(); ctx.moveTo(w - 20 - bSize, 20); ctx.lineTo(w - 20, 20); ctx.lineTo(w - 20, 20 + bSize); ctx.stroke();
-        // Bottom-left
-        ctx.beginPath(); ctx.moveTo(20, h - 20 - bSize); ctx.lineTo(20, h - 20); ctx.lineTo(20 + bSize, h - 20); ctx.stroke();
-        // Bottom-right
-        ctx.beginPath(); ctx.moveTo(w - 20 - bSize, h - 20); ctx.lineTo(w - 20, h - 20); ctx.lineTo(w - 20, h - 20 - bSize); ctx.stroke();
-
-        // Feed text in center
+        // Center Feed Title
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 14px monospace';
+        ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(feed.name, cx, cy - 60);
+        ctx.fillText(feed.name, w / 2, h / 2 - 40);
 
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '10px monospace';
-        ctx.fillText(`SOURCE: ${feed.source} • STATUS: ${feed.status}`, cx, cy + 65);
+        ctx.font = '9px monospace';
+        ctx.fillText(`STANDBY / SIMULATION • TAP "BROADCAST FROM PHONE" TO GO LIVE`, w / 2, h / 2 + 50);
+
+        // Mirror to main viewport if active
+        if (isMirroredToMain) {
+            renderMainviewSimulation(feed);
+        }
+    }
+
+    // --- Shared Tactical HUD Overlay ---
+    function drawTacticalHud(ctx, w, h, telemetry, isLive) {
+        ctx.strokeStyle = isLive ? '#34d399' : '#10b981';
+        ctx.lineWidth = 1.5;
+
+        const cx = w / 2;
+        const cy = h / 2;
+
+        // Reticle
+        ctx.beginPath();
+        ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+        ctx.moveTo(cx - 40, cy); ctx.lineTo(cx - 12, cy);
+        ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 40, cy);
+        ctx.moveTo(cx, cy - 40); ctx.lineTo(cx, cy - 12);
+        ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy + 40);
+        ctx.stroke();
+
+        // Corner Brackets
+        const b = 18;
+        const pad = 16;
+        // Top Left
+        ctx.beginPath(); ctx.moveTo(pad, pad + b); ctx.lineTo(pad, pad); ctx.lineTo(pad + b, pad); ctx.stroke();
+        // Top Right
+        ctx.beginPath(); ctx.moveTo(w - pad - b, pad); ctx.lineTo(w - pad, pad); ctx.lineTo(w - pad, pad + b); ctx.stroke();
+        // Bottom Left
+        ctx.beginPath(); ctx.moveTo(pad, h - pad - b); ctx.lineTo(pad, h - pad); ctx.lineTo(pad + b, h - pad); ctx.stroke();
+        // Bottom Right
+        ctx.beginPath(); ctx.moveTo(w - pad - b, h - pad); ctx.lineTo(w - pad, h - pad); ctx.lineTo(w - pad, h - pad - b); ctx.stroke();
+
+        // Live Badge
+        if (isLive) {
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(28, 28, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('LIVE STREAM', 38, 31);
+        }
+
+        // Telemetry readout
+        if (telemetry) {
+            ctx.fillStyle = '#10b981';
+            ctx.font = 'bold 9px monospace';
+            ctx.textAlign = 'right';
+            const bat = telemetry.battery || '95%';
+            const head = telemetry.heading || '315° NW';
+            ctx.fillText(`BAT: ${bat} • HDG: ${head}`, w - pad, pad + 12);
+        }
 
         // Recording indicator
         if (isRecording) {
             ctx.fillStyle = '#ef4444';
-            ctx.beginPath(); ctx.arc(35, 35, 6, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#ef4444';
-            ctx.font = 'bold 11px monospace';
+            ctx.beginPath(); ctx.arc(pad + 10, h - pad - 10, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.font = 'bold 10px monospace';
             ctx.textAlign = 'left';
-            ctx.fillText('REC', 48, 39);
+            ctx.fillText('REC', pad + 22, h - pad - 6);
         }
+    }
+
+    // --- Main Viewport Mirror Controls ---
+    window.displayIsrInMainViewport = function() {
+        isMirroredToMain = true;
+        const mainCanvas = document.getElementById('mainview-isr-canvas');
+        const placeholder = document.getElementById('surveillance-placeholder');
+        const killBtn = document.getElementById('feed-kill-btn');
+        const label = document.getElementById('feed-label-source');
+
+        if (mainCanvas) mainCanvas.classList.remove('hidden');
+        if (placeholder) placeholder.classList.add('hidden');
+        if (killBtn) {
+            killBtn.classList.remove('hidden');
+            killBtn.onclick = window.stopIsrMainViewport;
+        }
+
+        const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+        if (label) label.textContent = `SQUAD ISR: ${feed.name}`;
+
+        showToast(`📺 MIRRORING ${feed.name} TO MAIN TOP SCREEN!`);
+        renderCurrentActiveView();
+    };
+
+    window.stopIsrMainViewport = function() {
+        isMirroredToMain = false;
+        const mainCanvas = document.getElementById('mainview-isr-canvas');
+        const placeholder = document.getElementById('surveillance-placeholder');
+        const killBtn = document.getElementById('feed-kill-btn');
+        const label = document.getElementById('feed-label-source');
+
+        if (mainCanvas) mainCanvas.classList.add('hidden');
+        if (placeholder) placeholder.classList.remove('hidden');
+        if (killBtn) killBtn.classList.add('hidden');
+        if (label) label.textContent = 'OFFLINE';
+
+        showToast('TOP SCREEN RESTORED TO DEFAULT HUD');
+    };
+
+    function renderMainviewMirror(img, telemetry) {
+        const canvas = document.getElementById('mainview-isr-canvas');
+        if (!canvas || canvas.classList.contains('hidden')) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const w = canvas.width = canvas.clientWidth || 800;
+        const h = canvas.height = canvas.clientHeight || 450;
+
+        ctx.drawImage(img, 0, 0, w, h);
+        drawTacticalHud(ctx, w, h, telemetry, true);
+    }
+
+    function renderMainviewSimulation(feed) {
+        const canvas = document.getElementById('mainview-isr-canvas');
+        if (!canvas || canvas.classList.contains('hidden')) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const w = canvas.width = canvas.clientWidth || 800;
+        const h = canvas.height = canvas.clientHeight || 450;
+
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(0, 0, w, h);
+        drawTacticalHud(ctx, w, h, { battery: feed.battery, heading: '315° NW' }, false);
     }
 
     // --- Mode Toggle: Lone Hunter vs Squad C2 ---
@@ -233,69 +606,51 @@
 
         if (mode === 'LONE') {
             if (loneBtn) {
-                loneBtn.className = "flex-1 bg-emerald-500 text-black font-black text-xs py-2 px-3 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow border-2 border-emerald-400";
+                loneBtn.className = "flex-1 bg-emerald-500 text-black font-black text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 shadow transition-all border border-emerald-400";
             }
             if (squadBtn) {
-                squadBtn.className = "flex-1 bg-slate-900 text-slate-400 font-bold text-xs py-2 px-3 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 border border-slate-700 hover:text-white transition-all";
+                squadBtn.className = "flex-1 bg-slate-900 text-slate-400 font-bold text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 hover:text-white transition-all";
             }
             if (bodycamRow) bodycamRow.classList.add('hidden');
+            showToast('LONE HUNTER MODE ACTIVE (1 SENSOR & 1 K9)');
         } else {
             if (squadBtn) {
-                squadBtn.className = "flex-1 bg-emerald-500 text-black font-black text-xs py-2 px-3 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow border-2 border-emerald-400";
+                squadBtn.className = "flex-1 bg-emerald-500 text-black font-black text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 shadow transition-all border border-emerald-400";
             }
             if (loneBtn) {
-                loneBtn.className = "flex-1 bg-slate-900 text-slate-400 font-bold text-xs py-2 px-3 rounded-lg uppercase tracking-wider flex items-center justify-center gap-1.5 border border-slate-700 hover:text-white transition-all";
+                loneBtn.className = "flex-1 bg-slate-900 text-slate-400 font-bold text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 hover:text-white transition-all";
             }
             if (bodycamRow) bodycamRow.classList.remove('hidden');
+            showToast('SQUAD C2 ACTIVE (FULL 5-MAN BODYCAMS & K9 TELEMETRY)');
         }
+        if (window.lucide) window.lucide.createIcons();
     };
 
     // --- Snapshot to Intel Vault ---
     window.captureIsrSnapshotToVault = function() {
         const canvas = document.getElementById('isr-stream-canvas');
+        if (!canvas) return;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
-        
-        let base64Data = null;
-        if (canvas) {
-            base64Data = canvas.toDataURL('image/jpeg', 0.85);
-        }
 
-        const timestamp = new Date().toISOString();
-        const callsign = (document.getElementById('post-author') && document.getElementById('post-author').value) || 'LEAD_01';
-
-        const snapshotRecord = {
-            id: 'isr_' + Date.now(),
-            type: 'ISR_CAMERA_FEED',
-            feedName: feed.name,
-            source: feed.source,
-            timestamp: timestamp,
-            author: callsign,
-            dataUrl: base64Data,
-            notes: `Captured from ${feed.name} (${feed.source}) at ${new Date().toLocaleTimeString()}`
-        };
-
-        // Save to IndexedDB if helper exists
-        if (window.TRCDatabase && window.TRCDatabase.saveSnapshot) {
-            window.TRCDatabase.saveSnapshot(snapshotRecord).then(() => {
-                showToast(`✅ SNAPSHOT SAVED TO INTEL VAULT!`);
-            }).catch(() => {
-                fallbackSaveSnapshot(snapshotRecord);
-            });
-        } else {
-            fallbackSaveSnapshot(snapshotRecord);
-        }
-    };
-
-    function fallbackSaveSnapshot(record) {
         try {
-            const list = JSON.parse(localStorage.getItem('trc_isr_snapshots') || '[]');
-            list.unshift(record);
-            localStorage.setItem('trc_isr_snapshots', JSON.stringify(list.slice(0, 30)));
+            if (window.idbSaveIntel) {
+                window.idbSaveIntel({
+                    id: 'intel-isr-' + Date.now(),
+                    title: `ISR SNAPSHOT [${feed.name}]`,
+                    type: 'photo',
+                    data: dataUrl,
+                    timestamp: new Date().toISOString(),
+                    lat: deviceSensors.lat,
+                    lng: deviceSensors.lng,
+                    notes: `Captured live from ${feed.source}`
+                });
+            }
             showToast(`✅ SNAPSHOT SAVED TO INTEL VAULT (WIN #4)!`);
         } catch(e) {
             showToast(`✅ SNAPSHOT CAPTURED!`);
         }
-    }
+    };
 
     // --- Record Video Clip Toggle ---
     window.toggleIsrRecording = function() {
@@ -303,18 +658,17 @@
         const btn = document.getElementById('isr-record-btn');
         if (btn) {
             if (isRecording) {
-                btn.className = "flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded font-black text-xs uppercase animate-pulse border border-red-400";
-                btn.innerHTML = `<i data-lucide="circle-stop" class="w-4 h-4"></i> STOP REC`;
+                btn.className = "bg-red-600 hover:bg-red-500 text-white font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 shadow animate-pulse border border-red-400 cursor-pointer";
+                btn.innerHTML = `<i data-lucide="circle-stop" class="w-3.5 h-3.5"></i> STOP REC`;
                 showToast(`🔴 RECORDING ISR CLIP...`);
             } else {
-                btn.className = "flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-slate-300 rounded font-bold text-xs uppercase hover:bg-slate-700 border border-slate-600";
-                btn.innerHTML = `<i data-lucide="video" class="w-4 h-4"></i> RECORD CLIP`;
+                btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 border border-slate-600 transition-all cursor-pointer";
+                btn.innerHTML = `<i data-lucide="video" class="w-3.5 h-3.5"></i> REC`;
                 showToast(`💾 CLIP SAVED TO INTEL VAULT!`);
             }
             if (window.lucide) window.lucide.createIcons();
         }
-        const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
-        renderCanvasFrame(feed);
+        renderCurrentActiveView();
     };
 
     // --- Pin Target to Recon Map ---
@@ -329,7 +683,6 @@
         if (!h) return;
         showToast(`🎯 ROUTE CALCULATED TO ${h.name} (${h.distance})! OPENING RECON MAP...`);
         if (window.toggleFullscreen) {
-            // Jump to Comms / Recon Map
             window.toggleFullscreen('panel-comms');
         }
     };
@@ -392,16 +745,17 @@
 
     // Initialize on window load or script load
     function initIsr() {
+        initDeviceSensors();
+        startViewerPolling();
+
         const feed = feeds[0];
         setTimeout(() => {
-            renderCanvasFrame(feed);
+            renderSimulationFrame(feed);
             if (window.lucide) window.lucide.createIcons();
         }, 500);
 
-        // Auto redraw on resize
         window.addEventListener('resize', () => {
-            const currentFeed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
-            renderCanvasFrame(currentFeed);
+            renderCurrentActiveView();
         });
     }
 

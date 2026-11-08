@@ -3519,6 +3519,52 @@ body.light-mode #post-mode-selector button.bg-purple-600 i {
     overflow-y: auto !important;
 }
 
+/* Viewport Monitor sizing inside Window #7 */
+#isr-stream-viewport-box {
+    min-height: 250px !important;
+    height: 270px !important;
+    position: relative !important;
+    background: #020617 !important;
+}
+
+#panel-isr.is-maximized #isr-stream-viewport-box {
+    min-height: 440px !important;
+    height: 58vh !important;
+}
+
+@media (max-width: 768px) {
+    #isr-stream-viewport-box {
+        min-height: 260px !important;
+        height: 280px !important;
+    }
+}
+
+/* Daylight mode for ISR Stream Viewport Box & Broadcast Modal */
+body.light-mode #isr-stream-viewport-box {
+    border-color: #059669 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.light-mode #modal-isr-broadcast {
+    background-color: rgba(15, 23, 42, 0.7) !important;
+}
+body.light-mode #modal-isr-broadcast > div {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #059669 !important;
+}
+body.light-mode #modal-isr-broadcast .bg-slate-950\/80 {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+body.light-mode #modal-isr-broadcast .text-white {
+    color: #0f172a !important;
+}
+body.light-mode #modal-isr-broadcast .text-slate-400 {
+    color: #475569 !important;
+}
+
 /* -------------------------------------------------------------
    DAYLIGHT MODE STYLING FOR WINDOW #5: COMMS LINK (body.light-mode)
    ------------------------------------------------------------- */
