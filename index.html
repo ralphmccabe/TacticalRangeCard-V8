@@ -137,7 +137,7 @@ try {
 
     <!-- CUSTOM CSS -->
 
-    <link rel="stylesheet" href="style.css?v=8.77.3.6">
+    <link rel="stylesheet" href="style.css?v=8.77.4.0">
 
 
 
@@ -675,6 +675,9 @@ try {
 
                             <button id="openScannerBtn" onclick="if(window.TacticalScanner) window.TacticalScanner.openScannerFromHud()" class="text-cyan-400 hover:text-white hover:bg-cyan-900 p-1 px-2 flex items-center justify-center transition-all shrink-0 font-black uppercase text-[9px] md:text-[10px] tracking-widest border border-cyan-500/50 rounded shadow-[0_0_10px_rgba(6,182,212,0.25)]" title="Civilian Tactical Scanner (Marine, Air, NOAA, Dispatch)" aria-label="Tac Scanner">
                                 <i data-lucide="radio" class="w-3 h-3 mr-1 text-cyan-400"></i> SCANNER
+                            </button>
+                            <button id="openIsrBtn" onclick="toggleFullscreen('panel-isr')" class="text-emerald-400 hover:text-white hover:bg-emerald-900 p-1 px-2 flex items-center justify-center transition-all shrink-0 font-black uppercase text-[9px] md:text-[10px] tracking-widest border border-emerald-500/50 rounded shadow-[0_0_10px_rgba(16,185,129,0.25)] cursor-pointer" title="Tactical ISR, Drone &amp; Bodycam Matrix" aria-label="Tactical ISR">
+                                <i data-lucide="video" class="w-3 h-3 mr-1 text-emerald-400"></i> SQUAD ISR
                             </button>
                         </div>
                     </div>
@@ -6743,6 +6746,245 @@ try {
                     </div>
                 </div>
 
+<!-- Window 7: Tactical ISR & Multi-Feed Matrix -->
+            <div class="dash-panel flex flex-col h-full" id="panel-isr">
+                <div class="dash-panel-header py-1 flex-wrap cursor-pointer hover:bg-emerald-950/30 transition-colors" onclick="toggleFullscreen('panel-isr')">
+                    <span class="dash-panel-title flex items-center gap-1.5"><i data-lucide="video" class="w-2.5 h-2.5 text-emerald-400"></i> 7. Tactical ISR &amp; Multi-Feed Matrix</span>
+                    <div class="flex items-center gap-2">
+                        <button class="maximize-btn text-gray-400 hover:text-emerald-400 flex items-center p-4 m-[-10px]" onclick="event.stopPropagation(); toggleFullscreen('panel-isr')" aria-label="Action Button"><span class="close-label font-black text-[9px] uppercase tracking-widest bg-emerald-950/80 px-2 py-1 rounded border border-emerald-600/50 text-emerald-400 mr-2">CLOSE WINDOW</span><i data-lucide="maximize-2" class="w-6 h-6"></i></button>
+                    </div>
+                </div>
+
+                <div id="isr-container" class="dash-panel-content bg-gray-950/60 p-3 sm:p-5 overflow-y-auto flex-1 flex flex-col custom-scrollbar relative">
+                    <div class="w-full flex flex-col max-w-4xl mx-auto gap-4 pb-16 font-mono text-white">
+
+                        <!-- Subheader Controls & Friendly Guides -->
+                        <div class="flex flex-wrap items-center justify-between gap-2.5 bg-slate-900/90 border border-emerald-500/40 p-3 rounded-xl shadow-lg">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+                                    <i data-lucide="radar" class="w-4 h-4 text-emerald-400 animate-pulse"></i> LIVE SENSORS &amp; CAMERAS
+                                </span>
+                                <span class="bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-bold text-[9px] px-2 py-0.5 rounded-full">
+                                    🟢 5 ONLINE
+                                </span>
+                            </div>
+
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <!-- Mode Switch: Lone vs Squad -->
+                                <div class="flex bg-slate-950 p-0.5 rounded-lg border border-slate-700 text-xs">
+                                    <button type="button" id="isr-mode-btn-squad" onclick="window.setIsrOpMode('SQUAD')" class="bg-emerald-500 text-black font-black text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center gap-1 shadow transition-all border border-emerald-400 cursor-pointer">
+                                        <i data-lucide="users" class="w-3.5 h-3.5"></i> SQUAD C2
+                                    </button>
+                                    <button type="button" id="isr-mode-btn-lone" onclick="window.setIsrOpMode('LONE')" class="bg-slate-900 text-slate-400 font-bold text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center gap-1 hover:text-white transition-all cursor-pointer">
+                                        <i data-lucide="user" class="w-3.5 h-3.5"></i> LONE HUNTER
+                                    </button>
+                                </div>
+
+                                <!-- Setup Wizard Button -->
+                                <button type="button" onclick="window.openByodWizardModal()" class="bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-300 font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow cursor-pointer">
+                                    <i data-lucide="wrench" class="w-3.5 h-3.5 text-cyan-400"></i> [⚙️ SETUP GEAR]
+                                </button>
+
+                                <!-- How to Use Guide Button -->
+                                <button type="button" onclick="window.openIsrGuideModal()" class="bg-amber-950 hover:bg-amber-900 border border-amber-500/60 text-amber-300 font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow cursor-pointer">
+                                    <i data-lucide="help-circle" class="w-3.5 h-3.5 text-amber-400"></i> [?] HOW TO USE
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PRIMARY CINEMA VIEWPORT (MAIN VIDEO MONITOR) -->
+                        <div class="relative w-full aspect-video sm:max-h-[380px] bg-slate-950 rounded-xl overflow-hidden border-2 border-emerald-500/60 shadow-[0_0_40px_rgba(16,185,129,0.25)] flex flex-col justify-between group">
+                            <!-- Top Telemetry Ribbon -->
+                            <div class="bg-gradient-to-b from-black/90 via-black/60 to-transparent p-2.5 px-3 sm:px-4 flex justify-between items-center z-10">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                    <span id="isr-active-cam-title" class="font-black text-xs sm:text-sm text-white tracking-widest uppercase drop-shadow">
+                                        🚁 OVERHEAD DRONE (AIR-1)
+                                    </span>
+                                    <span id="isr-active-source-badge" class="hidden sm:inline-block bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[9px] px-2 py-0.5 rounded uppercase font-bold">
+                                        DJI / Autel 4K Feed
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] text-emerald-400 font-mono font-bold">
+                                    <span id="isr-active-telemetry">1080P 30FPS • BAT: 84% • SIGNAL: 98%</span>
+                                </div>
+                            </div>
+
+                            <!-- Canvas Stream / HUD Display -->
+                            <canvas id="isr-stream-canvas" class="w-full h-full absolute inset-0 object-cover cursor-crosshair"></canvas>
+
+                            <!-- Bottom Viewport Action Buttons -->
+                            <div class="bg-gradient-to-t from-black/95 via-black/70 to-transparent p-2 sm:p-3 flex flex-wrap justify-between items-center gap-2 z-10">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button type="button" onclick="window.captureIsrSnapshotToVault()" class="bg-emerald-600 hover:bg-emerald-500 text-black font-black text-[11px] px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow transition-all cursor-pointer">
+                                        <i data-lucide="camera" class="w-4 h-4"></i> SNAPSHOT TO VAULT
+                                    </button>
+                                    <button type="button" onclick="window.pinIsrTargetToMap()" class="bg-blue-600 hover:bg-blue-500 text-white font-black text-[11px] px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow transition-all cursor-pointer">
+                                        <i data-lucide="map-pin" class="w-4 h-4"></i> PIN TARGET TO MAP
+                                    </button>
+                                    <button type="button" id="isr-record-btn" onclick="window.toggleIsrRecording()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 border border-slate-600 transition-all cursor-pointer">
+                                        <i data-lucide="video" class="w-4 h-4"></i> RECORD CLIP
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] text-slate-400 font-bold uppercase hidden sm:inline">AUTOHOVER: LOCKED</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- FEED SELECTOR CAROUSEL (TAP TO SWITCH ACTIVE SCREEN) -->
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[11px] font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+                                    <i data-lucide="layers" class="w-3.5 h-3.5"></i> TAP CAMERA TO WATCH (DRONE, BODYCAM, TRAIL-CAM)
+                                </span>
+                                <button type="button" onclick="window.openByodWizardModal()" class="text-[10px] text-cyan-400 hover:underline font-bold uppercase cursor-pointer">
+                                    + Add Custom Cam
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                                <!-- Feed 1: Drone -->
+                                <div onclick="window.switchIsrFeed('feed-drone-1')" data-feed-id="feed-drone-1" class="isr-feed-card p-2.5 rounded-xl border-2 border-emerald-400 bg-emerald-950/40 ring-2 ring-emerald-400/50 flex flex-col justify-between gap-1.5 cursor-pointer hover:brightness-125 transition-all">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-black uppercase text-emerald-300 flex items-center gap-1">
+                                            <i data-lucide="send" class="w-3 h-3 text-emerald-400"></i> AIR-1
+                                        </span>
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    </div>
+                                    <div class="font-bold text-[11px] text-white truncate">OVERHEAD DRONE</div>
+                                    <div class="text-[8px] text-slate-400 truncate">DJI / Autel 4K • 1080p</div>
+                                </div>
+
+                                <!-- Feed 2: Bodycam Lead -->
+                                <div onclick="window.switchIsrFeed('feed-body-1')" data-feed-id="feed-body-1" class="isr-feed-card p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 flex flex-col justify-between gap-1.5 cursor-pointer hover:border-emerald-500/50 hover:brightness-125 transition-all">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-black uppercase text-blue-300 flex items-center gap-1">
+                                            <i data-lucide="shield" class="w-3 h-3 text-blue-400"></i> LEAD CAM
+                                        </span>
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    </div>
+                                    <div class="font-bold text-[11px] text-white truncate">CHEST RIG PHONE</div>
+                                    <div class="text-[8px] text-slate-400 truncate">Player #1 • 720p 30fps</div>
+                                </div>
+
+                                <!-- Feed 3: Bodycam Scout -->
+                                <div id="isr-bodycam-feeds-group" onclick="window.switchIsrFeed('feed-body-2')" data-feed-id="feed-body-2" class="isr-feed-card p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 flex flex-col justify-between gap-1.5 cursor-pointer hover:border-emerald-500/50 hover:brightness-125 transition-all">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-black uppercase text-indigo-300 flex items-center gap-1">
+                                            <i data-lucide="user-check" class="w-3 h-3 text-indigo-400"></i> POINT CAM
+                                        </span>
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    </div>
+                                    <div class="font-bold text-[11px] text-white truncate">SCOUT CHEST RIG</div>
+                                    <div class="text-[8px] text-slate-400 truncate">Player #9 • 720p 30fps</div>
+                                </div>
+
+                                <!-- Feed 4: North Fence Trail-Cam -->
+                                <div onclick="window.switchIsrFeed('feed-trail-1')" data-feed-id="feed-trail-1" class="isr-feed-card p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 flex flex-col justify-between gap-1.5 cursor-pointer hover:border-emerald-500/50 hover:brightness-125 transition-all">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-black uppercase text-amber-300 flex items-center gap-1">
+                                            <i data-lucide="camera" class="w-3 h-3 text-amber-400"></i> FENCE CAM
+                                        </span>
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    </div>
+                                    <div class="font-bold text-[11px] text-white truncate">NORTH FENCE POST</div>
+                                    <div class="text-[8px] text-slate-400 truncate">Old Android • Solar</div>
+                                </div>
+
+                                <!-- Feed 5: Deer Blind Cam -->
+                                <div onclick="window.switchIsrFeed('feed-trail-2')" data-feed-id="feed-trail-2" class="isr-feed-card p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 flex flex-col justify-between gap-1.5 cursor-pointer hover:border-emerald-500/50 hover:brightness-125 transition-all">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-black uppercase text-purple-300 flex items-center gap-1">
+                                            <i data-lucide="eye" class="w-3 h-3 text-purple-400"></i> BLIND CAM
+                                        </span>
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    </div>
+                                    <div class="font-bold text-[11px] text-white truncate">FEEDER / BLIND</div>
+                                    <div class="text-[8px] text-slate-400 truncate">RTSP Cam • Solar</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- K9 & HOUND TRACKER MATRIX -->
+                        <div class="flex flex-col gap-2 mt-1">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[11px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
+                                    🐕 K9 &amp; HOUND GPS TRACKER HUD (GARMIN, LORA &amp; PHONE-COLLARS)
+                                </span>
+                                <button type="button" onclick="window.openByodWizardModal()" class="text-[10px] text-amber-300 hover:underline font-bold uppercase cursor-pointer">
+                                    + Add Collar
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <!-- Hound 1 -->
+                                <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col justify-between gap-2 shadow">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-black text-sm text-white flex items-center gap-1.5">
+                                                🐕 BUCK <span class="text-[9px] text-slate-400 font-normal uppercase">(Lead Hound)</span>
+                                            </div>
+                                            <div class="text-[9px] text-slate-400 uppercase mt-0.5">Garmin TT15 • 915MHz</div>
+                                        </div>
+                                        <span class="bg-emerald-500 text-black font-black text-[9px] px-2 py-0.5 rounded uppercase">TRAILING</span>
+                                    </div>
+                                    <div class="flex justify-between items-center border-t border-slate-800/80 pt-2 text-[10px]">
+                                        <span class="font-mono text-emerald-400 font-bold">1.2 MI NW</span>
+                                        <span class="text-slate-300">14 MPH • 315°</span>
+                                    </div>
+                                    <button type="button" onclick="window.interceptHound('dog-1')" class="w-full bg-slate-800 hover:bg-emerald-600 hover:text-black text-slate-200 text-[10px] font-bold py-1 rounded uppercase tracking-wider transition-all cursor-pointer">
+                                        📍 View on Recon Map
+                                    </button>
+                                </div>
+
+                                <!-- Hound 2 -->
+                                <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col justify-between gap-2 shadow">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-black text-sm text-white flex items-center gap-1.5">
+                                                🐕 BLUE <span class="text-[9px] text-slate-400 font-normal uppercase">(Tracker)</span>
+                                            </div>
+                                            <div class="text-[9px] text-slate-400 uppercase mt-0.5">LoRa 915MHz Beacon</div>
+                                        </div>
+                                        <span class="bg-emerald-500 text-black font-black text-[9px] px-2 py-0.5 rounded uppercase">TRAILING</span>
+                                    </div>
+                                    <div class="flex justify-between items-center border-t border-slate-800/80 pt-2 text-[10px]">
+                                        <span class="font-mono text-emerald-400 font-bold">1.1 MI NW</span>
+                                        <span class="text-slate-300">12 MPH • 310°</span>
+                                    </div>
+                                    <button type="button" onclick="window.interceptHound('dog-2')" class="w-full bg-slate-800 hover:bg-emerald-600 hover:text-black text-slate-200 text-[10px] font-bold py-1 rounded uppercase tracking-wider transition-all cursor-pointer">
+                                        📍 View on Recon Map
+                                    </button>
+                                </div>
+
+                                <!-- Hound 3 (Tree'd Alert) -->
+                                <div class="bg-amber-950/40 border-2 border-amber-500/80 p-3 rounded-xl flex flex-col justify-between gap-2 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-black text-sm text-amber-300 flex items-center gap-1.5">
+                                                🐕 DAISY <span class="text-[9px] text-amber-200/80 font-normal uppercase">(Striker)</span>
+                                            </div>
+                                            <div class="text-[9px] text-amber-200/80 uppercase mt-0.5">Phone-Beacon Harness</div>
+                                        </div>
+                                        <span class="bg-amber-400 text-black font-black text-[9px] px-2 py-0.5 rounded uppercase animate-pulse">🚨 TREE'D / BARKING</span>
+                                    </div>
+                                    <div class="flex justify-between items-center border-t border-amber-500/30 pt-2 text-[10px]">
+                                        <span class="font-mono text-amber-300 font-black">2.3 MI N</span>
+                                        <span class="text-amber-200">0 MPH • LOCKED</span>
+                                    </div>
+                                    <button type="button" onclick="window.interceptHound('dog-3')" class="w-full bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black py-1 rounded uppercase tracking-wider transition-all shadow cursor-pointer">
+                                        ⚡ Intercept Route (GPS Jump)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
             </div>
 
         </div>
@@ -6939,7 +7181,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.3.6';
+        window.APP_VERSION = 'v8.77.4.0';
 
         if(document.getElementById('header-version-display')) {
 
@@ -7910,6 +8152,173 @@ try {
         </div>
     </div>
 
+
+
+  
+    <!-- ISR & BYOD HARDWARE WIZARD MODAL -->
+    <div id="modal-byod-wizard" style="z-index: 100000060; display: none;" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-start justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="bg-slate-900 border-2 border-cyan-500/80 rounded-xl shadow-[0_0_40px_rgba(6,182,212,0.3)] w-full p-3 sm:p-6 font-mono text-white relative flex flex-col" style="max-width: 42rem; max-height: 95vh; max-height: 95dvh; margin: 0.5rem auto;">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b-2 border-cyan-500/40 pb-3 mb-4 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="bg-cyan-950 p-2 rounded-lg border border-cyan-500/50">
+                        <i data-lucide="wrench" class="w-5 h-5 text-cyan-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-sm sm:text-base uppercase tracking-wider text-cyan-400">HARDWARE UPLINK WIZARD (BYOD)</h3>
+                        <p class="text-[10px] text-slate-400">CONNECT ANY DRONE, BODYCAM, TRAIL-CAM &amp; DOG COLLAR</p>
+                    </div>
+                </div>
+                <button onclick="window.closeByodWizardModal()" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer" aria-label="Close Wizard">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Content -->
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-1 flex flex-col gap-4 text-xs">
+                
+                <!-- Tier 1: Free / $0 Budget (Old Phones) -->
+                <div class="bg-slate-950/80 p-3.5 rounded-lg border border-emerald-500/40">
+                    <div class="font-black text-emerald-400 uppercase tracking-widest text-[11px] mb-2 flex items-center gap-2">
+                        <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i> 1. THE $0 / FREE TIER (OLD SMARTPHONES)
+                    </div>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">
+                        Don't spend thousands on specialty hardware. Any old Android or iPhone with a camera works as a live team sensor:
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                        <div class="bg-emerald-950/40 p-2.5 rounded border border-emerald-500/30">
+                            <div class="font-bold text-emerald-300 text-[10px] uppercase">📷 FENCE TRAIL-CAM</div>
+                            <div class="text-[9px] text-slate-300 mt-1">Zip-tie an old phone to a post/tree pointing at a gate or trail. It streams over local Wi-Fi or hotspot.</div>
+                        </div>
+                        <div class="bg-emerald-950/40 p-2.5 rounded border border-emerald-500/30">
+                            <div class="font-bold text-emerald-300 text-[10px] uppercase">🦺 CHEST RIG BODYCAM</div>
+                            <div class="text-[9px] text-slate-300 mt-1">Slip your phone into a shirt pocket or MOLLE chest rig with the rear camera peeking out.</div>
+                        </div>
+                        <div class="bg-emerald-950/40 p-2.5 rounded border border-emerald-500/30">
+                            <div class="font-bold text-emerald-300 text-[10px] uppercase">🐕 K9 BEACON COLLAR</div>
+                            <div class="text-[9px] text-slate-300 mt-1">Place an old phone in the dog's vest pocket with TRC running in Beacon Mode to track GPS.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tier 2: Consumer Tactical ($35 - $800) -->
+                <div class="bg-slate-950/80 p-3.5 rounded-lg border border-cyan-500/40">
+                    <div class="font-black text-cyan-400 uppercase tracking-widest text-[11px] mb-2 flex items-center gap-2">
+                        <i data-lucide="send" class="w-4 h-4 text-cyan-400"></i> 2. CONSUMER DRONES &amp; LORA RADIO ($35 - $800)
+                    </div>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">
+                        Works with standard consumer gear without proprietary lock-in:
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                        <div class="bg-cyan-950/40 p-2.5 rounded border border-cyan-500/30">
+                            <div class="font-bold text-cyan-300 text-[10px] uppercase">🚁 DJI / AUTEL / FPV DRONES</div>
+                            <div class="text-[9px] text-slate-300 mt-1">Enable "Local Stream Broadcast" in your drone app. Enter the stream URL below to link directly.</div>
+                        </div>
+                        <div class="bg-cyan-950/40 p-2.5 rounded border border-cyan-500/30">
+                            <div class="font-bold text-cyan-300 text-[10px] uppercase">📡 LORA 915MHz K9 COLLAR ($35)</div>
+                            <div class="text-[9px] text-slate-300 mt-1">Connect any $35 LilyGO T-Beam or Heltec node via Bluetooth for 5+ mile off-grid dog tracking.</div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Stream URL Configuration Input -->
+                    <div class="mt-3 pt-3 border-t border-slate-800 flex flex-col gap-1.5">
+                        <label for="custom-stream-url-input" class="text-[10px] font-bold text-cyan-300 uppercase">CUSTOM RTSP / RTMP STREAM URL (DRONE OR TRAIL-CAM):</label>
+                        <div class="flex gap-2">
+                            <input id="custom-stream-url-input" type="text" placeholder="e.g. rtsp://192.168.1.1:8554/live" class="flex-1 bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white font-mono outline-none focus:border-cyan-400">
+                            <button type="button" onclick="window.switchIsrFeed('feed-drone-1'); window.closeByodWizardModal();" class="bg-cyan-600 hover:bg-cyan-500 text-black font-black text-xs px-3 rounded uppercase tracking-wider cursor-pointer">
+                                CONNECT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tier 3: Pro & Outfitter ($1,000+) -->
+                <div class="bg-slate-950/80 p-3.5 rounded-lg border border-amber-500/40">
+                    <div class="font-black text-amber-400 uppercase tracking-widest text-[11px] mb-2 flex items-center gap-2">
+                        <i data-lucide="shield" class="w-4 h-4 text-amber-400"></i> 3. PRO OUTFITTER &amp; MIL TIER (GARMIN / HDMI)
+                    </div>
+                    <div class="text-[10px] text-slate-300 leading-relaxed space-y-1.5">
+                        <div>• <b>Garmin Alpha / Astro / TT15:</b> Bluetooth-paired handhelds stream dog track coordinates directly into the TRC Hound Matrix.</div>
+                        <div>• <b>HDMI Video Capture:</b> Connect controller HDMI output to phone via USB-C capture card for zero-latency 1080p video.</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Dismiss Button -->
+            <button onclick="window.closeByodWizardModal()" class="mt-4 w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black py-2.5 rounded-lg transition-all uppercase tracking-widest text-xs cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.4)] shrink-0" aria-label="Save and Close Wizard">
+                APPLY &amp; RETURN TO MATRIX
+            </button>
+        </div>
+    </div>
+
+    <!-- ISR HOW TO USE GUIDE MODAL -->
+    <div id="modal-isr-guide" style="z-index: 100000060; display: none;" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-start justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="bg-slate-900 border-2 border-emerald-500/80 rounded-xl shadow-[0_0_40px_rgba(16,185,129,0.3)] w-full p-3 sm:p-6 font-mono text-white relative flex flex-col" style="max-width: 42rem; max-height: 95vh; max-height: 95dvh; margin: 0.5rem auto;">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b-2 border-emerald-500/40 pb-3 mb-4 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="bg-emerald-950 p-2 rounded-lg border border-emerald-500/50">
+                        <i data-lucide="help-circle" class="w-5 h-5 text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-sm sm:text-base uppercase tracking-wider text-emerald-400">TACTICAL ISR &amp; CAMERAS &bull; HOW TO USE</h3>
+                        <p class="text-[10px] text-slate-400">QUICK FIELD PROTOCOL &bull; OPERATING GUIDE</p>
+                    </div>
+                </div>
+                <button onclick="window.closeIsrGuideModal()" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer" aria-label="Close Guide">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Content -->
+            <div class="overflow-y-auto custom-scrollbar flex-1 pr-1 flex flex-col gap-4 text-xs">
+                
+                <div class="bg-slate-950/80 p-3.5 rounded-lg border border-emerald-500/30">
+                    <div class="font-black text-emerald-300 uppercase tracking-widest text-[11px] mb-1 flex items-center gap-2">
+                        <i data-lucide="tv" class="w-4 h-4 text-emerald-400"></i> 1. SWITCHING CAMERAS (1-TAP SCREEN SWITCH)
+                    </div>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">
+                        Below the main screen is the camera selector row. Tap any card (<b>Overhead Drone</b>, <b>Lead Bodycam</b>, <b>Fence Cam</b>) to instantly switch the main screen to that live video view.
+                    </p>
+                </div>
+
+                <div class="bg-slate-950/80 p-3.5 rounded-lg border border-emerald-500/30">
+                    <div class="font-black text-emerald-300 uppercase tracking-widest text-[11px] mb-1 flex items-center gap-2">
+                        <i data-lucide="camera" class="w-4 h-4 text-emerald-400"></i> 2. SAVING INTEL &amp; PINNING TARGETS
+                    </div>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">
+                        • Tap <b>SNAPSHOT TO VAULT</b> to grab the current video frame and save it permanently into <b>Window #4 (Intel Vault)</b> with timestamp and callsign.<br>
+                        • Tap <b>PIN TARGET TO MAP</b> to plot target coordinates directly onto <b>Window #5 (Orbital Recon Map)</b> for your sniper or team.
+                    </p>
+                </div>
+
+                <div class="bg-slate-950/80 p-3.5 rounded-lg border border-emerald-500/30">
+                    <div class="font-black text-emerald-300 uppercase tracking-widest text-[11px] mb-1 flex items-center gap-2">
+                        <i data-lucide="crosshair" class="w-4 h-4 text-emerald-400"></i> 3. K9 &amp; HOUND TRACKER MATRIX
+                    </div>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">
+                        Displays live distances and headings for up to 5 dogs. When a dog corners a mountain lion or hog and stops, its card flashes <b>🚨 TREE'D / BARKING ALERT</b>. Tap <b>⚡ Intercept Route</b> to instantly draw a straight-line GPS approach on your map!
+                    </p>
+                </div>
+
+                <div class="bg-slate-950/80 p-3.5 rounded-lg border border-emerald-500/30">
+                    <div class="font-black text-emerald-300 uppercase tracking-widest text-[11px] mb-1 flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> 4. LONE HUNTER VS. SQUAD MODE
+                    </div>
+                    <p class="text-slate-300 text-[10px] leading-relaxed">
+                        Switch between <b>LONE HUNTER</b> (simplified for solo ranch/hunt trips with 1 phone and 1 dog) and <b>SQUAD C2</b> (full 10-man team bodycams and multi-drone operations).
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Dismiss Button -->
+            <button onclick="window.closeIsrGuideModal()" class="mt-4 w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-2.5 rounded-lg transition-all uppercase tracking-widest text-xs cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.4)] shrink-0" aria-label="Acknowledge ISR Guide">
+                ACKNOWLEDGED &bull; ENTER ISR MATRIX
+            </button>
+        </div>
+    </div>
 
 
   <!-- MISSION BRIEFING MODAL -->
@@ -9218,6 +9627,8 @@ try {
     <script src="lib/supabase.min.js" defer></script>
     <!-- Include Blog Logic -->
     <script src="blog_logic.js?v=8.77.3.4" defer></script>
+    <!-- Include Tactical ISR Logic -->
+    <script src="isr_logic.js?v=8.77.4.0" defer></script>
 
     <!-- TACTICAL ICON TRAY (GLOBAL) -->
     <div id="tactical-icon-tray" class="hidden fixed bg-gray-950/95 border-2 border-emerald-500/80 rounded-xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] flex flex-col gap-2 w-72 backdrop-blur-md" style="z-index: 10000000 !important;">

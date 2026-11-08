@@ -3467,3 +3467,211 @@ body.light-mode #mode-btn-card.bg-purple-600 i,
 body.light-mode #post-mode-selector button.bg-purple-600 i {
     color: #ffffff !important;
 }
+
+
+
+/* ============================================================
+   26. WINDOW 7: TACTICAL ISR & MULTI-FEED MATRIX (NIGHT & DAY)
+   ============================================================ */
+
+/* Base & Maximized Rules */
+#panel-isr {
+    height: 100% !important;
+    min-height: 480px !important;
+    max-height: 85vh !important;
+}
+
+#panel-isr.is-maximized {
+    position: fixed !important;
+    top: 3.5rem !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: calc(100vh - 3.5rem) !important;
+    max-height: 100vh !important;
+    z-index: 100 !important;
+}
+
+#panel-isr #isr-container {
+    flex: 1 !important;
+    overflow-y: auto !important;
+}
+
+/* -------------------------------------------------------------
+   DAYLIGHT MODE STYLING FOR WINDOW #7 (body.light-mode)
+   ------------------------------------------------------------- */
+body.light-mode #panel-isr {
+    background-color: #ffffff !important;
+}
+
+body.light-mode #panel-isr .dash-panel-header {
+    background-color: #f8fafc !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+body.light-mode #panel-isr .dash-panel-title {
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #panel-isr .dash-panel-title i {
+    color: #059669 !important;
+}
+
+body.light-mode #panel-isr .close-label {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1.5px solid #ef4444 !important;
+}
+
+body.light-mode #isr-container {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+/* Top Subheader Bar */
+body.light-mode #isr-container > div > div:first-child {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Mode Toggle Buttons in ISR */
+body.light-mode #isr-mode-btn-squad.bg-emerald-500,
+body.light-mode #isr-mode-btn-lone.bg-emerald-500 {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+    border: 2px solid #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #isr-mode-btn-squad.bg-slate-900,
+body.light-mode #isr-mode-btn-lone.bg-slate-900 {
+    background-color: #ffffff !important;
+    color: #64748b !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-weight: 700 !important;
+}
+
+/* Feed Cards in Carousel */
+body.light-mode .isr-feed-card {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+body.light-mode .isr-feed-card .font-bold.text-white {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+body.light-mode .isr-feed-card .text-slate-400 {
+    color: #64748b !important;
+    font-weight: 600 !important;
+}
+
+body.light-mode .isr-feed-card.border-emerald-400 {
+    background-color: #ecfdf5 !important;
+    border: 2px solid #059669 !important;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2) !important;
+}
+body.light-mode .isr-feed-card.border-emerald-400 .font-bold.text-white {
+    color: #064e3b !important;
+}
+
+/* K9 Telemetry Cards */
+body.light-mode #isr-container .grid-cols-1 > div {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+body.light-mode #isr-container .grid-cols-1 > div .font-black.text-white {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+body.light-mode #isr-container .grid-cols-1 > div .text-slate-300 {
+    color: #334155 !important;
+    font-weight: 600 !important;
+}
+
+/* Daisy Tree'd Card in Light Mode */
+body.light-mode #isr-container .bg-amber-950\/40 {
+    background-color: #fffbeb !important;
+    border: 2px solid #f59e0b !important;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2) !important;
+}
+body.light-mode #isr-container .bg-amber-950\/40 .text-amber-300 {
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+body.light-mode #isr-container .bg-amber-950\/40 .text-amber-200 {
+    color: #78350f !important;
+    font-weight: 700 !important;
+}
+
+/* BYOD Setup & ISR Guide Modals in Light Mode */
+body.light-mode #modal-byod-wizard,
+body.light-mode #modal-isr-guide {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+body.light-mode #modal-byod-wizard > div {
+    background-color: #ffffff !important;
+    border: 2px solid #06b6d4 !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-mode #modal-isr-guide > div {
+    background-color: #ffffff !important;
+    border: 2px solid #10b981 !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-mode #modal-byod-wizard h3 {
+    color: #0891b2 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #modal-isr-guide h3 {
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #modal-byod-wizard [class*="bg-slate-950"],
+body.light-mode #modal-isr-guide [class*="bg-slate-950"] {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #modal-byod-wizard p,
+body.light-mode #modal-isr-guide p {
+    color: #1e293b !important;
+    font-weight: 600 !important;
+}
+
+body.light-mode #modal-byod-wizard button[aria-label="Close Wizard"],
+body.light-mode #modal-isr-guide button[aria-label="Close Guide"] {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1.5px solid #ef4444 !important;
+    font-weight: 900 !important;
+    border-radius: 6px !important;
+}
+body.light-mode #modal-byod-wizard button[aria-label="Close Wizard"] i,
+body.light-mode #modal-isr-guide button[aria-label="Close Guide"] i {
+    color: #b91c1c !important;
+}
+
+body.light-mode #modal-byod-wizard button[aria-label="Save and Close Wizard"] {
+    background-color: #0891b2 !important;
+    color: #ffffff !important;
+    border: 2px solid #0e7490 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 4px 15px rgba(8, 145, 178, 0.35) !important;
+}
+
+body.light-mode #modal-isr-guide button[aria-label="Acknowledge ISR Guide"] {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+    border: 2px solid #047857 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 4px 15px rgba(5, 150, 105, 0.35) !important;
+}
