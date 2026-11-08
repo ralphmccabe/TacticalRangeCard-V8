@@ -568,6 +568,16 @@ try {
     <!-- LiveKit Client SDK -->
     <script src="lib/livekit-client.umd.min.js"></script>
 <script src="lib/jsrsasign-all-min.js"></script>
+
+    <!-- Immediate Theme Application (Prevents Dark/Light Flash) -->
+    <script>
+        try {
+            if (localStorage.getItem('trc_theme') === 'light') {
+                document.documentElement.classList.add('light-mode');
+            }
+        } catch(e) {}
+    </script>
+
 </head>
 
 
@@ -615,6 +625,11 @@ try {
                     <div class="flex flex-col items-center justify-center gap-2 border-t border-gray-800/50 pt-2 w-full">
                         <!-- Tier 1: Action Icons -->
                         <div class="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                            <!-- Day / Night Mode Toggle -->
+                            <button id="theme-toggle-btn" onclick="window.toggleDayNightMode()" class="p-1 px-2.5 flex items-center justify-center gap-1.5 transition-all shrink-0 bg-amber-950/40 border border-amber-500/60 rounded-md text-amber-300 hover:text-white font-black text-[9px] md:text-[10px] uppercase tracking-wider shadow cursor-pointer" title="Toggle Day / Night Mode" aria-label="Toggle Day / Night Mode">
+                                <i id="theme-toggle-icon" data-lucide="sun" class="w-4 h-4 text-amber-400"></i>
+                                <span id="theme-toggle-label">DAY</span>
+                            </button>
                             <button id="siren-deterrent-btn" class="p-1 flex items-center justify-center transition-colors shrink-0 bg-red-950/30 border border-red-500/50 rounded shadow-md shadow-red-900/40" style="color:#ef4444;" title="Emergency Siren Deterrent" aria-label="Siren">
                                 <i data-lucide="megaphone" class="w-5 h-5 md:w-6 md:h-6" style="color:#ef4444;"></i>
                             </button>
@@ -9350,6 +9365,68 @@ try {
     </script>
     <script src="js/modules/scanner_module.js?v=8.77.0.0" defer></script>
     <script src="js/modules/sfu_audio.js?v=8.77.0.0" defer></script>
+
+    <!-- DAY / NIGHT (LIGHT / DARK) THEME ENGINE -->
+    <script>
+        window.updateThemeToggleUI = function(isLight) {
+            const btn = document.getElementById('theme-toggle-btn');
+            const icon = document.getElementById('theme-toggle-icon');
+            const label = document.getElementById('theme-toggle-label');
+            if (!btn) return;
+            if (isLight) {
+                btn.className = 'p-1 px-2.5 flex items-center justify-center gap-1.5 transition-all shrink-0 bg-slate-200 border border-slate-400 rounded-md text-slate-800 hover:bg-slate-300 font-black text-[9px] md:text-[10px] uppercase tracking-wider shadow cursor-pointer';
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'moon');
+                    icon.className = 'w-4 h-4 text-cyan-600';
+                }
+                if (label) label.innerText = 'NIGHT';
+            } else {
+                btn.className = 'p-1 px-2.5 flex items-center justify-center gap-1.5 transition-all shrink-0 bg-amber-950/40 border border-amber-500/60 rounded-md text-amber-300 hover:text-white font-black text-[9px] md:text-[10px] uppercase tracking-wider shadow cursor-pointer';
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'sun');
+                    icon.className = 'w-4 h-4 text-amber-400';
+                }
+                if (label) label.innerText = 'DAY';
+            }
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        window.toggleDayNightMode = function() {
+            const isLight = document.body.classList.toggle('light-mode');
+            document.documentElement.classList.toggle('light-mode', isLight);
+            try {
+                localStorage.setItem('trc_theme', isLight ? 'light' : 'dark');
+            } catch(e) {}
+            window.updateThemeToggleUI(isLight);
+            if (window.showToast) {
+                window.showToast(isLight ? '☀️ Daylight Range Mode Activated' : '🌙 Night Tactical Mode Activated');
+            } else if (window.pushTacLog) {
+                window.pushTacLog(isLight ? 'THEME: DAYLIGHT RANGE MODE' : 'THEME: NIGHT TACTICAL MODE', 'INFO');
+            }
+        };
+
+        // Initialize saved theme on DOM ready
+        (function() {
+            const applySavedTheme = () => {
+                try {
+                    const saved = localStorage.getItem('trc_theme');
+                    if (saved === 'light') {
+                        document.body.classList.add('light-mode');
+                        document.documentElement.classList.add('light-mode');
+                        window.updateThemeToggleUI(true);
+                    } else {
+                        window.updateThemeToggleUI(false);
+                    }
+                } catch(e) {}
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', applySavedTheme);
+            } else {
+                applySavedTheme();
+            }
+        })();
+    </script>
+
 </body>
 
 </html>

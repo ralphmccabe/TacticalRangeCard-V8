@@ -1,4 +1,23 @@
 ============================================================
+v8.77.3.0 - DAY / NIGHT RANGE MODE & HIGH-CONTRAST PEN CONTROLS
+* Tactical Day / Night Mode Toggle:
+  - One-click [DAY] / [NIGHT] toggle button in Tier 1 action icons with dynamic sun/moon indicators.
+  - Seamless instant theme persistence via localStorage ('trc_theme') with zero flash-of-dark-theme on reload.
+* Whiteboard Tool Readability & Pen Text Fixes:
+  - Solved invisible pen button text in light mode: inactive size buttons (FINE, MED, BOLD, MARK) render in high-contrast dark slate (#334155) on light slate (#f1f5f9).
+  - Active pen size button dynamically fills in vivid sky blue (#0284c7) with bold white text.
+  - Active ERASER button highlights in high-visibility bold red (#dc2626).
+  - UNDO and GRID buttons styled with high-contrast amber and slate tones.
+  - Whiteboard canvas preserved as a tactical blackboard (#0f172a) so all colored pen strokes pop with maximum contrast.
+* ReMarks Jotter & Tactical Calculator Daylight Styling:
+  - Fixed ReMarks notepad invisible text: notepad now displays rich dark slate text (#1e293b) on warm yellow legal-pad background (#fefce8) with dark amber title and bold save button.
+  - Calculator features an authentic digital LCD display (#0f172a with #4ade80 digits) and tactile buttons.
+* Complete Global Light Theme Coverage:
+  - Neutralized dark containers (aside, panels, modals, inputs, and tables) to crisp whites and slates with clean borders.
+  - Darkened accent colors (emerald, amber, orange, cyan, purple) for superior sunlight legibility on the firing line.
+  - Circular dashboard buttons adapted with clean pastel tints and deep saturated colors.
+
+============================================================
 v8.77.2.0 - DYNAMIC LICENSE & ID FORM ADAPTATION & CARD PERSISTENCE FIX
 * Dynamic Hunting / Fishing / Combo / ID Form Field Adaptation:
   - Switching between [HUNTING], [FISHING], [BOTH], and [ID] now dynamically morphs all input field labels, placeholders, header branding, and colors to match the assigned card type.

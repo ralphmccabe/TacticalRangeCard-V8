@@ -173,8 +173,16 @@ window.setLicenseType = function(type) {
             btn.style.boxShadow = 'none';
         }
         
-        btn.onmouseenter = () => { if (currentLicenseType !== t) btn.style.color = 'white'; };
-        btn.onmouseleave = () => { if (currentLicenseType !== t) btn.style.color = '#6b7280'; };
+        btn.onmouseenter = () => { 
+            if (currentLicenseType !== t) {
+                btn.style.color = document.body.classList.contains('light-mode') ? '#0f172a' : 'white';
+            }
+        };
+        btn.onmouseleave = () => { 
+            if (currentLicenseType !== t) {
+                btn.style.color = document.body.classList.contains('light-mode') ? '#64748b' : '#6b7280';
+            }
+        };
     });
 
     // 2. Modal Frame & Header Accent Tinting

@@ -594,3 +594,561 @@ body.is-capturing #card-scale-wrapper {
 .circle-btn-tools:hover { background-color: rgba(244, 63, 94, 0.3) !important; transform: scale(1.03) !important; }
 .circle-btn-tools i, .circle-btn-tools span { filter: drop-shadow(0 0 5px rgba(244,63,94,0.8)); }
 
+
+
+/* ============================================================
+   DAYLIGHT RANGE MODE (LIGHT THEME OVERRIDES)
+   ============================================================ */
+
+/* 1. Base Document & Layout */
+body.light-mode {
+    background-color: #f1f5f9 !important; /* Slate-100 */
+    color: #0f172a !important;            /* Slate-900 */
+}
+
+body.light-mode #mainLayout {
+    background-color: #f1f5f9 !important;
+}
+
+/* 2. Main Sidebar & Content */
+body.light-mode aside {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #main-sidebar-header {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #main-sidebar-content {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #header-version-display {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* 3. Dashboard Panels & Windows (1 through 6) */
+body.light-mode .dash-panel {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-mode .dash-panel-header {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* Physical Range Card Canvas Backdrop */
+body.light-mode #previewPanel {
+    background-color: #e2e8f0 !important;
+}
+
+/* 4. Global Dark Container Overrides */
+body.light-mode .bg-black,
+body.light-mode .bg-gray-900,
+body.light-mode .bg-gray-950,
+body.light-mode .bg-slate-900,
+body.light-mode .bg-slate-950,
+body.light-mode .bg-gray-800,
+body.light-mode .bg-slate-800,
+body.light-mode .bg-zinc-900,
+body.light-mode .bg-neutral-900 {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+
+/* Sub-containers & Card Surfaces */
+body.light-mode .bg-black\/60,
+body.light-mode .bg-black\/50,
+body.light-mode .bg-black\/40,
+body.light-mode .bg-black\/30,
+body.light-mode .bg-black\/20,
+body.light-mode .bg-gray-900\/50,
+body.light-mode .bg-gray-900\/80,
+body.light-mode .bg-slate-900\/80,
+body.light-mode .bg-slate-900\/90 {
+    background-color: #f8fafc !important;
+}
+
+/* Modal Backdrops - Keep Dimmed so Light Windows Pop in Center */
+body.light-mode #license-modal,
+body.light-mode #bolo-modal,
+body.light-mode #gametag-modal,
+body.light-mode #missionBriefingModal,
+body.light-mode #calendarModal,
+body.light-mode #libraryModal,
+body.light-mode #ammoLibraryModal,
+body.light-mode #tactical-hints-modal,
+body.light-mode #modal-new-post {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+/* 5. High-Contrast Border Neutralization */
+body.light-mode .border-gray-900,
+body.light-mode .border-gray-800,
+body.light-mode .border-gray-700,
+body.light-mode .border-gray-600,
+body.light-mode .border-slate-800,
+body.light-mode .border-slate-700,
+body.light-mode .border-slate-600 {
+    border-color: #cbd5e1 !important;
+}
+
+/* 6. Typography & Text Readability */
+body.light-mode .text-white,
+body.light-mode .text-gray-100,
+body.light-mode .text-gray-200,
+body.light-mode .text-slate-100,
+body.light-mode .text-slate-200 {
+    color: #0f172a !important;
+}
+
+body.light-mode .text-gray-300,
+body.light-mode .text-gray-400,
+body.light-mode .text-slate-300,
+body.light-mode .text-slate-400 {
+    color: #334155 !important; /* Slate-700 */
+}
+
+body.light-mode .text-gray-500,
+body.light-mode .text-gray-600,
+body.light-mode .text-slate-500 {
+    color: #64748b !important; /* Slate-500 */
+}
+
+/* 7. Forms, Inputs, Textareas & Selects */
+body.light-mode input:not([type="checkbox"]):not([type="radio"]),
+body.light-mode select,
+body.light-mode textarea,
+body.light-mode .input-field {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+}
+
+body.light-mode input::placeholder,
+body.light-mode textarea::placeholder {
+    color: #64748b !important;
+    opacity: 1 !important;
+}
+
+body.light-mode ::-webkit-calendar-picker-indicator {
+    filter: none !important; /* Default dark calendar icon in light mode */
+}
+
+/* 8. Data Tables (DOPE Range Cards) */
+body.light-mode th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-mode td {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-mode tr:nth-child(even) td {
+    background-color: #f8fafc !important;
+}
+
+/* 9. Tactical Icons & Buttons */
+body.light-mode .btn-icon {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+}
+
+body.light-mode .btn-icon:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* 10. Tactical Accent Readability (Darkened so they pop against white) */
+body.light-mode .text-neon-green {
+    color: #15803d !important; /* Forest Emerald */
+}
+
+body.light-mode .text-cyan-400 {
+    color: #0284c7 !important; /* Deep Cyan */
+}
+
+body.light-mode .text-amber-400,
+body.light-mode .text-amber-500 {
+    color: #b45309 !important; /* Amber Bronze */
+}
+
+body.light-mode .text-emerald-400,
+body.light-mode .text-emerald-500 {
+    color: #047857 !important;
+}
+
+body.light-mode .text-orange-400,
+body.light-mode .text-orange-500 {
+    color: #c2410c !important; /* Crimson Orange */
+}
+
+body.light-mode .text-purple-400,
+body.light-mode .text-purple-500 {
+    color: #7e22ce !important;
+}
+
+body.light-mode .text-blue-400,
+body.light-mode .text-blue-500 {
+    color: #1d4ed8 !important;
+}
+
+/* Circular Dashboard Buttons in Daylight Range Mode */
+body.light-mode .circle-btn-ammo {
+    background-color: #ecfdf5 !important;
+    border-color: #059669 !important;
+    color: #047857 !important;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15) !important;
+}
+
+body.light-mode .circle-btn-mapper {
+    background-color: #fdf4ff !important;
+    border-color: #c026d3 !important;
+    color: #a21caf !important;
+    box-shadow: 0 4px 12px rgba(192, 38, 211, 0.15) !important;
+}
+
+body.light-mode .circle-btn-hud {
+    background-color: #f7fee7 !important;
+    border-color: #65a30d !important;
+    color: #4d7c0f !important;
+    box-shadow: 0 4px 12px rgba(101, 163, 13, 0.15) !important;
+}
+
+body.light-mode .circle-btn-tools {
+    background-color: #fff1f2 !important;
+    border-color: #e11d48 !important;
+    color: #be123c !important;
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.15) !important;
+}
+
+body.light-mode .circle-btn-ammo i,
+body.light-mode .circle-btn-ammo span,
+body.light-mode .circle-btn-mapper i,
+body.light-mode .circle-btn-mapper span,
+body.light-mode .circle-btn-hud i,
+body.light-mode .circle-btn-hud span,
+body.light-mode .circle-btn-tools i,
+body.light-mode .circle-btn-tools span {
+    filter: none !important;
+}
+
+/* 11. Whiteboard Modal & High-Contrast Pen Tools */
+body.light-mode #whiteboard-modal {
+    background-color: #ffffff !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light-mode #wb-drag-header {
+    background-color: #f0f9ff !important;
+    border-bottom-color: #bae6fd !important;
+}
+
+body.light-mode #wb-drag-header span {
+    color: #0369a1 !important;
+}
+
+body.light-mode #wb-drag-header button {
+    color: #64748b !important;
+}
+
+body.light-mode #wb-drag-header button:hover {
+    color: #0f172a !important;
+}
+
+/* Whiteboard Text Inputs & Textareas */
+body.light-mode #wb-title,
+body.light-mode #wb-notes {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-mode #wb-title::placeholder,
+body.light-mode #wb-notes::placeholder {
+    color: #64748b !important;
+    opacity: 1 !important;
+}
+
+/* Whiteboard Color Swatches */
+body.light-mode #wb-color-palette button {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Inactive Whiteboard Size Buttons: Crisp Dark Text on Light Slate */
+body.light-mode #wb-size-btns button:not(.bg-cyan-950) {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #wb-size-btns button:not(.bg-cyan-950):hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* ACTIVE Whiteboard Size Button: Vivid Sky Blue with White Text */
+body.light-mode #wb-size-btns button.bg-cyan-950,
+body.light-mode #wb-size-btns button.border-cyan-500,
+body.light-mode #wb-size-btns button.text-cyan-300 {
+    background-color: #0284c7 !important;
+    color: #ffffff !important;
+    border-color: #0369a1 !important;
+    box-shadow: 0 0 8px rgba(2, 132, 199, 0.4) !important;
+    font-weight: 900 !important;
+}
+
+/* Whiteboard UNDO Button: High-Contrast Amber */
+body.light-mode #wb-undo-btn {
+    background-color: #fffbeb !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #wb-undo-btn:hover {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+/* Whiteboard GRID Button */
+body.light-mode #wb-grid-toggle {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #wb-grid-toggle:hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* Whiteboard ERASER Button */
+body.light-mode #wb-eraser-btn:not(.border-cyan-500) {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #wb-eraser-btn:not(.border-cyan-500):hover {
+    background-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* Active ERASER Button: Bold High-Visibility Red */
+body.light-mode #wb-eraser-btn.border-cyan-500,
+body.light-mode #wb-eraser-btn.text-cyan-300 {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+    border-color: #b91c1c !important;
+    font-weight: 900 !important;
+}
+
+/* Keep Whiteboard Canvas as a Tactical Blackboard so White/Yellow/Green/Blue Pens Pop */
+body.light-mode #wb-canvas {
+    background-color: #0f172a !important;
+}
+
+/* 12. Floating Modals (Calculator, ReMarks, Briefing, Hints) */
+/* Calculator */
+body.light-mode #calc-modal {
+    background-color: #ffffff !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15) !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #calc-display-float {
+    background-color: #0f172a !important;
+    color: #4ade80 !important;
+    border-color: #334155 !important;
+    text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+body.light-mode #calc-modal button {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #calc-modal button:hover {
+    background-color: #e2e8f0 !important;
+}
+
+body.light-mode #calc-modal button[onclick*="executeCalc"] {
+    background-color: #15803d !important;
+    color: #ffffff !important;
+    border-color: #166534 !important;
+}
+
+body.light-mode #calc-modal button[onclick*="clearCalc"] {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border-color: #fca5a5 !important;
+}
+
+body.light-mode #calc-modal button[onclick*="calcCos"] {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+
+/* ReMarks Jotter Modal (Warm Tactical Notepad Styling) */
+body.light-mode #remarks-modal {
+    background-color: #ffffff !important;
+    border-color: #eab308 !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15) !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #remarks-title-input {
+    background-color: #fefce8 !important;
+    color: #854d0e !important;
+    border-color: #fde047 !important;
+}
+
+body.light-mode #remarks-title-input::placeholder {
+    color: #ca8a04 !important;
+}
+
+body.light-mode #remarks-input {
+    background-color: #fefce8 !important;
+    color: #1e293b !important; /* Dark Slate High-Contrast Text */
+    border-color: #fde047 !important;
+}
+
+body.light-mode #remarks-input::placeholder {
+    color: #a1a1aa !important;
+}
+
+body.light-mode #remarks-save-btn {
+    background-color: #eab308 !important;
+    color: #000000 !important;
+    border-color: #ca8a04 !important;
+    font-weight: 900 !important;
+}
+
+/* Tactical Hints Reference Modal */
+body.light-mode #tactical-hints-panel {
+    background-color: #ffffff !important;
+    border-color: #059669 !important;
+    color: #0f172a !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-mode #tactical-hints-panel .bg-emerald-950 {
+    background-color: #ecfdf5 !important;
+    border-bottom-color: #a7f3d0 !important;
+}
+
+body.light-mode #tactical-hints-panel h3 {
+    color: #047857 !important;
+}
+
+body.light-mode #tactical-hints-panel .bg-gray-950 {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #tactical-hints-panel span.text-gray-400 {
+    color: #64748b !important;
+}
+
+body.light-mode #tactical-hints-panel strong.text-blue-400 {
+    color: #1d4ed8 !important;
+}
+
+body.light-mode #tactical-hints-panel h4.text-emerald-500 {
+    color: #059669 !important;
+    border-bottom-color: #cbd5e1 !important;
+}
+
+/* Intel Logbook Field Book Styling */
+body.light-mode #blogBookContainer {
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-mode #blogBookContainer .bg-slate-900 {
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-mode #blogBookContainer .bg-slate-950 {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-mode #blogBookLeftPage,
+body.light-mode #blogBookRightPage {
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-mode #blogBookTitle {
+    color: #0f172a !important;
+}
+
+body.light-mode #blogBookAuthorDate {
+    color: #64748b !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-mode #blogBookSnippet {
+    color: #334155 !important;
+}
+
+body.light-mode #blogBookPageBadge {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* 13. Intel Vault Grid (Window #4) */
+body.light-mode #vault-grid-container > div {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-mode #vault-grid-container > div:hover {
+    background-color: #f8fafc !important;
+    border-color: #94a3b8 !important;
+}
+
+/* 14. Custom Scrollbar for Light Mode */
+body.light-mode .custom-scrollbar::-webkit-scrollbar-track {
+    background: #e2e8f0 !important;
+}
+
+body.light-mode .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #94a3b8 !important;
+}
+
+body.light-mode .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b !important;
+}
+
+
