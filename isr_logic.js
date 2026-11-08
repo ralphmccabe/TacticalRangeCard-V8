@@ -203,6 +203,11 @@
             }
         });
 
+        if (isMirroredToMain) {
+            const topLabel = document.getElementById('feed-label-source');
+            if (topLabel) topLabel.textContent = `SQUAD ISR: ${feed.name}`;
+        }
+
         // Trigger immediate render
         renderCurrentActiveView();
     };
@@ -215,6 +220,23 @@
             m.style.setProperty('z-index', '100000070', 'important');
             m.classList.remove('hidden');
         }
+
+        const isSecure = window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const httpsWarn = document.getElementById('isr-broadcast-https-warn');
+        if (httpsWarn) {
+            if (!isSecure) {
+                httpsWarn.classList.remove('hidden');
+                const link = document.getElementById('isr-broadcast-https-link');
+                if (link) {
+                    const secureUrl = `https://${location.hostname}:8443/`;
+                    link.href = secureUrl;
+                    link.textContent = `SWITCH TO SECURE CAMERA PORT (8443): ${secureUrl}`;
+                }
+            } else {
+                httpsWarn.classList.add('hidden');
+            }
+        }
+
         if (window.lucide) window.lucide.createIcons();
     };
 
@@ -232,6 +254,12 @@
         const facingSelect = document.getElementById('isr-broadcast-facing-select');
         if (roleSelect) broadcastRoleId = roleSelect.value;
         if (facingSelect) broadcastFacingMode = facingSelect.value;
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            const secureUrl = `https://${location.hostname}:8443/`;
+            alert(`⚠️ MOBILE BROWSER SECURITY NOTICE:\n\nMobile Chrome & Safari require HTTPS to access camera hardware.\n\nPlease open:\n${secureUrl}\n\n(Tap "Advanced" -> "Proceed" when your phone asks to trust the local network connection).`);
+            return;
+        }
 
         window.closeBroadcastSetupModal();
 
@@ -354,10 +382,55 @@
     }
 
     // --- Viewer Frame Poller ---
+    let pollTick = 0;
     function startViewerPolling() {
         if (viewerPollInterval) clearInterval(viewerPollInterval);
 
         viewerPollInterval = setInterval(async () => {
+            pollTick++;
+
+            // Every ~1 second (8 ticks @ 120ms), poll active streams across all feeds
+            if (pollTick % 8 === 0) {
+                try {
+                    const actRes = await fetch('/api/isr_active');
+                    if (actRes.ok) {
+                        const actData = await actRes.json();
+                        const activeList = actData.activeStreams || [];
+
+                        // Update feed cards with LIVE indicator badges
+                        feeds.forEach(f => {
+                            const isLive = activeList.some(s => s.feedId === f.id);
+                            const card = document.querySelector(`.isr-feed-card[data-feed-id="${f.id}"]`);
+                            if (card) {
+                                let badge = card.querySelector('.isr-live-badge');
+                                if (isLive) {
+                                    if (!badge) {
+                                        badge = document.createElement('span');
+                                        badge.className = 'isr-live-badge bg-red-600 text-white font-black text-[8px] px-1.5 py-0.5 rounded-full animate-pulse uppercase tracking-wider ml-auto';
+                                        badge.textContent = '● LIVE';
+                                        const hdr = card.querySelector('div:first-child');
+                                        if (hdr) hdr.appendChild(badge);
+                                    }
+                                    card.classList.add('border-red-500', 'ring-2', 'ring-red-500/60');
+                                } else {
+                                    if (badge) badge.remove();
+                                    card.classList.remove('border-red-500', 'ring-2', 'ring-red-500/60');
+                                }
+                            }
+                        });
+
+                        // Auto-switch to active phone stream if user is on default simulation
+                        if (!isBroadcasting && activeList.length > 0) {
+                            const hasActive = activeList.some(s => s.feedId === currentActiveFeedId);
+                            if (!hasActive) {
+                                window.switchIsrFeed(activeList[0].feedId);
+                                showToast(`🔴 LIVE MOBILE STREAM DETECTED: AUTO-SWITCHED TO ${activeList[0].feedId.toUpperCase()}`);
+                            }
+                        }
+                    }
+                } catch (e) {}
+            }
+
             // Check if current active feed has a live stream
             try {
                 const res = await fetch(`/api/isr_frame?feedId=${currentActiveFeedId}`);
