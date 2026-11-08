@@ -2941,3 +2941,268 @@ body.light-mode #blog-guide-modal button[onclick*="closeBlogGuideModal"]:last-of
     font-weight: 900 !important;
     border: 1.5px solid #d97706 !important;
 }
+
+
+/* ============================================================
+   25. HOW TO USE GUIDES & TRANSMISSION MODE SELECTOR (DAYLIGHT)
+   ============================================================ */
+
+/* -------------------------------------------------------------
+   GLOBAL WIRE GUIDE MODAL (#blog-guide-modal)
+   ------------------------------------------------------------- */
+body.light-mode #blog-guide-modal {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+body.light-mode #blog-guide-modal > div {
+    background-color: #ffffff !important;
+    border: 2px solid #f59e0b !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Header */
+body.light-mode #blog-guide-modal > div > div:first-child {
+    border-bottom: 2px solid #e2e8f0 !important;
+}
+body.light-mode #blog-guide-modal h3 {
+    color: #b45309 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal p.text-slate-400 {
+    color: #64748b !important;
+    font-weight: 700 !important;
+}
+body.light-mode #blog-guide-modal button[aria-label="Close Guide"] {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1.5px solid #ef4444 !important;
+    font-weight: 900 !important;
+    border-radius: 6px !important;
+}
+body.light-mode #blog-guide-modal button[aria-label="Close Guide"] i {
+    color: #b91c1c !important;
+}
+
+/* The 4 Major Section Containers */
+body.light-mode #blog-guide-modal [class*="bg-slate-950"] {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+/* Section Headings */
+body.light-mode #blog-guide-modal [class*="bg-slate-950"] > div:first-child {
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+/* Section 1 Sub-cards: Sitrep & Standalone */
+body.light-mode #blog-guide-modal [class*="bg-emerald-950"] {
+    background-color: #ecfdf5 !important;
+    border: 1.5px solid #a7f3d0 !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-emerald-950"] div {
+    color: #065f46 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-emerald-950"] p {
+    color: #064e3b !important;
+    font-weight: 600 !important;
+}
+
+body.light-mode #blog-guide-modal [class*="bg-purple-950"] {
+    background-color: #faf5ff !important;
+    border: 1.5px solid #e9d5ff !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-purple-950"] div {
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-purple-950"] p {
+    color: #581c87 !important;
+    font-weight: 600 !important;
+}
+
+/* Section 2 Sub-card: Survey Jump */
+body.light-mode #blog-guide-modal [class*="bg-amber-950"] {
+    background-color: #fffbeb !important;
+    border: 1.5px solid #fde68a !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-amber-950"] span {
+    color: #92400e !important;
+    font-weight: 700 !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-amber-950"] b {
+    color: #78350f !important;
+    font-weight: 900 !important;
+}
+
+/* Section 3 Action Badges & Descriptions */
+body.light-mode #blog-guide-modal span.bg-amber-950 {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1.5px solid #f59e0b !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal span.bg-teal-950 {
+    background-color: #f0fdfa !important;
+    color: #0f766e !important;
+    border: 1.5px solid #14b8a6 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal span.bg-purple-900 {
+    background-color: #f3e8ff !important;
+    color: #7e22ce !important;
+    border: 1.5px solid #a855f7 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal span.bg-blue-950 {
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border: 1.5px solid #3b82f6 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal span.bg-purple-950 {
+    background-color: #faf5ff !important;
+    color: #6b21a8 !important;
+    border: 1.5px solid #a855f7 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-slate-950"] span.text-slate-300,
+body.light-mode #blog-guide-modal [class*="bg-slate-950"] p.text-slate-300 {
+    color: #1e293b !important;
+    font-weight: 600 !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-slate-950"] span.text-slate-300 b,
+body.light-mode #blog-guide-modal [class*="bg-slate-950"] p.text-slate-300 b {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+/* Section 4 UGC Safety Box */
+body.light-mode #blog-guide-modal [class*="border-red-500"] {
+    background-color: #fef2f2 !important;
+    border: 1.5px solid #fca5a5 !important;
+}
+body.light-mode #blog-guide-modal [class*="border-red-500"] > div:first-child {
+    color: #991b1b !important;
+    font-weight: 900 !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-red-950"] {
+    background-color: #ffffff !important;
+    border: 1.5px solid #f87171 !important;
+    color: #7f1d1d !important;
+}
+body.light-mode #blog-guide-modal [class*="bg-red-950"] span.bg-slate-800 {
+    background-color: #fee2e2 !important;
+    border-color: #ef4444 !important;
+}
+
+/* Dismiss Button */
+body.light-mode #blog-guide-modal button[onclick*="closeBlogGuideModal"]:last-of-type {
+    background-color: #f59e0b !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+    border: 2px solid #d97706 !important;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* -------------------------------------------------------------
+   INTEL VAULT GUIDE MODAL (#intel-vault-guide-modal)
+   ------------------------------------------------------------- */
+body.light-mode #intel-vault-guide-modal {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+body.light-mode #intel-vault-guide-modal > div {
+    background-color: #ffffff !important;
+    border: 2px solid #10b981 !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-mode #intel-vault-guide-modal h3 {
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #intel-vault-guide-modal button[aria-label="Close Guide"] {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1.5px solid #ef4444 !important;
+    font-weight: 900 !important;
+    border-radius: 6px !important;
+}
+body.light-mode #intel-vault-guide-modal button[aria-label="Close Guide"] i {
+    color: #b91c1c !important;
+}
+
+body.light-mode #intel-vault-guide-modal [class*="bg-black/60"],
+body.light-mode #intel-vault-guide-modal .bg-black/60 {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #intel-vault-guide-modal [class*="bg-black/60"] strong,
+body.light-mode #intel-vault-guide-modal .bg-black/60 strong {
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #intel-vault-guide-modal [class*="bg-black/60"] span,
+body.light-mode #intel-vault-guide-modal .bg-black/60 span {
+    color: #1e293b !important;
+    font-weight: 600 !important;
+}
+
+body.light-mode #intel-vault-guide-modal button[aria-label="Acknowledge Intel Vault Guide"] {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    border: 2px solid #047857 !important;
+    box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4) !important;
+}
+
+/* -------------------------------------------------------------
+   MODE SELECTOR RIBBON (INTEL SITREP vs STANDALONE TRC CARD)
+   ------------------------------------------------------------- */
+body.light-mode #mode-btn-sitrep.bg-emerald-500,
+body.light-mode #post-mode-selector button.bg-emerald-500 {
+    background-color: #059669 !important;
+    color: #ffffff !important;
+    border: 2px solid #047857 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35) !important;
+}
+body.light-mode #mode-btn-sitrep.bg-emerald-500 i,
+body.light-mode #post-mode-selector button.bg-emerald-500 i {
+    color: #ffffff !important;
+}
+
+body.light-mode #mode-btn-card.bg-purple-600,
+body.light-mode #post-mode-selector button.bg-purple-600 {
+    background-color: #7e22ce !important;
+    color: #ffffff !important;
+    border: 2px solid #6b21a8 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 8px rgba(126, 34, 206, 0.35) !important;
+}
+body.light-mode #mode-btn-card.bg-purple-600 i,
+body.light-mode #post-mode-selector button.bg-purple-600 i {
+    color: #ffffff !important;
+}
+
+body.light-mode #post-mode-selector button.bg-slate-950,
+body.light-mode #mode-btn-sitrep.bg-slate-950,
+body.light-mode #mode-btn-card.bg-slate-950 {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+body.light-mode #post-mode-selector button.bg-slate-950 i {
+    color: #64748b !important;
+}
