@@ -1898,7 +1898,7 @@ window.generateCaseFilePdf = async function() {
     const container = document.getElementById('casefile-printable-area');
     if (container) {
         container.innerHTML = html;
-        document.getElementById('modal-casefile-preview').style.display = 'flex';
+        const m = document.getElementById('modal-casefile-preview'); if (m) { m.style.display = 'flex'; m.scrollTop = 0; }
         if(window.lucide) window.lucide.createIcons();
     }
 

@@ -1892,3 +1892,506 @@ body.light-mode button[onclick*="executeFieldTranslation"] {
 
 
 
+
+
+/* ============================================================
+   22. OPERATORS WORKSTATION (WINDOW #6) & ACTIVE CARD FORMS (DAYLIGHT)
+   ============================================================ */
+
+/* Maximized Panels Backdrop (Overrides default dark navy in light mode) */
+body.light-mode .dash-panel.is-maximized {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Window #6 Panel and Scroll Container */
+body.light-mode #panel-workstation {
+    background-color: #ffffff !important;
+}
+
+body.light-mode #workstation-container {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #ws-top-action-area {
+    background-color: transparent !important;
+}
+
+/* Workstation Menu Buttons (Grid Cards) */
+body.light-mode #workstation-container button[onclick*="openWorkstationForm"],
+body.light-mode #workstation-container button[onclick*="openMasterOpForm"],
+body.light-mode #workstation-container button[onclick*="openSupplyDepotModal"] {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Accent Cards in Workstation Menu */
+body.light-mode button[onclick*="openWorkstationForm('officer')"] {
+    background-color: #ffffff !important;
+    border: 2px solid #0284c7 !important;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15) !important;
+}
+body.light-mode button[onclick*="openWorkstationForm('officer')"] i {
+    color: #0284c7 !important;
+}
+body.light-mode button[onclick*="openWorkstationForm('officer')"] .text-cyan-300,
+body.light-mode button[onclick*="openWorkstationForm('officer')"] .text-cyan-400\/80 {
+    color: #0369a1 !important;
+}
+
+body.light-mode button[onclick*="openMasterOpForm"] {
+    background-color: #ffffff !important;
+    border: 2px solid #f59e0b !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15) !important;
+}
+body.light-mode button[onclick*="openMasterOpForm"] i {
+    color: #d97706 !important;
+}
+body.light-mode button[onclick*="openMasterOpForm"] .text-amber-400,
+body.light-mode button[onclick*="openMasterOpForm"] .text-amber-500\/80 {
+    color: #92400e !important;
+}
+
+body.light-mode button[onclick*="openSupplyDepotModal"] {
+    background-color: #ffffff !important;
+    border: 2px solid #f59e0b !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15) !important;
+}
+body.light-mode button[onclick*="openSupplyDepotModal"] i {
+    color: #d97706 !important;
+}
+body.light-mode button[onclick*="openSupplyDepotModal"] .text-amber-300,
+body.light-mode button[onclick*="openSupplyDepotModal"] .text-amber-400\/80 {
+    color: #92400e !important;
+}
+
+body.light-mode button[onclick*="openWorkstationForm('scanner')"] {
+    background-color: #ffffff !important;
+    border: 2px solid #06b6d4 !important;
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.15) !important;
+}
+body.light-mode button[onclick*="openWorkstationForm('scanner')"] i {
+    color: #0891b2 !important;
+}
+body.light-mode button[onclick*="openWorkstationForm('scanner')"] .text-cyan-300,
+body.light-mode button[onclick*="openWorkstationForm('scanner')"] .text-cyan-400\/80 {
+    color: #0e7490 !important;
+}
+
+body.light-mode button[onclick*="openWorkstationForm('casefile')"] {
+    background-color: #ffffff !important;
+    border: 2px solid #64748b !important;
+    box-shadow: 0 2px 8px rgba(100, 116, 139, 0.15) !important;
+}
+body.light-mode button[onclick*="openWorkstationForm('casefile')"] i {
+    color: #334155 !important;
+}
+body.light-mode button[onclick*="openWorkstationForm('casefile')"] .text-white {
+    color: #0f172a !important;
+}
+body.light-mode button[onclick*="openWorkstationForm('casefile')"] .text-slate-400 {
+    color: #475569 !important;
+}
+
+/* Saved Workstation Library Cards at bottom */
+body.light-mode #ws-bottom-library-area .bg-slate-950\/90 {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+}
+body.light-mode #ws-bottom-library-area .text-slate-400 {
+    color: #64748b !important;
+}
+body.light-mode #ws-bottom-library-area button[onclick*="deleteWorkstationCard"] {
+    background-color: #fee2e2 !important;
+    border: 1px solid #fca5a5 !important;
+}
+body.light-mode #ws-bottom-library-area button[onclick*="deleteWorkstationCard"] i {
+    color: #b91c1c !important;
+}
+
+/* -------------------------------------------------------------
+   ACTIVE CARD CONTAINERS (WHEN ANY CARD IS OPENED INDIVIDUALLY)
+   ------------------------------------------------------------- */
+body.light-mode .ws-active-card-form,
+body.light-mode #casefile-form-wrapper,
+body.light-mode #officer-form-wrapper,
+body.light-mode #ws-top-action-area > div {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 0.75rem !important;
+    padding: 0.75rem !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+    color: #0f172a !important;
+}
+
+/* Active Card Sticky Top Header */
+body.light-mode .ws-active-card-form > div:first-child,
+body.light-mode #casefile-form-wrapper > div:first-child,
+body.light-mode #officer-form-wrapper > div:first-child,
+body.light-mode #ws-top-action-area > div > div:first-child,
+body.light-mode .ws-active-card-form .bg-slate-950\/95,
+body.light-mode #ws-top-action-area .bg-slate-950\/95 {
+    background-color: #ffffff !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+}
+
+body.light-mode .ws-active-card-form h2,
+body.light-mode #casefile-form-wrapper h2,
+body.light-mode #officer-form-wrapper h2,
+body.light-mode #ws-top-action-area h2,
+body.light-mode #ws-top-action-area span.text-xs.font-black {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode .ws-active-card-form button[onclick*="renderWorkstationMenu"],
+body.light-mode #casefile-form-wrapper button[onclick*="renderWorkstationMenu"],
+body.light-mode #officer-form-wrapper button[onclick*="renderWorkstationMenu"],
+body.light-mode #ws-top-action-area button[onclick*="renderWorkstationMenu"] {
+    color: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    background-color: #f0f9ff !important;
+    font-weight: 900 !important;
+}
+
+/* Active Card Sticky Bottom Action Bar */
+body.light-mode .ws-active-card-form > div:last-child,
+body.light-mode #casefile-form-wrapper > div:last-child,
+body.light-mode #ws-top-action-area .sticky.bottom-0 {
+    background-color: #ffffff !important;
+    border-top: 1.5px solid #e2e8f0 !important;
+}
+
+/* -------------------------------------------------------------
+   HEADLINERS & LABELS ACROSS ALL WORKSTATION CARDS
+   ------------------------------------------------------------- */
+body.light-mode #workstation-container label,
+body.light-mode .ws-active-card-form label,
+body.light-mode #casefile-form-wrapper label,
+body.light-mode #officer-form-wrapper label,
+body.light-mode #ws-top-action-area label {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+    letter-spacing: 0.04em !important;
+}
+
+/* Blue Headliners (Operator Name, Agency, ID, Qualifications, Case Number) -> Deep High-Contrast Navy */
+body.light-mode #workstation-container .text-blue-400,
+body.light-mode #workstation-container .text-blue-500,
+body.light-mode #workstation-container [class*="text-blue-"],
+body.light-mode .ws-active-card-form .text-blue-400,
+body.light-mode .ws-active-card-form .text-blue-500,
+body.light-mode #casefile-form-wrapper .text-blue-400,
+body.light-mode #ws-top-action-area [class*="text-blue-"] {
+    color: #1e40af !important;
+    font-weight: 900 !important;
+}
+
+/* Amber / Yellow Headliners (Billed To, Hits/Points, Operation Name) -> Deep Rich Amber */
+body.light-mode #workstation-container .text-amber-400,
+body.light-mode #workstation-container .text-amber-500,
+body.light-mode #workstation-container .text-yellow-500,
+body.light-mode #workstation-container [class*="text-amber-"],
+body.light-mode .ws-active-card-form .text-amber-400,
+body.light-mode .ws-active-card-form .text-yellow-500,
+body.light-mode #casefile-form-wrapper .text-amber-400,
+body.light-mode #ws-top-action-area [class*="text-amber-"] {
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+/* Emerald / Green Headliners (Paid By, Logistics, Medevac) -> Deep Forest Emerald */
+body.light-mode #workstation-container .text-emerald-400,
+body.light-mode #workstation-container .text-emerald-500,
+body.light-mode #workstation-container [class*="text-emerald-"],
+body.light-mode .ws-active-card-form .text-emerald-400,
+body.light-mode .ws-active-card-form .text-emerald-500,
+body.light-mode #casefile-form-wrapper .text-emerald-400,
+body.light-mode #ws-top-action-area [class*="text-emerald-"] {
+    color: #065f46 !important;
+    font-weight: 900 !important;
+}
+
+/* Purple Headliners (Services Performed, Brag Board, PMCS) -> Deep Purple */
+body.light-mode #workstation-container .text-purple-400,
+body.light-mode #workstation-container .text-purple-500,
+body.light-mode #workstation-container [class*="text-purple-"],
+body.light-mode .ws-active-card-form .text-purple-400,
+body.light-mode .ws-active-card-form .text-purple-500,
+body.light-mode #casefile-form-wrapper .text-purple-400,
+body.light-mode #ws-top-action-area [class*="text-purple-"] {
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+
+/* Cyan Headliners (Intel Vault Exhibits, Officer SITREP, Checklists) -> Deep Ocean Cyan */
+body.light-mode #workstation-container .text-cyan-400,
+body.light-mode #workstation-container .text-cyan-500,
+body.light-mode #workstation-container [class*="text-cyan-"],
+body.light-mode .ws-active-card-form .text-cyan-400,
+body.light-mode #casefile-form-wrapper .text-cyan-400,
+body.light-mode #ws-top-action-area [class*="text-cyan-"] {
+    color: #0369a1 !important;
+    font-weight: 900 !important;
+}
+
+/* Red Headliners (Penalties, Limits of Fire, Hazards) -> Deep Crimson */
+body.light-mode #workstation-container .text-red-400,
+body.light-mode #workstation-container .text-red-500,
+body.light-mode #workstation-container [class*="text-red-"],
+body.light-mode .ws-active-card-form .text-red-400,
+body.light-mode .ws-active-card-form .text-red-500,
+body.light-mode #ws-top-action-area [class*="text-red-"] {
+    color: #991b1b !important;
+    font-weight: 900 !important;
+}
+
+/* Gray / Slate Headliners (Location, Ammo, Squad Name, Notes, Match/Stage Name, Total Time) -> Deep Dark Slate */
+body.light-mode #workstation-container .text-gray-400,
+body.light-mode #workstation-container .text-slate-400,
+body.light-mode #workstation-container .text-gray-300,
+body.light-mode .ws-active-card-form .text-gray-400,
+body.light-mode .ws-active-card-form .text-slate-400,
+body.light-mode #casefile-form-wrapper .text-gray-400,
+body.light-mode #casefile-form-wrapper .text-slate-400,
+body.light-mode #ws-top-action-area .text-gray-400,
+body.light-mode #ws-top-action-area .text-slate-400 {
+    color: #1e293b !important;
+    font-weight: 800 !important;
+}
+
+/* -------------------------------------------------------------
+   INPUTS, TEXTAREAS, SELECTS ACROSS WINDOW #6
+   ------------------------------------------------------------- */
+body.light-mode #workstation-container input:not([type="checkbox"]):not([type="radio"]),
+body.light-mode #workstation-container textarea,
+body.light-mode #workstation-container select,
+body.light-mode .ws-active-card-form input:not([type="checkbox"]):not([type="radio"]),
+body.light-mode .ws-active-card-form textarea,
+body.light-mode .ws-active-card-form select,
+body.light-mode #casefile-form-wrapper input:not([type="checkbox"]):not([type="radio"]),
+body.light-mode #casefile-form-wrapper textarea,
+body.light-mode #casefile-form-wrapper select,
+body.light-mode #ws-top-action-area input:not([type="checkbox"]):not([type="radio"]),
+body.light-mode #ws-top-action-area textarea,
+body.light-mode #ws-top-action-area select {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #94a3b8 !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+}
+
+body.light-mode #workstation-container input:focus,
+body.light-mode #workstation-container textarea:focus,
+body.light-mode #workstation-container select:focus,
+body.light-mode .ws-active-card-form input:focus,
+body.light-mode .ws-active-card-form textarea:focus,
+body.light-mode .ws-active-card-form select:focus,
+body.light-mode #casefile-form-wrapper input:focus,
+body.light-mode #casefile-form-wrapper textarea:focus,
+body.light-mode #casefile-form-wrapper select:focus,
+body.light-mode #ws-top-action-area input:focus,
+body.light-mode #ws-top-action-area textarea:focus,
+body.light-mode #ws-top-action-area select:focus {
+    border-color: #2563eb !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+}
+
+body.light-mode #workstation-container input::placeholder,
+body.light-mode #workstation-container textarea::placeholder,
+body.light-mode .ws-active-card-form input::placeholder,
+body.light-mode .ws-active-card-form textarea::placeholder,
+body.light-mode #casefile-form-wrapper input::placeholder,
+body.light-mode #casefile-form-wrapper textarea::placeholder,
+body.light-mode #ws-top-action-area input::placeholder,
+body.light-mode #ws-top-action-area textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* Master Op-Plan Collapsible Sections & Cards */
+body.light-mode #ws-top-action-area .bg-slate-900,
+body.light-mode #ws-top-action-area .bg-slate-950 {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-mode #ws-top-action-area button[onclick*="toggleSection"] {
+    background-color: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+}
+body.light-mode #ws-top-action-area button[onclick*="toggleSection"] span {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+/* Brag Board 4-Slot Cards */
+body.light-mode .ws-active-card-form .bg-slate-900.border-slate-700 {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+body.light-mode .ws-active-card-form [id^="brag-slot-"][id$="-preview"] {
+    background-color: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+
+/* Case File Exhibits & Evidence List */
+body.light-mode #ws-casefile-exhibits-list {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+body.light-mode #ws-casefile-exhibits-list .ws-exhibit-card {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* Payment Status Box in Case File */
+body.light-mode #casefile-form-wrapper .bg-slate-950\/60 {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+}
+
+/* -------------------------------------------------------------
+   BOTTOM ACTION BAR BUTTONS IN WORKSTATION CARDS
+   ------------------------------------------------------------- */
+/* CLEAR FORM button */
+body.light-mode .ws-active-card-form button[onclick*="clearWorkstationForm"],
+body.light-mode #casefile-form-wrapper button[onclick*="clearWorkstationForm"],
+body.light-mode #ws-top-action-area button[onclick*="CLEAR"],
+body.light-mode #ws-top-action-area button[onclick*="clearOfficerForm"] {
+    background-color: #fee2e2 !important;
+    border: 1.5px solid #ef4444 !important;
+    color: #b91c1c !important;
+    font-weight: 900 !important;
+}
+body.light-mode .ws-active-card-form button[onclick*="clearWorkstationForm"] i,
+body.light-mode #casefile-form-wrapper button[onclick*="clearWorkstationForm"] i,
+body.light-mode #ws-top-action-area button[onclick*="CLEAR"] i {
+    color: #b91c1c !important;
+}
+
+/* SAVE CARD / SAVE TO WORKSTATION button */
+body.light-mode .ws-active-card-form button[onclick*="saveWorkstationCard"],
+body.light-mode #casefile-form-wrapper button[onclick*="saveWorkstationCard"],
+body.light-mode #ws-top-action-area button[onclick*="saveMasterOpToVault"],
+body.light-mode #ws-top-action-area button[onclick*="saveOfficerCard"] {
+    background-color: #2563eb !important;
+    border: 1.5px solid #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+}
+body.light-mode .ws-active-card-form button[onclick*="saveWorkstationCard"] i,
+body.light-mode #casefile-form-wrapper button[onclick*="saveWorkstationCard"] i,
+body.light-mode #ws-top-action-area button[onclick*="saveMasterOpToVault"] i,
+body.light-mode #ws-top-action-area button[onclick*="saveOfficerCard"] i {
+    color: #ffffff !important;
+}
+
+/* TRANSMIT button */
+body.light-mode .ws-active-card-form button[onclick*="transmitCurrentCaseFileToComms"],
+body.light-mode #casefile-form-wrapper button[onclick*="transmitCurrentCaseFileToComms"],
+body.light-mode #ws-top-action-area button[onclick*="transmitOfficerSitrepToComms"] {
+    background-color: #f3e8ff !important;
+    border: 1.5px solid #a855f7 !important;
+    color: #7e22ce !important;
+    font-weight: 900 !important;
+}
+body.light-mode .ws-active-card-form button[onclick*="transmitCurrentCaseFileToComms"] i,
+body.light-mode #casefile-form-wrapper button[onclick*="transmitCurrentCaseFileToComms"] i,
+body.light-mode #ws-top-action-area button[onclick*="transmitOfficerSitrepToComms"] i {
+    color: #7e22ce !important;
+}
+
+/* PDF PREVIEW button */
+body.light-mode .ws-active-card-form button[onclick*="generateCaseFilePdf"],
+body.light-mode #casefile-form-wrapper button[onclick*="generateCaseFilePdf"],
+body.light-mode #ws-top-action-area button[onclick*="print"] {
+    background-color: #f1f5f9 !important;
+    border: 1.5px solid #64748b !important;
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+body.light-mode .ws-active-card-form button[onclick*="generateCaseFilePdf"] i,
+body.light-mode #casefile-form-wrapper button[onclick*="generateCaseFilePdf"] i {
+    color: #0f172a !important;
+}
+
+/* BROWSE (Attach Photo) */
+body.light-mode .ws-active-card-form label.cursor-pointer[for="ws-image-upload"],
+body.light-mode .ws-active-card-form label.cursor-pointer:has(#ws-image-upload),
+body.light-mode #casefile-form-wrapper label.cursor-pointer:has(#ws-image-upload),
+body.light-mode #ws-top-action-area label.cursor-pointer:has(#ws-image-upload) {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #94a3b8 !important;
+    color: #0f172a !important;
+    font-weight: 800 !important;
+}
+body.light-mode .ws-active-card-form label.cursor-pointer:has(#ws-image-upload) i,
+body.light-mode #casefile-form-wrapper label.cursor-pointer:has(#ws-image-upload) i,
+body.light-mode #ws-top-action-area label.cursor-pointer:has(#ws-image-upload) i {
+    color: #0f172a !important;
+}
+
+/* -------------------------------------------------------------
+   23. EXECUTIVE CASE FILE PDF PREVIEW MODAL (RETURN TO APP FIX)
+   ------------------------------------------------------------- */
+body.light-mode #modal-casefile-preview {
+    background-color: #ffffff !important;
+}
+
+body.light-mode #casefile-preview-header {
+    background-color: #f8fafc !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+body.light-mode #casefile-preview-title {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #casefile-return-btn {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 2px solid #ef4444 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2) !important;
+}
+body.light-mode #casefile-return-btn i,
+body.light-mode #casefile-return-btn span {
+    color: #b91c1c !important;
+}
+body.light-mode #casefile-return-btn:hover {
+    background-color: #fecaca !important;
+}
+
+body.light-mode #casefile-form-btn {
+    background-color: #f0f9ff !important;
+    color: #0284c7 !important;
+    border: 1.5px solid #38bdf8 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #casefile-form-btn i,
+body.light-mode #casefile-form-btn span {
+    color: #0284c7 !important;
+}
+
+body.light-mode #casefile-print-btn {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border: 2px solid #1d4ed8 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+}
+body.light-mode #casefile-print-btn i,
+body.light-mode #casefile-print-btn span {
+    color: #ffffff !important;
+}

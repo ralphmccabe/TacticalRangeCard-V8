@@ -137,7 +137,7 @@ try {
 
     <!-- CUSTOM CSS -->
 
-    <link rel="stylesheet" href="style.css?v=8.77.3.2">
+    <link rel="stylesheet" href="style.css?v=8.77.3.3">
 
 
 
@@ -6939,7 +6939,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.3.0';
+        window.APP_VERSION = 'v8.77.3.3';
 
         if(document.getElementById('header-version-display')) {
 
@@ -9275,17 +9275,27 @@ try {
     <!-- EXECUTIVE CASE FILE MODAL -->
     <div id="modal-casefile-preview" class="font-sans" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: #ffffff; z-index: 99999999; display: none; flex-direction: column; overflow-y: auto;">
         <!-- Top Action Bar (Hide on Print) -->
-        <div class="print:hidden p-3" style="background-color: #0f172a; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; gap: 8px; flex-wrap: wrap;">
-            <button onclick="document.getElementById('modal-casefile-preview').style.display = 'none'" class="bg-slate-700 text-white px-4 py-2 rounded text-xs font-bold hover:bg-slate-600 transition-colors flex items-center gap-2">
-                <i data-lucide="x" class="w-4 h-4"></i> CLOSE
+        <div id="casefile-preview-header" class="print:hidden p-2.5 sm:p-3 bg-slate-900 border-b border-slate-700 flex items-center justify-between sticky top-0 z-50 gap-2 shrink-0">
+            <!-- Left: Prominent Return to App Button -->
+            <button id="casefile-return-btn" type="button" onclick="document.getElementById('modal-casefile-preview').style.display = 'none'" class="bg-red-900/90 text-white border border-red-500 hover:bg-red-800 px-3 sm:px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow shrink-0">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <span>RETURN TO APP</span>
             </button>
-            <div class="text-white font-bold tracking-widest text-sm uppercase">EXECUTIVE CASE FILE PREVIEW</div>
-            <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="document.getElementById('modal-casefile-preview').style.display = 'none'; if(window.openWorkstationForm && window.currentCaseFileData) window.openWorkstationForm('casefile', { data: window.currentCaseFileData });" class="bg-cyan-700 text-white px-4 py-2 rounded text-xs font-black hover:bg-cyan-600 transition-colors flex items-center gap-2">
-                    <i data-lucide="edit-3" class="w-4 h-4"></i> BACK TO FORM
+            
+            <!-- Center Title (Hidden on mobile screens to prevent wrapping) -->
+            <div id="casefile-preview-title" class="text-white font-black tracking-widest text-xs sm:text-sm uppercase hidden md:block truncate max-w-[260px]">
+                EXECUTIVE CASE FILE
+            </div>
+            
+            <!-- Right Actions -->
+            <div class="flex items-center gap-2 shrink-0">
+                <button id="casefile-form-btn" type="button" onclick="document.getElementById('modal-casefile-preview').style.display = 'none'; if(window.openWorkstationForm && window.currentCaseFileData) window.openWorkstationForm('casefile', { data: window.currentCaseFileData });" class="bg-cyan-900/80 text-cyan-200 border border-cyan-500/60 hover:bg-cyan-800 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                    <span class="hidden sm:inline">EDIT</span> FORM
                 </button>
-                <button onclick="if(window.printCaseFileDoc) window.printCaseFileDoc(); else window.print();" class="bg-blue-600 text-white px-6 py-2 rounded text-xs font-black hover:bg-blue-500 transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(37,99,235,0.5)]">
-                    <i data-lucide="printer" class="w-4 h-4"></i> PRINT / SAVE PDF
+                <button id="casefile-print-btn" type="button" onclick="if(window.printCaseFileDoc) window.printCaseFileDoc(); else window.print();" class="bg-blue-600 text-white hover:bg-blue-500 px-3.5 sm:px-5 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(37,99,235,0.4)] cursor-pointer">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>PRINT / PDF</span>
                 </button>
             </div>
         </div>
