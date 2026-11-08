@@ -5472,6 +5472,9 @@ try {
                     <button id="isr-canvas-floating-exit-btn" onclick="window.stopIsrMainViewport()" style="z-index: 50 !important; display: none; background: rgba(220, 38, 38, 0.95); border: 2px solid #ef4444; box-shadow: 0 0 20px rgba(239,68,68,0.8);" class="absolute top-2 right-12 text-white font-black text-[10px] px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-xl transition-all hover:bg-red-500" title="Exit Live ISR Feed">
                         <i data-lucide="x" class="w-3.5 h-3.5"></i> <span>EXIT FEED</span>
                     </button>
+                    <button id="video-stream-floating-exit-btn" onclick="window.closeSurveillanceReview()" style="z-index: 60 !important; display: none; background: #dc2626 !important; border: 2px solid #f87171 !important; box-shadow: 0 0 25px rgba(220,38,38,0.9) !important; color: white !important;" class="absolute top-2 right-12 text-white font-black text-[10px] sm:text-[11px] px-3.5 py-1.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-2xl transition-all hover:bg-red-500 active:scale-95" title="Close Video and return to Live Dashboard">
+                        <i data-lucide="x-circle" class="w-4 h-4 text-white"></i> <span>CLOSE VIDEO</span>
+                    </button>
 
                     
 
@@ -7201,7 +7204,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.4.8';
+        window.APP_VERSION = 'v8.77.4.9';
 
         if(document.getElementById('header-version-display')) {
 

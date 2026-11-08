@@ -1,4 +1,20 @@
 ============================================================
+v8.77.4.9 - INTEL VAULT VIDEO VIEWER NAVIGATION & CLOSE VIDEO CONTROLS
+* Seamless Vault-to-Camera Video Playback:
+  - Tapping or clicking any video card in the Intel Vault now minimizes the vault and scrolls directly to the Main Camera Viewer (#panel-mainview) on both desktop and mobile.
+  - Video automatically begins playback with full scrubbing and audio controls.
+* Unmissable "CLOSE VIDEO" Controls (Mobile & PC):
+  - Added high-visibility floating [✕ CLOSE VIDEO] button at top-right of camera viewport (#video-stream-floating-exit-btn) with z-index 100 and luminous red alert styling.
+  - Header kill button dynamically formats to [✕ CLOSE VIDEO] with red highlight.
+  - Pressing Esc on PC instantly exits video playback and returns the camera viewport to normal standby mode.
+  - window.closeSurveillanceReview() safely wipes video source, frees memory, and restores standard controls.
+* Clean Action Button Separation on Vault Cards:
+  - Fixed overlapping button bug caused by uncompiled Tailwind class.
+  - Action buttons on video cards now use explicit inline flexbox layout with distinct labels:
+    - [▶ VIEW] (Purple): Opens video directly in primary camera viewer.
+    - [⬇ EXPORT] (Blue): Exports .webm video to device Downloads folder.
+
+============================================================
 v8.77.4.8 - IN-APP INTEL VAULT VIDEO RECORDING & DISPLAY WAKELOCK CONTROLS
 * In-App Video Clip Recording (No Auto-Download):
   - In Window 7 (Tactical ISR), clicking REC records live video clips directly into Intel Vault (Window 4) via IndexedDB.

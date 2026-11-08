@@ -6529,12 +6529,14 @@ function initializeTacticalDashboard2() {
                         `;
                     } else if (item.type === 'video' || (item.label && item.label.startsWith('VIDEO_'))) {
                         return `
-                        <button class="load-video-btn absolute bottom-7 left-1.5 bg-purple-600 text-white p-1.5 rounded border border-purple-400 shadow-lg hover:bg-purple-500 transition-all z-30 flex items-center gap-1" title="Play Video in Top Screen">
-                            <i data-lucide="play" class="w-3 h-3 fill-white"></i>
-                        </button>
-                        <button class="export-single-video-btn absolute bottom-7 left-8 bg-blue-600 text-white p-1.5 rounded border border-blue-400 shadow-lg hover:bg-blue-500 transition-all z-30 flex items-center gap-1" title="Export Video to Downloads">
-                            <i data-lucide="download" class="w-3 h-3"></i>
-                        </button>
+                        <div class="video-card-actions" style="position: absolute; bottom: 28px; left: 4px; right: 4px; display: flex; justify-content: space-between; align-items: center; z-index: 30; pointer-events: auto;">
+                            <button type="button" class="load-video-btn" style="background: #9333ea !important; color: #ffffff !important; border: 1px solid #c084fc !important; box-shadow: 0 0 12px rgba(168,85,247,0.7) !important; padding: 3px 7px !important; border-radius: 4px !important; font-size: 8.5px !important; font-weight: 900 !important; letter-spacing: 0.05em !important; display: flex !important; align-items: center !important; gap: 4px !important; cursor: pointer !important;" title="View Video in Camera Viewer">
+                                <i data-lucide="play" class="w-3 h-3 fill-white"></i> <span>VIEW</span>
+                            </button>
+                            <button type="button" class="export-single-video-btn" style="background: #2563eb !important; color: #ffffff !important; border: 1px solid #60a5fa !important; box-shadow: 0 0 12px rgba(37,99,235,0.7) !important; padding: 3px 7px !important; border-radius: 4px !important; font-size: 8.5px !important; font-weight: 900 !important; letter-spacing: 0.05em !important; display: flex !important; align-items: center !important; gap: 4px !important; cursor: pointer !important;" title="Export Video to Downloads Folder">
+                                <i data-lucide="download" class="w-3 h-3"></i> <span>EXPORT</span>
+                            </button>
+                        </div>
                         `;
                     } else if (!item.remarksText) {
                         return `
@@ -6577,7 +6579,12 @@ function initializeTacticalDashboard2() {
                    e.target.closest('.rework-casefile-btn') ||
                    e.target.closest('.rework-officer-btn')) return;
                 e.stopPropagation();
-                selectVaultItem(item);
+                if (isVideo) {
+                    // Clicking video card goes straight to Camera Viewer & starts playback
+                    window.loadVideoBackToPlayer(item);
+                } else {
+                    selectVaultItem(item);
+                }
             });
 
             const reworkReconBtn = el.querySelector('.rework-recon-btn');
@@ -12490,12 +12497,19 @@ function initializeTacticalDashboard2() {
         window.loadVideoBackToPlayer = function(item) {
             if (!item || (!item.image && !item.video)) return;
 
-            const panel = document.getElementById('panel-vault');
-            if (panel && panel.classList.contains('is-maximized')) {
+            // 1. Close/minimize Vault so the user is returned to the dashboard
+            const vaultPanel = document.getElementById('panel-vault');
+            if (vaultPanel && vaultPanel.classList.contains('is-maximized')) {
                 window.toggleFullscreen('panel-vault');
             }
 
-            // Stop any active ISR main viewport mirror so video player is active
+            // 2. Scroll smoothly to the main camera viewer (essential for mobile & desktop)
+            const mainView = document.getElementById('panel-mainview');
+            if (mainView) {
+                mainView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // 3. Stop any active ISR main viewport mirror so video player takes focus
             if (typeof window.stopIsrMainViewport === 'function') {
                 window.stopIsrMainViewport();
             }
@@ -12530,39 +12544,88 @@ function initializeTacticalDashboard2() {
             }
 
             videoEl.srcObject = null;
-            
             videoEl.autoplay = false;
             videoEl.removeAttribute('autoplay');
-            
             videoEl.src = playUrl;
             videoEl.load();
             videoEl.controls = true;
             videoEl.muted = false;
-            
-            videoEl.pause();
 
             videoEl.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            hud.classList.add('hidden');
+            if (placeholder) placeholder.classList.add('hidden');
+            if (hud) hud.classList.add('hidden');
             videoEl.play().catch(() => {});
-            
+
             if(survFooter) survFooter.classList.remove('hidden');
-            
             if(captureBtn) captureBtn.classList.add('hidden');
             if(recStartBtn) recStartBtn.classList.add('hidden');
             if(recStopBtn) recStopBtn.classList.add('hidden');
-            
+
             const flipBtn = document.getElementById('feed-switch-cam-btn');
             if(flipBtn) flipBtn.classList.add('hidden');
-            
             const hudToggleBtn = document.getElementById('feed-hud-toggle-btn');
             if(hudToggleBtn) hudToggleBtn.classList.add('hidden');
 
-            if(killBtn) {
-                killBtn.classList.remove('hidden');
+            // 4. Activate prominent exit buttons on both PC & mobile
+            const floatExitBtn = document.getElementById('video-stream-floating-exit-btn');
+            if (floatExitBtn) {
+                floatExitBtn.style.display = 'flex';
+                floatExitBtn.style.zIndex = '100';
             }
-            if(label) label.textContent = `PLAYING INTEL: ${item.label}`;
+
+            if (killBtn) {
+                killBtn.classList.remove('hidden');
+                killBtn.style.display = 'flex';
+                killBtn.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-white"></i> <span>CLOSE VIDEO</span>';
+                killBtn.onclick = window.closeSurveillanceReview;
+            }
+
+            if (window.lucide) window.lucide.createIcons();
+            if (label) label.textContent = `PLAYING INTEL: ${item.label || 'RECORDING'}`;
+            if (window.showToast) window.showToast("▶ PLAYING INTEL VIDEO IN CAMERA VIEWER");
         };
+
+        // Comprehensive Video / Surveillance Close Handler
+        window.closeSurveillanceReview = function() {
+            if (typeof stopFeed === 'function') stopFeed();
+
+            const videoEl = document.getElementById('surveillance-stream');
+            if (videoEl) {
+                videoEl.pause();
+                videoEl.removeAttribute('src');
+                videoEl.srcObject = null;
+                videoEl.src = "";
+                videoEl.controls = false;
+                videoEl.classList.add('hidden');
+            }
+
+            const placeholder = document.getElementById('surveillance-placeholder');
+            if (placeholder) placeholder.classList.remove('hidden');
+
+            const floatExitBtn = document.getElementById('video-stream-floating-exit-btn');
+            if (floatExitBtn) floatExitBtn.style.display = 'none';
+
+            const killBtn = document.getElementById('feed-kill-btn');
+            if (killBtn) {
+                killBtn.classList.add('hidden');
+                killBtn.style.display = 'none';
+            }
+
+            const label = document.getElementById('feed-label-source');
+            if (label) label.textContent = "OFFLINE";
+
+            if (window.showToast) window.showToast("⏹️ VIDEO CLOSED - VIEWER RETURNED TO STANDBY");
+        };
+
+        // Keyboard Shortcut: ESC key to close video playback
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const videoEl = document.getElementById('surveillance-stream');
+                if (videoEl && !videoEl.classList.contains('hidden')) {
+                    window.closeSurveillanceReview();
+                }
+            }
+        });
 
         let isSavingBriefing = false;
         if (saveInvBtn) {
