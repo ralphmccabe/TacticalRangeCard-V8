@@ -279,3 +279,13 @@ v8.77.1.0 - SOLAR VECTOR ENGINE POLISH & RESILIENT GPS MULTI-TIER FALLBACK
   - Added serve_mobile.js and START_MOBILE_SERVER.bat providing simultaneous HTTP (:8080) and HTTPS (:8443) testing.
   - HTTPS mode enables full mobile browser Secure Context for native hardware GPS, compass, and camera access on physical phones.
 * Service Worker and cache tags bumped to v8.77.1.0 for instant cache refresh.
+
+============================================================
+v8.77.4.5 - TACTICAL ISR MULTI-FEED & REAL PHONE BODYCAM RELAY
+* Window 7: Tactical ISR & Multi-Feed Matrix with Real Mobile Broadcaster:
+  - Real mobile phone bodycam live broadcasting to desktop PC viewer over local network.
+  - High-contrast glowing cyan [BROADCAST FROM PHONE] action button in Window 7 header and primary viewport.
+  - HTTPS relay on port 8443 providing browser Secure Context for phone camera, compass, and GPS hardware.
+  - Auto-detection of active live streams on PC dashboard with instant auto-switching to live bodycam.
+  - Top Screen mirror pop to primary surveillance viewport.
+* Service Worker cache upgraded to v8.77.4.5 with live ISR API stream bypass.

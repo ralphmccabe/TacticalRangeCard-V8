@@ -2,13 +2,13 @@
 const CACHE_NAME = 'trc-v8.77.4.5';
 const ASSETS = [
     './',
-    './index.html?v=8.77.4.3',
-    './style.css?v=8.77.4.3',
+    './index.html?v=8.77.4.5',
+    './style.css?v=8.77.4.5',
     './trc_core.js?v=8.77.1.0',
     './js/modules/sfu_audio.js?v=8.30',
     './field_intel_logic.js?v=8.30',
     './blog_logic.js?v=8.77.3.4',
-    './isr_logic.js?v=8.77.4.3',
+    './isr_logic.js?v=8.77.4.5',
     './manifest.json',
     './icon-512.png',
     './icon-192.png',
