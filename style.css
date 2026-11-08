@@ -2395,3 +2395,549 @@ body.light-mode #casefile-print-btn i,
 body.light-mode #casefile-print-btn span {
     color: #ffffff !important;
 }
+
+
+/* ============================================================
+   24. GLOBAL WIRE BLOG WINDOW & TRANSMISSION CARDS (DAYLIGHT)
+   ============================================================ */
+
+/* Global Wire Modal Window Backdrop */
+body.light-mode #panel-global-wire {
+    background-color: #f1f5f9 !important;
+}
+
+body.light-mode #wire-bg-container {
+    opacity: 0.25 !important;
+}
+
+/* Global Wire Top Header Ribbon */
+body.light-mode #panel-global-wire > div > div:first-child,
+body.light-mode #panel-global-wire .bg-black:first-of-type {
+    background-color: #ffffff !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #panel-global-wire h2 {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #panel-global-wire #openCommLinkBtn {
+    background-color: #9333ea !important;
+    color: #ffffff !important;
+    border: 1.5px solid #7e22ce !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #panel-global-wire #wireGuideBtn {
+    background-color: #f59e0b !important;
+    color: #000000 !important;
+    border: 1.5px solid #d97706 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #panel-global-wire #btn-master-admin-portal {
+    background-color: #f8fafc !important;
+    color: #b45309 !important;
+    border: 1.5px solid #d97706 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #panel-global-wire #openNewPostBtn {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    border: 1.5px solid #1d4ed8 !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
+}
+
+body.light-mode #panel-global-wire label[for="wire-bg-upload"] {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #panel-global-wire #closeGlobalWireBtn {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1.5px solid #ef4444 !important;
+    font-weight: 900 !important;
+}
+body.light-mode #panel-global-wire #closeGlobalWireBtn i {
+    color: #b91c1c !important;
+}
+
+/* -------------------------------------------------------------
+   EVERY TRANSMISSION CARD IN GLOBAL WIRE FEED
+   ------------------------------------------------------------- */
+body.light-mode #wire-feed-container > div,
+body.light-mode #wire-feed-container div[id^="wire-post-"] {
+    background-color: #ffffff !important;
+    border: 2px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+    overflow: hidden !important;
+}
+
+/* Card Header Bar */
+body.light-mode #wire-feed-container div[id^="wire-post-"] > div:first-child {
+    background-color: #f8fafc !important;
+    border-bottom: 1.5px solid #e2e8f0 !important;
+}
+
+body.light-mode #wire-feed-container span.font-black.text-black {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #wire-feed-container span.text-gray-400 {
+    color: #64748b !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #wire-feed-container .wire-report-btn {
+    background-color: #fee2e2 !important;
+    border: 1px solid #fca5a5 !important;
+    color: #b91c1c !important;
+    font-weight: 800 !important;
+}
+body.light-mode #wire-feed-container .wire-report-btn i,
+body.light-mode #wire-feed-container .wire-report-btn span {
+    color: #b91c1c !important;
+}
+
+body.light-mode #wire-feed-container .wire-delete-btn {
+    background-color: #dc2626 !important;
+    border: 1px solid #b91c1c !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+}
+
+/* Post Body Content */
+body.light-mode #wire-feed-container p.font-medium {
+    color: #0f172a !important;
+    font-size: 13.5px !important;
+    line-height: 1.6 !important;
+}
+
+/* TRC Digital Business Card (Section 3 inside Transmission) */
+body.light-mode #panel-global-wire div[style*="background-color: #0b0f19"],
+body.light-mode #wire-feed-container div[style*="#0b0f19"],
+body.light-mode #wire-feed-container [class*="bg-[radial-gradient"] {
+    background-color: #faf5ff !important;
+    background-image: none !important;
+    border: 2px solid #c084fc !important;
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.12) !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] div,
+body.light-mode #wire-feed-container div[style*="#0b0f19"] span {
+    color: #0f172a !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] .text-base.font-black {
+    color: #581c87 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] .text-sm.font-black {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] .text-xs.font-semibold {
+    color: #475569 !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] span[style*="color: #c084fc"] {
+    color: #7e22ce !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] span[style*="color: #9ca3af"] {
+    color: #6b21a8 !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] span[style*="color: #34d399"] {
+    color: #047857 !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] a[style*="color: #60a5fa"] {
+    color: #2563eb !important;
+    font-weight: 800 !important;
+    text-decoration: underline !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] div[style*="color: #d8b4fe"] {
+    color: #6b21a8 !important;
+    font-weight: 600 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] div[style*="color: #fda4af"] {
+    color: #9f1239 !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] .text-amber-300,
+body.light-mode #wire-feed-container div[style*="#0b0f19"] .text-amber-200 {
+    color: #92400e !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] span[style*="background-color: #064e3b"] {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    border: 1px solid #10b981 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #wire-feed-container div[style*="#0b0f19"] span[style*="background-color: #78350f"] {
+    background-color: #fef3c7 !important;
+    color: #b45309 !important;
+    border: 1px solid #f59e0b !important;
+    font-weight: 900 !important;
+}
+
+/* Personal Business Card Photo Container */
+body.light-mode #wire-feed-container .border-purple-400.bg-black {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #c084fc !important;
+}
+body.light-mode #wire-feed-container .border-purple-400.bg-black .text-purple-300 {
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+    border-bottom: 1px solid #e9d5ff !important;
+}
+body.light-mode #wire-feed-container .border-purple-400.bg-black div.bg-black/60 {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+/* Bottom Card Action Buttons */
+body.light-mode #wire-feed-container .wire-verify-btn {
+    background-color: #eff6ff !important;
+    border: 1.5px solid #3b82f6 !important;
+    color: #1d4ed8 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #wire-feed-container .wire-save-vault-btn {
+    background-color: #faf5ff !important;
+    border: 1.5px solid #a855f7 !important;
+    color: #7e22ce !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #wire-feed-container .wire-investigate-btn {
+    background-color: #ecfdf5 !important;
+    border: 1.5px solid #10b981 !important;
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+/* Empty State Box in Wire */
+body.light-mode #wire-feed-container .bg-slate-900/50 {
+    background-color: #ffffff !important;
+    border: 2px dashed #cbd5e1 !important;
+    color: #0f172a !important;
+}
+body.light-mode #wire-feed-container .bg-slate-900/50 h3 {
+    color: #475569 !important;
+}
+
+/* -------------------------------------------------------------
+   NEW POST & TRANSMISSION MODAL (#modal-new-post)
+   ------------------------------------------------------------- */
+body.light-mode #modal-new-post {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+body.light-mode #modal-new-post > div {
+    background-color: #ffffff !important;
+    border: 2px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Modal Header Bar */
+body.light-mode #modal-new-post > div > div:first-child,
+body.light-mode #modal-new-post .bg-slate-950:first-of-type {
+    background-color: #f8fafc !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #modal-new-post h3 {
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #modal-new-post button[onclick*="openBlogGuideModal"] {
+    background-color: #fef3c7 !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #modal-new-post button[onclick*="closeNewPostModal"] {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1px solid #ef4444 !important;
+}
+body.light-mode #modal-new-post button[onclick*="closeNewPostModal"] i {
+    color: #b91c1c !important;
+}
+
+/* Mode Selector Ribbon */
+body.light-mode #post-mode-selector {
+    background-color: #f1f5f9 !important;
+    border-bottom: 1.5px solid #cbd5e1 !important;
+}
+
+body.light-mode #mode-btn-sitrep.bg-emerald-500 {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border: 2px solid #059669 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #mode-btn-card {
+    background-color: #ffffff !important;
+    color: #64748b !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-weight: 800 !important;
+}
+
+/* Form Labels in New Post Modal */
+body.light-mode #modal-new-post label {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+    letter-spacing: 0.04em !important;
+}
+
+body.light-mode #modal-new-post label[for="post-author"],
+body.light-mode #modal-new-post label[for="post-category"],
+body.light-mode #modal-new-post label[for="post-content"] {
+    color: #047857 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #modal-new-post label[for="post-creator-pin"] {
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #post-char-count {
+    color: #64748b !important;
+    font-weight: 800 !important;
+}
+
+/* Form Inputs in New Post Modal */
+body.light-mode #modal-new-post input:not([type="checkbox"]):not([type="radio"]),
+body.light-mode #modal-new-post select,
+body.light-mode #modal-new-post textarea {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #94a3b8 !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+}
+
+body.light-mode #modal-new-post input:focus,
+body.light-mode #modal-new-post select:focus,
+body.light-mode #modal-new-post textarea:focus {
+    border-color: #059669 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.2) !important;
+}
+
+body.light-mode #modal-new-post input::placeholder,
+body.light-mode #modal-new-post textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* Quick Attachment Buttons */
+body.light-mode #modal-new-post label[for="post-image-upload"],
+body.light-mode #modal-new-post #post-load-card-btn,
+body.light-mode #modal-new-post #post-vault-btn,
+body.light-mode #modal-new-post #post-coord-btn {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    font-weight: 800 !important;
+}
+body.light-mode #modal-new-post label[for="post-image-upload"]:hover,
+body.light-mode #modal-new-post #post-load-card-btn:hover,
+body.light-mode #modal-new-post #post-vault-btn:hover,
+body.light-mode #modal-new-post #post-coord-btn:hover {
+    background-color: #f1f5f9 !important;
+}
+
+/* Business Card Accordion in Modal */
+body.light-mode #modal-new-post .border-purple-500/40 {
+    background-color: #faf5ff !important;
+    border: 2px solid #c084fc !important;
+}
+
+body.light-mode #toggle-contact-btn {
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #contact-fields-container .bg-slate-900 {
+    background-color: #ffffff !important;
+    border: 1.5px solid #e9d5ff !important;
+}
+
+body.light-mode #contact-fields-container label[for^="post-contact-"] {
+    color: #6b21a8 !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #post-lodge-gps {
+    background-color: #ffffff !important;
+    color: #92400e !important;
+    border: 1.5px solid #f59e0b !important;
+}
+
+body.light-mode #post-lodge-gps-btn {
+    background-color: #fef3c7 !important;
+    border: 1.5px solid #f59e0b !important;
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+/* Live Card Preview in Modal */
+body.light-mode #bizcard-live-preview {
+    background-color: #ffffff !important;
+    border: 2px solid #a855f7 !important;
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.15) !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #bizcard-live-preview > div:first-child {
+    border-bottom: 1.5px solid #e9d5ff !important;
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #preview-card-bizname {
+    color: #6b21a8 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #preview-card-author {
+    color: #0f172a !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #preview-card-unit {
+    color: #475569 !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #bizcard-live-preview .grid {
+    border-top: 1.5px solid #e9d5ff !important;
+    color: #1e293b !important;
+}
+body.light-mode #bizcard-live-preview .grid span {
+    color: #6b21a8 !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #preview-card-details {
+    color: #6b21a8 !important;
+}
+
+body.light-mode #preview-card-gps {
+    color: #92400e !important;
+    font-weight: 800 !important;
+}
+
+body.light-mode #preview-card-shooting-ranges {
+    color: #9f1239 !important;
+    font-weight: 700 !important;
+}
+
+body.light-mode #clear-bizcard-btn {
+    background-color: #fee2e2 !important;
+    border: 1.5px solid #ef4444 !important;
+    color: #b91c1c !important;
+    font-weight: 900 !important;
+}
+body.light-mode #clear-bizcard-btn i {
+    color: #b91c1c !important;
+}
+
+/* Modal Footer Buttons */
+body.light-mode #modal-new-post > div > div:last-child {
+    background-color: #f8fafc !important;
+    border-top: 2px solid #e2e8f0 !important;
+}
+
+body.light-mode #modal-new-post button[onclick*="clearTransmissionForm"] {
+    background-color: #fee2e2 !important;
+    border: 1.5px solid #ef4444 !important;
+    color: #b91c1c !important;
+    font-weight: 900 !important;
+}
+body.light-mode #modal-new-post button[onclick*="clearTransmissionForm"] i {
+    color: #b91c1c !important;
+}
+
+body.light-mode #post-submit-btn {
+    background: linear-gradient(135deg, #059669, #2563eb) !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3) !important;
+}
+
+/* -------------------------------------------------------------
+   GLOBAL WIRE GUIDE MODAL (#blog-guide-modal)
+   ------------------------------------------------------------- */
+body.light-mode #blog-guide-modal {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+body.light-mode #blog-guide-modal > div {
+    background-color: #ffffff !important;
+    border: 2px solid #f59e0b !important;
+    color: #0f172a !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.light-mode #blog-guide-modal h3 {
+    color: #b45309 !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #blog-guide-modal .text-slate-400 {
+    color: #64748b !important;
+}
+
+body.light-mode #blog-guide-modal .bg-slate-950/80,
+body.light-mode #blog-guide-modal .bg-slate-950 {
+    background-color: #f8fafc !important;
+    border: 1.5px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-mode #blog-guide-modal .text-amber-300,
+body.light-mode #blog-guide-modal .text-amber-400 {
+    color: #92400e !important;
+    font-weight: 900 !important;
+}
+
+body.light-mode #blog-guide-modal button[onclick*="closeBlogGuideModal"]:last-of-type {
+    background-color: #f59e0b !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+    border: 1.5px solid #d97706 !important;
+}
