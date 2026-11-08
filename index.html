@@ -3735,17 +3735,17 @@ try {
 
     <div id="license-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] hidden flex items-center justify-center p-4" style="z-index: 100050;">
 
-        <div class="bg-gray-900 border-2 w-full max-w-6xl h-full max-h-[100%] md:h-[90vh] rounded-xl flex flex-col overflow-hidden min-h-0" style="border-color: #22c55e; box-shadow: 0 0 30px rgba(34,197,94,0.3);">
+        <div id="license-modal-box" class="bg-gray-900 border-2 w-full max-w-6xl h-full max-h-[100%] md:h-[90vh] rounded-xl flex flex-col overflow-hidden min-h-0 transition-all" style="border-color: #22c55e; box-shadow: 0 0 30px rgba(34,197,94,0.3);">
 
             <!-- Header -->
 
-            <div class="p-3 border-b-2 flex flex-wrap justify-between items-center bg-gray-950 gap-y-3 gap-x-2" style="border-color: #22c55e;">
+            <div id="license-modal-header" class="p-3 border-b-2 flex flex-wrap justify-between items-center bg-gray-950 gap-y-3 gap-x-2 transition-all" style="border-color: #22c55e;">
 
                 <div class="flex items-center gap-2 md:gap-3">
 
-                    <i data-lucide="shield-check" class="w-4 h-4 md:w-5 md:h-5 shrink-0" style="color: #22c55e;"></i>
+                    <i id="license-modal-icon" data-lucide="shield-check" class="w-4 h-4 md:w-5 md:h-5 shrink-0" style="color: #22c55e;"></i>
 
-                    <h2 class="text-sm md:text-lg font-black uppercase text-white tracking-widest truncate">HUNTING & FISHING LICENSE / ID</h2>
+                    <h2 id="license-modal-title" class="text-sm md:text-lg font-black uppercase text-white tracking-widest truncate">HUNTING & FISHING LICENSE / ID</h2>
 
                 </div>
 
@@ -3797,7 +3797,7 @@ try {
 
                         <div class="flex flex-col gap-1 text-center">
 
-                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">License / ID Photo</div>
+                            <div id="license-label-photo" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">License / ID Photo</div>
 
                             <label for="license-image-upload" class="sr-only">license image upload</label><input aria-label="license image upload" type="file" id="license-image-upload" accept="image/*" class="hidden">
 
@@ -3821,7 +3821,7 @@ try {
 
                             <div>
 
-                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Full Name</div>
+                                <div id="license-label-name" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Full Name</div>
 
                                 <label for="license-input-name" class="sr-only">John A. Doe</label><input aria-label="John A. Doe" type="text" id="license-input-name" class="w-full bg-black border border-gray-700 rounded p-2 text-white font-bold" placeholder="John A. Doe">
 
@@ -3829,7 +3829,7 @@ try {
 
                             <div>
 
-                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">License / ID Number</div>
+                                <div id="license-label-number" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">License / ID Number</div>
 
                                 <label for="license-input-number" class="sr-only">e.g. AZ-HNT-998811</label><input aria-label="e.g. AZ-HNT-998811" type="text" id="license-input-number" class="w-full bg-black border border-gray-700 rounded p-2 text-white font-bold font-mono" placeholder="e.g. AZ-HNT-998811">
 
@@ -3841,7 +3841,7 @@ try {
 
                             <div>
 
-                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Expiration Date</div>
+                                <div id="license-label-expiry" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Expiration Date</div>
 
                                 <label for="license-input-expiry" class="sr-only">e.g. 2025-12-31</label><input aria-label="e.g. 2025-12-31" type="text" id="license-input-expiry" class="w-full bg-black border border-gray-700 rounded p-2 text-white font-bold" placeholder="e.g. 2025-12-31">
 
@@ -3849,7 +3849,7 @@ try {
 
                             <div>
 
-                                <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Issuing State / Authority</div>
+                                <div id="license-label-state" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Issuing State / Authority</div>
 
                                 <label for="license-input-state" class="sr-only">e.g. Arizona Game & Fish</label><input aria-label="e.g. Arizona Game & Fish" type="text" id="license-input-state" class="w-full bg-black border border-gray-700 rounded p-2 text-white font-bold" placeholder="e.g. Arizona Game & Fish">
 
@@ -3859,7 +3859,7 @@ try {
 
                         <div>
 
-                            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Notes / Tagged Species / Zones</div>
+                            <div id="license-label-notes" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Notes / Tagged Species / Zones</div>
 
                             <label for="license-input-notes" class="sr-only">e.g. Unit 42 Elk, Archery Only, Tags: 2</label><textarea aria-label="e.g. Unit 42 Elk, Archery Only, Tags: 2" id="license-input-notes" class="w-full bg-black border border-gray-700 rounded p-2 text-white font-bold h-20" placeholder="e.g. Unit 42 Elk, Archery Only, Tags: 2"></textarea>
 
@@ -3889,9 +3889,12 @@ try {
 
                             </button>
 
-                            <button aria-label="license save inventory btn" id="license-save-inventory-btn" class="bg-green-700 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)] flex items-center gap-2">
+                            <button aria-label="license save inventory btn" id="license-save-vault-btn" class="bg-purple-900 hover:bg-purple-800 text-purple-200 border border-purple-500/50 px-3.5 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(168,85,247,0.3)] flex items-center gap-1.5 cursor-pointer">
+                                <i data-lucide="folder-lock" class="w-4 h-4"></i> SAVE &amp; VAULT
+                            </button>
+                            <button aria-label="license save inventory btn" id="license-save-inventory-btn" class="bg-green-700 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(34,197,94,0.3)] flex items-center gap-2 cursor-pointer">
 
-                                <i data-lucide="save" class="w-4 h-4"></i> SAVE LICENSE
+                                <i data-lucide="save" class="w-4 h-4"></i> <span id="license-save-btn-text">SAVE LICENSE</span>
 
                             </button>
 
@@ -3909,7 +3912,7 @@ try {
 
                     <div class="text-[10px] font-black uppercase text-gray-400 tracking-wider border-b border-gray-800 pb-2 mb-4 flex justify-between items-center">
 
-                        <div class="flex items-center gap-2"><i data-lucide="archive" class="w-4 h-4 text-green-500"></i> LICENSE INVENTORY</div>
+                        <div id="license-inventory-title" class="flex items-center gap-2"><i data-lucide="archive" class="w-4 h-4 text-green-500"></i> LICENSE INVENTORY</div>
 
                         <span class="text-gray-600 text-[8px]">(SELECT TO SEND TO VAULT)</span>
 
@@ -3987,7 +3990,7 @@ try {
 
                     <div style="margin-bottom: 14px;">
 
-                        <div style="font-size: 8px; color: rgba(34,197,94,0.65); letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 3px;">LICENSEE NAME</div>
+                        <div id="license-render-lbl-name" style="font-size: 8px; color: rgba(34,197,94,0.65); letter-spacing: 0.3em; text-transform: uppercase; margin-bottom: 3px;">LICENSEE NAME</div>
 
                         <div id="license-render-name" style="font-size: 20px; font-weight: 900; color: #ffffff; letter-spacing: 0.06em; text-transform: uppercase; border-bottom: 1px solid rgba(34,197,94,0.2); padding-bottom: 8px;">UNKNOWN</div>
 
@@ -4001,7 +4004,7 @@ try {
 
                         <div>
 
-                            <div style="font-size: 8px; color: rgba(34,197,94,0.65); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 3px;">LICENSE / ID #</div>
+                            <div id="license-render-lbl-number" style="font-size: 8px; color: rgba(34,197,94,0.65); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 3px;">LICENSE / ID #</div>
 
                             <div id="license-render-number" style="font-size: 13px; font-weight: 900; color: #4ade80; letter-spacing: 0.15em; font-family: monospace;">N/A</div>
 
@@ -4023,7 +4026,7 @@ try {
 
                     <div>
 
-                        <div style="font-size: 8px; color: rgba(34,197,94,0.65); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 5px;">NOTES / SPECIES / ZONES</div>
+                        <div id="license-render-lbl-notes" style="font-size: 8px; color: rgba(34,197,94,0.65); letter-spacing: 0.25em; text-transform: uppercase; margin-bottom: 5px;">NOTES / SPECIES / ZONES</div>
 
                         <div id="license-render-notes" style="font-size: 10px; color: rgba(255,255,255,0.7); line-height: 1.65; background: rgba(0,0,0,0.25); border-left: 3px solid rgba(34,197,94,0.3); padding: 8px 10px; border-radius: 1px;">â€â€</div>
 
@@ -4037,7 +4040,7 @@ try {
 
                 <div style="border-top: 1px solid rgba(34,197,94,0.18); padding-top: 8px;">
 
-                    <div style="font-size: 7px; color: rgba(255,255,255,0.2); letter-spacing: 0.15em; text-transform: uppercase; line-height: 1.6;">CARRY THIS LICENSE WHILE IN THE FIELD<br>SUBJECT TO INSPECTION BY AUTHORITIES</div>
+                    <div id="license-render-footer-notice" style="font-size: 7px; color: rgba(255,255,255,0.2); letter-spacing: 0.15em; text-transform: uppercase; line-height: 1.6;">CARRY THIS LICENSE WHILE IN THE FIELD<br>SUBJECT TO INSPECTION BY AUTHORITIES</div>
 
                     <div style="font-size: 8px; color: rgba(34,197,94,0.45); font-weight: bold; letter-spacing: 0.2em; margin-top: 4px;">TRC INTEL SYSTEM</div>
 
@@ -6800,10 +6803,10 @@ try {
     <script src="./workstation_logic.js?v=8.30" defer></script>
     <script src="./field_intel_logic.js?v=8.30" defer></script>
     <script src="./officer_card_logic.js?v=8.30" defer></script>
-    <script src="./gametag_logic.js?v=8.30" defer></script>
+    <script src="./gametag_logic.js?v=8.77.2.0" defer></script>
     <script src="./bolo_logic.js?v=8.30" defer></script>
-    <script src="./license_logic.js?v=8.30" defer></script>
-    <script src="./master_op_card_logic.js?v=8.30" defer></script>
+    <script src="./license_logic.js?v=8.77.2.0" defer></script>
+    <script src="./master_op_card_logic.js?v=8.77.2.0" defer></script>
     <script src="./supply_depot_logic.js?v=8.30" defer></script>
 
     

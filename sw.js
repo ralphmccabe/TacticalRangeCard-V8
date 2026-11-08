@@ -1,5 +1,5 @@
-/* TRC-VERSION - v8.77.1.0 */
-const CACHE_NAME = 'trc-v8.77.1.0';
+/* TRC-VERSION - v8.77.2.0 */
+const CACHE_NAME = 'trc-v8.77.2.0';
 const ASSETS = [
     './',
     './index.html?v=8.77.1.0',
@@ -14,15 +14,15 @@ const ASSETS = [
     './splash-page.jpg',
     './workstation_logic.js?v=8.30',
     './officer_card_logic.js?v=8.30',
-    './gametag_logic.js?v=8.30',
+    './gametag_logic.js?v=8.77.2.0',
     './bolo_logic.js?v=8.30',
-    './license_logic.js?v=8.30',
+    './license_logic.js?v=8.77.2.0',
     './tailwind.css?v=8.30',
     './lucide.min.js?v=1.5',
     './html2canvas.min.js?v=1.5',
     './idb_helper.js?v=8.30',
     './lib/supabase.min.js',
-    './master_op_card_logic.js?v=8.30',
+    './master_op_card_logic.js?v=8.77.2.0',
     './supply_depot_logic.js?v=8.30',
     './lib/leaflet.css',
     './lib/leaflet.js',

@@ -1,4 +1,24 @@
 ============================================================
+v8.77.2.0 - DYNAMIC LICENSE & ID FORM ADAPTATION & CARD PERSISTENCE FIX
+* Dynamic Hunting / Fishing / Combo / ID Form Field Adaptation:
+  - Switching between [HUNTING], [FISHING], [BOTH], and [ID] now dynamically morphs all input field labels, placeholders, header branding, and colors to match the assigned card type.
+  - [ID] Mode: Now adapts inputs to Legal Full Name, ID / Driver's License # (DL-12345678), Expiration Date, Issuing Jurisdiction / State DMV, and Notes / Endorsements / Restrictions (e.g. Class D, Corrective Lenses) with tactical cyan theme.
+  - [FISHING] Mode: Adapts inputs to Angler Name, Fishing Permit # (AZ-FSH-448201), Wildlife Agency, and Notes / Stamps / Water Bodies with aquatic blue theme.
+  - [HUNTING] Mode: Adapts inputs to Hunter Name, Hunting Tag # (AZ-HNT-998811), Wildlife Dept, and Hunt Unit / Species with tactical green theme.
+  - [BOTH] Mode: Adapts inputs to Combo License # and Combined Tags / Stamps with gold/amber theme.
+  - Modal box glow and borders dynamically transition to match the active document's accent color.
+* Direct One-Click "SAVE & VAULT" & Card Saving Enhancements:
+  - Added dedicated [SAVE & VAULT] button in the License/ID form footer allowing instant simultaneous saving to local inventory and direct visual export to Intel Vault (Window #4).
+  - Added quick-action buttons directly on inventory list cards: [Send to Intel Vault], [Edit / Rework in Form], and [Delete].
+  - Resolved html2canvas selector error on License & Game Tag cards where clonedDoc looked for legacy ID (*-render-zone instead of *-poster-render-zone), restoring visual snapshot rendering.
+* Intel Vault Rework Action Wrappers:
+  - Defined global window.reworkLicense, window.reworkGameTag, and window.reworkBolo handlers, allowing one-click rework directly from the Intel Vault viewer.
+* Master Op Plan Intel Vault Synchronization:
+  - Added automatic mirror sync to intelVault and vaultCache upon saving Master Op cards, ensuring they display in Window #4.
+  - Fixed blogMasterOpToWire IndexedDB key query bug.
+* Service Worker cache bumped to v8.77.2.0 for immediate eviction of stale assets.
+
+============================================================
 v8.0.0.0 - INITIATING RED TEAM V8 FORK
 * Branching off from P2P version v7.27.48.87
 * Preparing for ES Modules, SFU Audio, and Red Team Features

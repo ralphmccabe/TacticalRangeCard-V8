@@ -521,7 +521,7 @@ if (gametagToVaultBtnTop) {
                 imageTimeout: 15000,
                 removeContainer: true,
                 onclone: (clonedDoc) => {
-                    const clonedZone = clonedDoc.getElementById('gametag-render-zone');
+                    const clonedZone = clonedDoc.getElementById('gametag-poster-render-zone');
                     if (clonedZone) {
                         clonedZone.style.opacity = '1';
                         clonedZone.style.visibility = 'visible';
@@ -642,3 +642,47 @@ if (vaultToGametagBtn) {
     });
 }
 
+
+window.exportGametagToVault = async function(tag, triggerBtn = null) {
+    if (!tag) return null;
+    let originalHtml = '';
+    if (triggerBtn) {
+        originalHtml = triggerBtn.innerHTML;
+        triggerBtn.disabled = true;
+        triggerBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin inline-block mr-1"></i> SAVING...';
+        if (window.lucide) window.lucide.createIcons();
+    }
+    try {
+        selectedGametagId = tag.id;
+        if (gametagToVaultBtnTop && triggerBtn !== gametagToVaultBtnTop) {
+            await gametagToVaultBtnTop.click();
+        }
+    } finally {
+        if (triggerBtn && originalHtml) {
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = originalHtml;
+            if (window.lucide) window.lucide.createIcons();
+        }
+    }
+};
+
+window.sendGametagToVaultById = async function(tagId) {
+    tagId = String(tagId);
+    let tag = await window.TRC_IDB.get('gameTagLibrary', tagId);
+    if (!tag) tag = await window.TRC_IDB.get('gameTagLibrary', Number(tagId));
+    if (tag) {
+        selectedGametagId = tag.id;
+        if (gametagToVaultBtnTop) gametagToVaultBtnTop.click();
+    }
+};
+
+window.loadGametagBackToEditorById = async function(tagId) {
+    tagId = String(tagId);
+    let tag = await window.TRC_IDB.get('gameTagLibrary', tagId);
+    if (!tag) tag = await window.TRC_IDB.get('gameTagLibrary', Number(tagId));
+    if (tag) {
+        window.loadGametagBackToEditor(tag);
+        selectedGametagId = tag.id;
+        renderGametagLibrary();
+    }
+};

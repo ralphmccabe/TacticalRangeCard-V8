@@ -488,6 +488,26 @@ window.saveMasterOpToVault = async function(id) {
         };
         
         await TRC_IDB.set('workstationLibrary', cardData.id, cardObj);
+
+        // Auto-sync into Intel Vault (Window #4)
+        const vaultMetadata = {
+            id: cardData.id,
+            timestamp: Date.now(),
+            label: `OP-PLAN: ${cardData.data.opName || 'UNNAMED'}`,
+            image: cardImageSnapshot,
+            type: 'master_op',
+            workstationData: cardData
+        };
+        try {
+            await TRC_IDB.set('intelVault', cardData.id.toString(), vaultMetadata);
+            if (typeof vaultCache !== 'undefined' && Array.isArray(vaultCache)) {
+                vaultCache = vaultCache.filter(v => v && v.id?.toString() !== cardData.id.toString());
+                vaultCache.unshift(vaultMetadata);
+                if (typeof refreshVaultGrid === 'function') refreshVaultGrid();
+            }
+        } catch(errVault) {
+            console.warn('[MASTER OP] Vault sync warning:', errVault);
+        }
         
         if (window.renderWorkstationLibrary) {
             window.renderWorkstationLibrary();
@@ -517,9 +537,12 @@ window.blogMasterOpToWire = async function(id) {
 
     // 2. Fetch the raw card data
     const cardData = window.collectMasterOpData(id);
-    let vault = [];
-    try { vault = await TRC_IDB.get('workstationLibrary') || []; } catch(e){}
-    const savedCard = vault.find(v => v.id === id);
+    let savedCard = null;
+    try {
+        savedCard = await TRC_IDB.get('workstationLibrary', id) || 
+                    await TRC_IDB.get('workstationLibrary', String(id)) || 
+                    await TRC_IDB.get('intelVault', String(id));
+    } catch(e) {}
     if (!savedCard || !savedCard.image) {
         alert("Could not locate snapshot image. Save to vault first.");
         return;
