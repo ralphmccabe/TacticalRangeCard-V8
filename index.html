@@ -8355,6 +8355,35 @@ try {
                 </button>
             </div>
 
+            <!-- Phone Connection & QR Code Guide (Shown on PC) -->
+            <div id="isr-broadcast-pc-guide" class="mb-4 bg-gradient-to-br from-slate-950 via-cyan-950/40 to-slate-950 border-2 border-cyan-400/80 rounded-xl p-3 sm:p-4 text-cyan-100 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+                <div class="flex items-center gap-2 mb-2 pb-2 border-b border-cyan-500/30">
+                    <i data-lucide="smartphone" class="w-5 h-5 text-cyan-400 animate-bounce"></i>
+                    <span class="font-black text-sm uppercase tracking-wider text-cyan-300">HOW TO BROADCAST FROM YOUR PHONE</span>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row items-center gap-4 py-1">
+                    <div class="shrink-0 flex flex-col items-center bg-white p-2 rounded-lg border-2 border-cyan-400 shadow">
+                        <img id="isr-phone-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=https://192.168.12.112:8443" alt="Scan with Phone" class="w-28 h-28 sm:w-32 sm:h-32">
+                        <span class="text-[9px] text-slate-800 font-bold mt-1 uppercase tracking-tighter">SCAN WITH PHONE</span>
+                    </div>
+                    <div class="flex-1 text-xs space-y-2">
+                        <p class="text-slate-200 leading-relaxed font-sans text-[11px] sm:text-xs">
+                            <strong class="text-cyan-400 font-mono">1. Open on Phone:</strong> Scan QR code or type <a id="isr-phone-connect-url" href="https://192.168.12.112:8443" target="_blank" class="text-cyan-300 underline font-bold font-mono">https://192.168.12.112:8443</a> in mobile Chrome or Safari.
+                        </p>
+                        <p class="text-amber-300/90 leading-tight font-sans text-[10px]">
+                            <strong class="text-amber-400 font-mono">2. SSL Notice:</strong> Tap <em>"Advanced"</em> &rarr; <em>"Proceed"</em> (safe local Wi-Fi encryption).
+                        </p>
+                        <p class="text-slate-200 leading-relaxed font-sans text-[11px] sm:text-xs">
+                            <strong class="text-emerald-400 font-mono">3. Tap Broadcast on Phone:</strong> In Window 7 on your phone, tap <span class="bg-cyan-900 px-1 py-0.5 rounded text-cyan-300 font-bold">START BROADCASTING</span>.
+                        </p>
+                        <p class="text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 rounded p-1.5 text-[10px] font-mono">
+                            ⚡ This desktop screen will <strong>automatically detect & stream</strong> your phone bodycam!
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- HTTPS Insecure Context Warning (For Phones Connecting via HTTP) -->
             <div id="isr-broadcast-https-warn" class="hidden mb-3 bg-amber-950/90 border-2 border-amber-500/80 rounded-lg p-3 text-amber-200 text-[11px] leading-relaxed shadow-[0_0_20px_rgba(245,158,11,0.3)]">
                 <div class="flex items-start gap-2">

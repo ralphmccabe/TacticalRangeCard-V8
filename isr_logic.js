@@ -214,6 +214,26 @@
 
     // --- Broadcast Setup Modal Controls ---
     window.openBroadcastSetupModal = function() {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+        const host = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '192.168.12.112' : location.hostname;
+        const phoneUrl = `https://${host}:8443/`;
+
+        const qrImg = document.getElementById('isr-phone-qr-img');
+        const phoneLink = document.getElementById('isr-phone-connect-url');
+        if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(phoneUrl)}`;
+        if (phoneLink) {
+            phoneLink.href = phoneUrl;
+            phoneLink.textContent = phoneUrl;
+        }
+
+        const pcGuide = document.getElementById('isr-broadcast-pc-guide');
+        if (pcGuide) {
+            if (!isMobile) {
+                pcGuide.classList.remove('hidden');
+            } else {
+                pcGuide.classList.add('hidden');
+            }
+        }
         const m = document.getElementById('modal-isr-broadcast');
         if (m) {
             m.style.setProperty('display', 'flex', 'important');
