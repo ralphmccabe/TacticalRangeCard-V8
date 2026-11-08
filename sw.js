@@ -1,5 +1,5 @@
 /* TRC-VERSION - v8.77.3.5 */
-const CACHE_NAME = 'trc-v8.77.4.3';
+const CACHE_NAME = 'trc-v8.77.4.5';
 const ASSETS = [
     './',
     './index.html?v=8.77.4.3',
@@ -70,6 +70,7 @@ self.addEventListener('fetch', event => {
     // Bypass cache for these 🚨 large data files / live APIs that must never be stored
     const bypassPatterns = [
         'VERSION_HISTORY.txt',
+        'api/isr_',
         'api.open-meteo.com',
         'supabase.co',              // live Supabase API calls
         'us-states.js',
@@ -95,7 +96,7 @@ self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
     // Network-First for all app logic & HTML: ensures code updates land immediately
-    const networkFirstPatterns = ['index.html', 'trc_core.js', 'sfu_audio.js', 'scanner_module.js', 'style.css', 'style.min.css', 'bolo_logic.js', 'gametag_logic.js', 'license_logic.js', 'workstation_logic.js', 'field_intel_logic.js', 'officer_card_logic.js', 'blog_logic.js', 'master_op_card_logic.js', 'supply_depot_logic.js'];
+    const networkFirstPatterns = ['index.html', 'isr_logic.js', 'trc_core.js', 'sfu_audio.js', 'scanner_module.js', 'style.css', 'style.min.css', 'bolo_logic.js', 'gametag_logic.js', 'license_logic.js', 'workstation_logic.js', 'field_intel_logic.js', 'officer_card_logic.js', 'blog_logic.js', 'master_op_card_logic.js', 'supply_depot_logic.js'];
     const isNavigation = event.request.mode === 'navigate' || event.request.destination === 'document';
     const isCoreApp = networkFirstPatterns.some(p => event.request.url.includes(p));
 
