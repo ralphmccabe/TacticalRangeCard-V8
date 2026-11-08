@@ -1,4 +1,17 @@
 ============================================================
+v8.77.4.8 - IN-APP INTEL VAULT VIDEO RECORDING & DISPLAY WAKELOCK CONTROLS
+* In-App Video Clip Recording (No Auto-Download):
+  - In Window 7 (Tactical ISR), clicking REC records live video clips directly into Intel Vault (Window 4) via IndexedDB.
+  - Eliminated automatic downloads to operator computer Downloads folder, keeping sensitive tactical media contained securely inside TRC.
+  - On-Demand Video Export: Added dedicated [⬇ EXPORT] actuator buttons on both the vault video cards and inside the vault visualizer, as well as checkbox multi-export support to download .webm files only when desired by the operator.
+  - In-App Video Playback: Intel Vault displays rich video thumbnails with glowing play overlays and duration tags. Clicking a video card loads and plays it inside Window 4 and allows seamless 1-click loading into the primary top screen surveillance player.
+* Mobile Screen WakeLock & Feed Termination:
+  - Integrated Screen WakeLock API (navigator.wakeLock) so mobile phone displays remain active and do not go black or lock during active bodycam/trailcam broadcasts.
+  - Dedicated [⏹️ STOP FEED] button in Window 7 actions bar to terminate and disconnect incoming streams on demand.
+  - High-visibility [⏹️ STOP BROADCAST] buttons on both the phone broadcaster header and the floating HUD for quick touch-friendly broadcast termination.
+  - Added /api/isr_stop endpoint on local relay server and extended jitter buffer from 4s to 8s.
+
+============================================================
 v8.77.3.0 - DAY / NIGHT RANGE MODE & HIGH-CONTRAST PEN CONTROLS
 * Tactical Day / Night Mode Toggle:
   - One-click [DAY] / [NIGHT] toggle button in Tier 1 action icons with dynamic sun/moon indicators.

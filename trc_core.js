@@ -6405,13 +6405,27 @@ function initializeTacticalDashboard2() {
             
             el.addEventListener('touchcancel', cleanupClones);
 
-            const isVideo = item.type === 'video';
+            const isVideo = item.type === 'video' || (item.label && item.label.startsWith('VIDEO_'));
             const isContact = item.contact || item.type === 'intel_report' || item.type === 'contact';
             const attachedPhoto = item.image || item.data || item.contact?.cardImageUrl || null;
             
             let imgContent = '';
             if (isVideo) {
-                imgContent = `<i data-lucide="video" class="w-12 h-12 text-purple-500 opacity-80 pointer-events-none"></i>`;
+                const thumbImg = item.thumb || (typeof item.image === 'string' && item.image.startsWith('data:image') ? item.image : null);
+                if (thumbImg) {
+                    imgContent = `
+                        <div style="background-color: #030712; width: 100%; height: 100%; position: relative;" class="opacity-95 group-hover:opacity-100 transition-all pointer-events-none flex items-center justify-center">
+                            <img src="${thumbImg}" style="max-width:100%; max-height:100%; object-fit:contain;" class="pointer-events-none" alt="">
+                            <div class="absolute inset-0 flex items-center justify-center bg-black/40">
+                                <div class="w-8 h-8 rounded-full bg-purple-600/90 border-2 border-purple-300 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.8)]">
+                                    <i data-lucide="play" class="w-4 h-4 text-white fill-white ml-0.5"></i>
+                                </div>
+                            </div>
+                            ${item.duration ? `<span class="absolute bottom-1 right-1 bg-black/80 text-purple-300 text-[6.5px] font-mono px-1 rounded border border-purple-500/40">${item.duration}</span>` : ''}
+                        </div>`;
+                } else {
+                    imgContent = `<i data-lucide="video" class="w-12 h-12 text-purple-500 opacity-80 pointer-events-none"></i>`;
+                }
             } else if (attachedPhoto) {
                 imgContent = `
                     <div style="background-color: #030712; width: 100%; height: 100%; position: relative;" class="opacity-95 group-hover:opacity-100 transition-all pointer-events-none flex items-center justify-center">
@@ -6513,10 +6527,13 @@ function initializeTacticalDashboard2() {
                             <i data-lucide="map" class="w-3 h-3"></i>
                         </button>
                         `;
-                    } else if (item.label && item.label.startsWith('VIDEO_')) {
+                    } else if (item.type === 'video' || (item.label && item.label.startsWith('VIDEO_'))) {
                         return `
-                        <button class="load-video-btn absolute bottom-7 left-1.5 bg-purple-600 text-white p-1.5 rounded border border-purple-400 shadow-lg hover:bg-purple-400 transition-all z-30" title="Play Video">
-                            <i data-lucide="play" class="w-3 h-3"></i>
+                        <button class="load-video-btn absolute bottom-7 left-1.5 bg-purple-600 text-white p-1.5 rounded border border-purple-400 shadow-lg hover:bg-purple-500 transition-all z-30 flex items-center gap-1" title="Play Video in Top Screen">
+                            <i data-lucide="play" class="w-3 h-3 fill-white"></i>
+                        </button>
+                        <button class="export-single-video-btn absolute bottom-7 left-8 bg-blue-600 text-white p-1.5 rounded border border-blue-400 shadow-lg hover:bg-blue-500 transition-all z-30 flex items-center gap-1" title="Export Video to Downloads">
+                            <i data-lucide="download" class="w-3 h-3"></i>
                         </button>
                         `;
                     } else if (!item.remarksText) {
@@ -6554,6 +6571,7 @@ function initializeTacticalDashboard2() {
                    e.target.closest('.load-note-btn') || 
                    e.target.closest('.load-map-btn') || 
                    e.target.closest('.load-video-btn') || 
+                   e.target.closest('.export-single-video-btn') || 
                    e.target.closest('.load-snapshot-btn') ||
                    e.target.closest('.rework-recon-btn') ||
                    e.target.closest('.rework-casefile-btn') ||
@@ -6617,6 +6635,14 @@ function initializeTacticalDashboard2() {
                 });
             }
 
+            const expVidBtn = el.querySelector('.export-single-video-btn');
+            if(expVidBtn) {
+                expVidBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if(window.exportVaultVideoById) window.exportVaultVideoById(item.id);
+                });
+            }
+
             const loadSnapBtn = el.querySelector('.load-snapshot-btn');
             if(loadSnapBtn) {
                 loadSnapBtn.addEventListener('click', (e) => {
@@ -6669,12 +6695,35 @@ function initializeTacticalDashboard2() {
         const target = document.getElementById('vault-active-display');
         if (!target) return;
 
-        const isVideo = item.type === 'video';
+        const isVideo = item.type === 'video' || (item.label && item.label.startsWith('VIDEO_'));
         const isContactCard = item.contact || item.type === 'intel_report' || item.type === 'contact';
         let mediaHtml = '';
 
         if (isVideo) {
-            mediaHtml = `<i data-lucide="video" class="w-20 h-20 text-purple-500 opacity-80"></i>`;
+            let videoSrc = '';
+            const rawSrc = item.video || item.image;
+            if (rawSrc) {
+                if (typeof rawSrc === 'string' && rawSrc.startsWith('data:video')) {
+                    try {
+                        const mime = rawSrc.split(';')[0].replace('data:', '') || 'video/webm';
+                        const b64 = rawSrc.includes('base64,') ? rawSrc.split('base64,')[1] : rawSrc.substring(rawSrc.indexOf(',') + 1);
+                        const byteChars = atob(b64);
+                        const byteArr = new Uint8Array(byteChars.length);
+                        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+                        const videoBlob = new Blob([byteArr], { type: mime });
+                        videoSrc = URL.createObjectURL(videoBlob);
+                    } catch(e) {
+                        videoSrc = rawSrc;
+                    }
+                } else {
+                    videoSrc = rawSrc;
+                }
+            }
+            mediaHtml = `
+                <div class="w-full h-full relative bg-black flex items-center justify-center">
+                    <video src="${videoSrc}" controls autoplay playsinline class="w-full h-full object-contain"></video>
+                </div>
+            `;
         } else if (item.type === 'casefile-pdf' || item.casefileData || (item.workstationData && item.workstationData.type === 'casefile')) {
             if (item.image) {
                 mediaHtml = `<img src="${item.image}" class="w-full h-full object-contain">`;
@@ -6740,8 +6789,11 @@ function initializeTacticalDashboard2() {
                 <!-- Non-Destructive Unload Actuator -->
                 <div class="absolute top-1 right-1 flex gap-1 z-10">
                     ${isVideo ? `
-                    <button class="bg-purple-600 text-white border border-purple-400 p-1.5 rounded hover:bg-purple-500 transition-all shadow-[0_0_10px_rgba(168,85,247,0.5)] flex items-center gap-1 font-black text-[7px]" onclick="event.stopPropagation(); window.loadVideoBackToPlayerById('${item.id}')" title="Play Video">
-                        <i data-lucide="play" class="w-2.5 h-2.5"></i> PLAY VIDEO
+                    <button class="bg-purple-600 text-white border border-purple-400 p-1.5 rounded hover:bg-purple-500 transition-all shadow-[0_0_10px_rgba(168,85,247,0.5)] flex items-center gap-1 font-black text-[7px]" onclick="event.stopPropagation(); window.loadVideoBackToPlayerById('${item.id}')" title="Play Video in Top Screen">
+                        <i data-lucide="tv" class="w-2.5 h-2.5"></i> PLAY IN TOP SCREEN
+                    </button>
+                    <button class="bg-blue-600 text-white border border-blue-400 p-1.5 rounded hover:bg-blue-500 transition-all shadow-lg flex items-center gap-1 font-black text-[7px]" onclick="event.stopPropagation(); window.exportVaultVideoById('${item.id}')" title="Export Video to Downloads">
+                        <i data-lucide="download" class="w-2.5 h-2.5"></i> EXPORT VIDEO
                     </button>
                     ` : ''}
                     ${item.remarksText ? `
@@ -8098,6 +8150,10 @@ function initializeTacticalDashboard2() {
 
     async function getVaultItemExportUri(item) {
         if (!item) return null;
+        const isVid = item.type === 'video' || (item.label && item.label.startsWith('VIDEO_'));
+        if (isVid) {
+            return item.video || item.image;
+        }
         // 1. If it's already a base64 data URI
         if (typeof item.image === 'string' && item.image.startsWith('data:image')) {
             return item.image;
@@ -8302,11 +8358,13 @@ function initializeTacticalDashboard2() {
                             }
                         }
 
+                        const isVidItem = item.type === 'video' || (item.label && item.label.startsWith('VIDEO_'));
                         const a = document.createElement('a');
                         a.href = dataUrl;
                         const distStr = item.distance ? `${item.distance.toString().replace(/[^0-9.]/g, '')}yds_` : '';
                         const nameStr = (item.author || item.name || item.label || 'card').replace(/[^a-zA-Z0-9_-]/g, '_');
-                        a.download = `TRC_INTEL_${nameStr}_${distStr}${item.timestamp || Date.now()}.png`;
+                        const ext = isVidItem ? 'webm' : 'png';
+                        a.download = `TRC_INTEL_${nameStr}_${distStr}${item.timestamp || Date.now()}.${ext}`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
@@ -12101,6 +12159,54 @@ function initializeTacticalDashboard2() {
             if(item) window.loadVideoBackToPlayer(item);
         };
 
+        window.exportVaultVideoById = async function(id) {
+            let item = (window.vaultCache || []).find(i => i.id == id);
+            if (!item && window.TRC_IDB) {
+                item = await window.TRC_IDB.get('intelVault', id.toString());
+            }
+            if (!item) {
+                alert("Video clip not found in Intel Vault.");
+                return;
+            }
+
+            const mediaSource = item.video || item.image;
+            if (!mediaSource) {
+                alert("No video data found in selected item.");
+                return;
+            }
+
+            let downloadUrl = mediaSource;
+            let revoke = false;
+            if (typeof mediaSource === 'string' && mediaSource.startsWith('data:')) {
+                try {
+                    const mime = mediaSource.split(';')[0].replace('data:', '') || 'video/webm';
+                    const b64 = mediaSource.includes('base64,') ? mediaSource.split('base64,')[1] : mediaSource.substring(mediaSource.indexOf(',') + 1);
+                    const byteChars = atob(b64);
+                    const byteArr = new Uint8Array(byteChars.length);
+                    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+                    const blob = new Blob([byteArr], { type: mime });
+                    downloadUrl = URL.createObjectURL(blob);
+                    revoke = true;
+                } catch(e) {
+                    downloadUrl = mediaSource;
+                }
+            }
+
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            const clipName = (item.label || 'ISR_VIDEO').replace(/[^a-zA-Z0-9_-]/g, '_');
+            a.download = `${clipName}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                a.remove();
+                if (revoke) URL.revokeObjectURL(downloadUrl);
+            }, 1500);
+
+            if (window.showToast) window.showToast(`💾 EXPORTED ${clipName}.webm TO DOWNLOADS`);
+            if (window.pushTacLog) window.pushTacLog(`EXPORTED VIDEO CLIP: ${clipName}.webm`, "SUCCESS");
+        };
+
         window.loadSnapshotBackToViewer = function(item) {
             if (!item || !item.image) return;
 
@@ -12382,11 +12488,16 @@ function initializeTacticalDashboard2() {
         };
 
         window.loadVideoBackToPlayer = function(item) {
-            if (!item || !item.image) return;
+            if (!item || (!item.image && !item.video)) return;
 
             const panel = document.getElementById('panel-vault');
             if (panel && panel.classList.contains('is-maximized')) {
                 window.toggleFullscreen('panel-vault');
+            }
+
+            // Stop any active ISR main viewport mirror so video player is active
+            if (typeof window.stopIsrMainViewport === 'function') {
+                window.stopIsrMainViewport();
             }
 
             const videoEl = document.getElementById('surveillance-stream');
@@ -12405,16 +12516,17 @@ function initializeTacticalDashboard2() {
             if (imgViewer) imgViewer.classList.add('hidden');
 
             let playUrl;
-            if (item.image.startsWith('data:')) {
-                const mime = item.image.split(';')[0].replace('data:', '') || 'video/webm';
-                const b64 = item.image.includes('base64,') ? item.image.split('base64,')[1] : item.image.substring(item.image.indexOf(',') + 1);
+            const mediaSource = item.video || item.image;
+            if (typeof mediaSource === 'string' && mediaSource.startsWith('data:')) {
+                const mime = mediaSource.split(';')[0].replace('data:', '') || 'video/webm';
+                const b64 = mediaSource.includes('base64,') ? mediaSource.split('base64,')[1] : mediaSource.substring(mediaSource.indexOf(',') + 1);
                 const byteChars = atob(b64);
                 const byteArr = new Uint8Array(byteChars.length);
                 for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
                 const videoBlob = new Blob([byteArr], { type: mime });
                 playUrl = URL.createObjectURL(videoBlob);
             } else {
-                playUrl = item.image;
+                playUrl = mediaSource;
             }
 
             videoEl.srcObject = null;
@@ -12432,6 +12544,7 @@ function initializeTacticalDashboard2() {
             videoEl.classList.remove('hidden');
             placeholder.classList.add('hidden');
             hud.classList.add('hidden');
+            videoEl.play().catch(() => {});
             
             if(survFooter) survFooter.classList.remove('hidden');
             

@@ -140,6 +140,38 @@
     let lastReceivedTelemetry = null;
     let isMirroredToMain = false;
 
+    // --- Screen WakeLock Management (Keeps bodycam/phone display awake during broadcast) ---
+    let screenWakeLock = null;
+    async function acquireScreenWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                screenWakeLock = await navigator.wakeLock.request('screen');
+                screenWakeLock.addEventListener('release', () => {
+                    screenWakeLock = null;
+                    console.log("[ISR] Screen WakeLock released");
+                });
+                console.log("[ISR] Screen WakeLock acquired: device display will stay active");
+            }
+        } catch (err) {
+            console.warn("[ISR] Screen WakeLock error:", err);
+        }
+    }
+
+    function releaseScreenWakeLock() {
+        if (screenWakeLock) {
+            try {
+                screenWakeLock.release();
+            } catch(e) {}
+            screenWakeLock = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && isBroadcasting) {
+            acquireScreenWakeLock();
+        }
+    });
+
     // --- Device Sensor Listeners ---
     function initDeviceSensors() {
         // Battery Status
@@ -374,6 +406,7 @@
     // --- Stop Broadcasting ---
     window.stopLocalBroadcasting = function() {
         isBroadcasting = false;
+        releaseScreenWakeLock();
         if (broadcastInterval) {
             clearInterval(broadcastInterval);
             broadcastInterval = null;
@@ -388,8 +421,47 @@
         const hud = document.getElementById('isr-broadcasting-hud');
         if (hud) hud.classList.add('hidden');
 
+        // Notify relay server that stream has ended
+        if (broadcastRoleId) {
+            fetch(`/api/isr_stop?feedId=${encodeURIComponent(broadcastRoleId)}`, { method: 'POST' }).catch(() => {});
+        }
+
+        const broadcastBtn = document.getElementById('isr-live-cam-toggle-btn');
+        if (broadcastBtn) {
+            broadcastBtn.style.background = 'linear-gradient(135deg, #06b6d4, #10b981) !important';
+            broadcastBtn.style.border = '2px solid #22d3ee !important';
+            broadcastBtn.style.boxShadow = '0 0 20px rgba(6,182,212,0.8) !important';
+            broadcastBtn.innerHTML = '<i data-lucide="smartphone" class="w-4 h-4 text-black shrink-0"></i> <span>📱 BROADCAST FROM PHONE</span>';
+            broadcastBtn.onclick = window.openBroadcastSetupModal;
+            if (window.lucide) window.lucide.createIcons();
+        }
+
         showToast('⏹️ CAMERA TRANSMISSION TERMINATED');
         renderCurrentActiveView();
+    };
+
+    // Dedicated function to stop and disconnect active ISR stream (viewer or broadcaster)
+    window.stopActiveIsrFeed = async function() {
+        if (isBroadcasting) {
+            window.stopLocalBroadcasting();
+        }
+        try {
+            await fetch(`/api/isr_stop?feedId=${encodeURIComponent(currentActiveFeedId)}`, { method: 'POST' });
+        } catch(e) {}
+
+        const feed = feeds.find(f => f.id === currentActiveFeedId);
+        if (feed) {
+            feed.isOnline = false;
+            feed.currentImg = null;
+        }
+        lastReceivedFrame = null;
+        lastReceivedTelemetry = null;
+
+        renderCurrentActiveView();
+        showToast(`⏹️ LIVE FEED STOPPED: ${currentActiveFeedId.replace('feed-', '').toUpperCase()}`);
+        if (typeof window.pushTacLog === 'function') {
+            window.pushTacLog(`ISR LIVE FEED TERMINATED: ${currentActiveFeedId.toUpperCase()}`, "WARN");
+        }
     };
 
     function showBroadcastingHud(roleId) {
@@ -881,32 +953,32 @@
                 isrMediaRecorder.onstop = async function() {
                     const blob = new Blob(isrRecordedChunks, { type: 'video/webm' });
                     const thumbDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                    const clipName = `ISR-CLIP-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now().toString().slice(-4)}`;
+                    const clipName = `VIDEO_ISR_${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now().toString().slice(-4)}`;
+                    const durationSec = Math.max(1, Math.round((Date.now() - isrRecordStartTime) / 1000));
 
-                    // Save snapshot thumb + clip metadata to Intel Vault
-                    if (typeof window.saveIntelSnapshot === 'function') {
-                        await window.saveIntelSnapshot(clipName, thumbDataUrl, {
-                            type: 'video',
-                            feedId: currentActiveFeedId,
-                            feedName: feed.name,
-                            duration: `${Math.round((Date.now() - isrRecordStartTime) / 1000)}s`,
-                            notes: `Live video clip from ${feed.name}`
-                        });
-                    }
+                    // Convert Blob to Data URL so video is preserved inside Intel Vault (IndexedDB)
+                    const reader = new FileReader();
+                    reader.onloadend = async function() {
+                        const videoDataUrl = reader.result;
 
-                    // Auto-download webm file to operator computer
-                    const downloadUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = `${clipName}.webm`;
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => { a.remove(); URL.revokeObjectURL(downloadUrl); }, 1000);
+                        if (typeof window.saveIntelSnapshot === 'function') {
+                            await window.saveIntelSnapshot(clipName, videoDataUrl, {
+                                type: 'video',
+                                video: videoDataUrl,
+                                thumb: thumbDataUrl,
+                                feedId: currentActiveFeedId,
+                                feedName: feed.name,
+                                duration: `${durationSec}s`,
+                                notes: `Live video clip from ${feed.name} (${durationSec}s)`
+                            });
+                        }
 
-                    if (typeof window.pushTacLog === 'function') {
-                        window.pushTacLog(`ISR VIDEO CLIP SAVED: ${clipName}`, "INTEL");
-                    }
-                    showToast(`💾 CLIP SAVED TO INTEL VAULT & DOWNLOADED!`);
+                        if (typeof window.pushTacLog === 'function') {
+                            window.pushTacLog(`ISR VIDEO SAVED TO INTEL VAULT: ${clipName} (${durationSec}s)`, "INTEL");
+                        }
+                        showToast(`💾 VIDEO RECORDING SAVED TO INTEL VAULT!`);
+                    };
+                    reader.readAsDataURL(blob);
                 };
 
                 isrMediaRecorder.start(250); // chunk timeslice every 250ms

@@ -90,7 +90,7 @@ function handleRequest(req, res) {
                 'Cache-Control': 'no-cache, no-store'
             });
 
-            if (stream && (Date.now() - stream.ts < 4000)) {
+            if (stream && (Date.now() - stream.ts < 8000)) {
                 res.end(JSON.stringify({
                     active: true,
                     feedId: feedId,
@@ -105,11 +105,52 @@ function handleRequest(req, res) {
         }
     }
 
+    // Stop / Purge Active ISR Stream
+    if (req.url.startsWith('/api/isr_stop')) {
+        let feedId = null;
+        try {
+            const parsedUrl = new URL(req.url, 'http://localhost');
+            feedId = parsedUrl.searchParams.get('feedId');
+        } catch(e) {}
+
+        const clearFeed = (fid) => {
+            if (fid && ACTIVE_ISR_STREAMS[fid]) {
+                delete ACTIVE_ISR_STREAMS[fid];
+                console.log(`[ISR] Feed stopped: ${fid}`);
+            } else if (!fid) {
+                for (const k of Object.keys(ACTIVE_ISR_STREAMS)) delete ACTIVE_ISR_STREAMS[k];
+                console.log(`[ISR] All active feeds purged`);
+            }
+        };
+
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => {
+                try {
+                    if (body) {
+                        const data = JSON.parse(body);
+                        if (data.feedId) feedId = data.feedId;
+                    }
+                } catch(e) {}
+                clearFeed(feedId);
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ status: 'stopped', feedId }));
+            });
+            return;
+        } else {
+            clearFeed(feedId);
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ status: 'stopped', feedId }));
+            return;
+        }
+    }
+
     if (req.url.startsWith('/api/isr_active')) {
         const now = Date.now();
         const activeList = [];
         for (const [fid, s] of Object.entries(ACTIVE_ISR_STREAMS)) {
-            if (now - s.ts < 4000) {
+            if (now - s.ts < 8000) {
                 activeList.push({ feedId: fid, telemetry: s.telemetry, ageMs: now - s.ts });
             }
         }
