@@ -289,3 +289,17 @@ v8.77.4.5 - TACTICAL ISR MULTI-FEED & REAL PHONE BODYCAM RELAY
   - Auto-detection of active live streams on PC dashboard with instant auto-switching to live bodycam.
   - Top Screen mirror pop to primary surveillance viewport.
 * Service Worker cache upgraded to v8.77.4.5 with live ISR API stream bypass.
+
+============================================================
+v8.77.4.6 - REAL ISR CAPTURES: SNAPSHOT TO VAULT, PIN TO MAP, & WEBM RECORDER
+* Snapshot to Intel Vault (Win #4):
+  - Direct integration with window.saveIntelSnapshot & IndexedDB intelVault.
+  - Camera shutter flash visual animation overlay.
+  - Instant live grid refresh in Intel Vault (Window 4).
+* Pin Target to Geo Matrix (Win #3):
+  - Plots live optical target pin (🎯) on Leaflet orbital map with popup coordinates, feed title, and frame thumbnail.
+  - Automatically archives target waypoint to Intel Vault.
+* Live WebM Video Clip Recorder:
+  - MediaRecorder stream capture of live canvas feed.
+  - Saves recorded video clip thumbnail and metadata to Intel Vault.
+  - Automatically triggers operator download of high-def .webm video clip.

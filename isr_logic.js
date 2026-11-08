@@ -719,55 +719,217 @@
         if (window.lucide) window.lucide.createIcons();
     };
 
+    let isrMediaRecorder = null;
+    let isrRecordedChunks = [];
+    let isrRecordStartTime = 0;
+
     // --- Snapshot to Intel Vault ---
-    window.captureIsrSnapshotToVault = function() {
+    window.captureIsrSnapshotToVault = async function() {
         const canvas = document.getElementById('isr-stream-canvas');
         if (!canvas) return;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
         const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+        const label = `ISR-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${timeStr}`;
+
+        // Shutter flash effect on the viewport
+        const vpBox = document.getElementById('isr-stream-viewport-box');
+        if (vpBox) {
+            const flash = document.createElement('div');
+            flash.className = 'absolute inset-0 bg-white z-50 pointer-events-none transition-opacity duration-300';
+            flash.style.opacity = '0.85';
+            vpBox.appendChild(flash);
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                setTimeout(() => flash.remove(), 300);
+            }, 60);
+        }
 
         try {
-            if (window.idbSaveIntel) {
-                window.idbSaveIntel({
-                    id: 'intel-isr-' + Date.now(),
-                    title: `ISR SNAPSHOT [${feed.name}]`,
-                    type: 'photo',
-                    data: dataUrl,
-                    timestamp: new Date().toISOString(),
-                    lat: deviceSensors.lat,
-                    lng: deviceSensors.lng,
-                    notes: `Captured live from ${feed.source}`
+            if (typeof window.saveIntelSnapshot === 'function') {
+                await window.saveIntelSnapshot(label, dataUrl, {
+                    type: 'isr-snapshot',
+                    feedId: currentActiveFeedId,
+                    feedName: feed.name,
+                    telemetry: lastReceivedTelemetry || {},
+                    notes: `Live optics snapshot from ${feed.name} (${feed.source})`
                 });
+            } else if (window.TRC_IDB) {
+                const entry = {
+                    id: Date.now(),
+                    label: label,
+                    timestamp: now.toISOString(),
+                    image: dataUrl,
+                    type: 'isr-snapshot',
+                    feedName: feed.name
+                };
+                await window.TRC_IDB.set('intelVault', entry.id.toString(), entry);
+                if (typeof window.refreshVaultGrid === 'function') window.refreshVaultGrid();
             }
-            showToast(`✅ SNAPSHOT SAVED TO INTEL VAULT (WIN #4)!`);
+
+            if (typeof window.pushTacLog === 'function') {
+                window.pushTacLog(`ISR SNAPSHOT SAVED: ${label}`, "INTEL");
+            }
+            showToast(`📸 SNAPSHOT SAVED TO INTEL VAULT (WIN #4)!`);
         } catch(e) {
-            showToast(`✅ SNAPSHOT CAPTURED!`);
+            console.error("Snapshot save error:", e);
+            showToast(`✅ SNAPSHOT CAPTURED LOCALLY`);
         }
     };
 
     // --- Record Video Clip Toggle ---
     window.toggleIsrRecording = function() {
-        isRecording = !isRecording;
+        const canvas = document.getElementById('isr-stream-canvas');
         const btn = document.getElementById('isr-record-btn');
-        if (btn) {
-            if (isRecording) {
-                btn.className = "bg-red-600 hover:bg-red-500 text-white font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 shadow animate-pulse border border-red-400 cursor-pointer";
-                btn.innerHTML = `<i data-lucide="circle-stop" class="w-3.5 h-3.5"></i> STOP REC`;
-                showToast(`🔴 RECORDING ISR CLIP...`);
-            } else {
+        const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+
+        if (!isRecording) {
+            // START RECORDING
+            if (!canvas) {
+                showToast("⚠️ CANVAS NOT READY");
+                return;
+            }
+
+            try {
+                isrRecordedChunks = [];
+                const stream = canvas.captureStream ? canvas.captureStream(20) : null;
+                if (!stream) {
+                    showToast("⚠️ VIDEO STREAM CAPTURE UNSUPPORTED");
+                    return;
+                }
+
+                let options = { mimeType: 'video/webm;codecs=vp8' };
+                if (window.MediaRecorder && !MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm' };
+                }
+
+                isrMediaRecorder = new MediaRecorder(stream, options);
+                isrMediaRecorder.ondataavailable = function(e) {
+                    if (e.data && e.data.size > 0) isrRecordedChunks.push(e.data);
+                };
+
+                isrMediaRecorder.onstop = async function() {
+                    const blob = new Blob(isrRecordedChunks, { type: 'video/webm' });
+                    const thumbDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                    const clipName = `ISR-CLIP-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now().toString().slice(-4)}`;
+
+                    // Save snapshot thumb + clip metadata to Intel Vault
+                    if (typeof window.saveIntelSnapshot === 'function') {
+                        await window.saveIntelSnapshot(clipName, thumbDataUrl, {
+                            type: 'video',
+                            feedId: currentActiveFeedId,
+                            feedName: feed.name,
+                            duration: `${Math.round((Date.now() - isrRecordStartTime) / 1000)}s`,
+                            notes: `Live video clip from ${feed.name}`
+                        });
+                    }
+
+                    // Auto-download webm file to operator computer
+                    const downloadUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `${clipName}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => { a.remove(); URL.revokeObjectURL(downloadUrl); }, 1000);
+
+                    if (typeof window.pushTacLog === 'function') {
+                        window.pushTacLog(`ISR VIDEO CLIP SAVED: ${clipName}`, "INTEL");
+                    }
+                    showToast(`💾 CLIP SAVED TO INTEL VAULT & DOWNLOADED!`);
+                };
+
+                isrMediaRecorder.start(250); // chunk timeslice every 250ms
+                isRecording = true;
+                isrRecordStartTime = Date.now();
+
+                if (btn) {
+                    btn.className = "bg-red-600 hover:bg-red-500 text-white font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 shadow animate-pulse border border-red-400 cursor-pointer";
+                    btn.innerHTML = `<i data-lucide="circle-stop" class="w-3.5 h-3.5"></i> STOP REC`;
+                }
+                showToast(`🔴 RECORDING LIVE ISR CLIP...`);
+            } catch (err) {
+                console.error("Recording error:", err);
+                showToast(`⚠️ RECORDING ERROR: ${err.message}`);
+            }
+        } else {
+            // STOP RECORDING
+            isRecording = false;
+            if (isrMediaRecorder && isrMediaRecorder.state !== 'inactive') {
+                isrMediaRecorder.stop();
+            }
+            if (btn) {
                 btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 border border-slate-600 transition-all cursor-pointer";
                 btn.innerHTML = `<i data-lucide="video" class="w-3.5 h-3.5"></i> REC`;
-                showToast(`💾 CLIP SAVED TO INTEL VAULT!`);
             }
-            if (window.lucide) window.lucide.createIcons();
         }
+
+        if (window.lucide) window.lucide.createIcons();
         renderCurrentActiveView();
     };
 
     // --- Pin Target to Recon Map ---
-    window.pinIsrTargetToMap = function() {
+    window.pinIsrTargetToMap = async function() {
         const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
-        showToast(`📍 TARGET FROM ${feed.name} PLOTTED TO GEO MATRIX & RECON MAP!`);
+        const canvas = document.getElementById('isr-stream-canvas');
+        const dataUrl = canvas ? canvas.toDataURL('image/jpeg', 0.8) : null;
+
+        // Coordinates from mobile telemetry or map center or default
+        let pinLat = 31.9542;
+        let pinLng = -102.1784;
+
+        if (lastReceivedTelemetry && lastReceivedTelemetry.lat && lastReceivedTelemetry.lng) {
+            pinLat = parseFloat(lastReceivedTelemetry.lat);
+            pinLng = parseFloat(lastReceivedTelemetry.lng);
+        } else if (deviceSensors && deviceSensors.lat && deviceSensors.lng) {
+            pinLat = parseFloat(deviceSensors.lat);
+            pinLng = parseFloat(deviceSensors.lng);
+        } else if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
+            const center = window.orbitalMap.getCenter();
+            pinLat = center.lat;
+            pinLng = center.lng;
+        }
+
+        // Plot to Leaflet Orbital Map (Window 3: Geo Matrix)
+        if (window.orbitalMap && window.L) {
+            const targetIcon = window.L.divIcon({
+                className: 'isr-map-pin',
+                html: `<div style="background: rgba(6,182,212,0.95); border: 2px solid #22d3ee; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(6,182,212,0.9); color: black; font-weight: 900; font-size: 14px; cursor: pointer;">🎯</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+
+            const marker = window.L.marker([pinLat, pinLng], { icon: targetIcon }).addTo(window.orbitalMap);
+            marker.bindPopup(`
+                <div style="font-family: monospace; font-size: 11px; color: #000; min-width: 170px;">
+                    <b style="color: #0891b2; font-size: 12px;">🎯 ISR OPTICAL PIN</b><br>
+                    <b>FEED:</b> ${feed.name}<br>
+                    <b>COORDS:</b> ${pinLat.toFixed(5)}, ${pinLng.toFixed(5)}<br>
+                    <b>TIME:</b> ${new Date().toLocaleTimeString()}<br>
+                    ${dataUrl ? `<img src="${dataUrl}" style="width: 100%; border-radius: 4px; margin-top: 4px; border: 1px solid #0891b2;">` : ''}
+                </div>
+            `).openPopup();
+
+            window.orbitalMap.setView([pinLat, pinLng], 15);
+        }
+
+        // Also save to Intel Vault as pinned target
+        if (dataUrl && typeof window.saveIntelSnapshot === 'function') {
+            const pinLabel = `PIN-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now().toString().slice(-4)}`;
+            await window.saveIntelSnapshot(pinLabel, dataUrl, {
+                type: 'target-pin',
+                lat: pinLat,
+                lng: pinLng,
+                feedName: feed.name,
+                notes: `Optical reconnaissance target locked from ${feed.name}`
+            });
+        }
+
+        if (typeof window.pushTacLog === 'function') {
+            window.pushTacLog(`ISR TARGET PINNED AT ${pinLat.toFixed(5)}, ${pinLng.toFixed(5)}`, "SUCCESS");
+        }
+        showToast(`📍 TARGET FROM ${feed.name} PLOTTED TO GEO MATRIX & VAULT!`);
     };
 
     // --- Hound Intercept Route ---
