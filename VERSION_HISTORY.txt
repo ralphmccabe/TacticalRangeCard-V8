@@ -1,4 +1,19 @@
 ============================================================
+v8.77.5.5 - DUAL PC & MOBILE GEO MATRIX PINNING, PER-FEED TELEMETRY & TACTICAL ASSET ICONS
+* Dual PC & Mobile Pinning Fix:
+  - Eliminated string coordinate bug: Base C2 broadcaster was transmitting string labels ('C2 COMMAND' / 'OPS DESK') instead of numeric floats, causing parseFloat to return NaN and Leaflet map pin placement to fail.
+  - Added Multi-Channel Telemetry Registry: isr_logic now tracks telemetry per-feed (feedTelemetry dictionary) so PC Command and Mobile Field Operator coordinates are never overwritten by whichever channel polled last.
+  - Instant PC Geolocation: initDeviceSensors now queries navigator.geolocation.getCurrentPosition immediately on startup, with smooth fallback to Geo Matrix map center or tactical origin.
+* Dedicated Tile Pinning Controls:
+  - Added dedicated [📍 PIN] buttons to all 4 quadrants in the 2x2 grid:
+    * Tile 4 (Base C2): Pins the PC Command Post with cyan '💻' tactical diamond icon, webcam snapshot, and exact coordinates.
+    * Tile 2 (Lead Bodycam): Pins the Mobile Chest-Rig with blue '🦺' tactical operator icon, phone snapshot, and live GPS.
+    * Tile 1 (Air-1 Drone): Pins aerial recon with green '🚁' drone icon.
+    * Tile 3 (Point Scout): Pins scout position with purple '🎯' target icon.
+  - Tactical Separation: When PC and Mobile are co-located at the same mission site, applies automatic 35m tactical separation offset so both pins and popups remain distinctly clickable on satellite imagery.
+  - Squad-Wide Matrix Pinning: Clicking [📍 PIN MAP] in 2x2 Matrix view automatically pins all live squad assets to Geo Matrix simultaneously.
+
+============================================================
 v8.77.5.4 - PERSISTENT 2x2 MATRIX TOGGLE, UNBLOCKED VIEWPORT, & PER-CAM TILE CONTROLS
 * Persistent 2x2 Matrix & Single Focus View Switcher:
   - Added dedicated, permanently visible [⊞ 2x2 MATRIX] / [⊡ SINGLE FOCUS] button in the Window 7 Subheader Toolbar right next to Room ID.

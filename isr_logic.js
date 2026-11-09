@@ -150,6 +150,8 @@
     let viewerPollInterval = null;
     let lastReceivedFrame = null;
     let lastReceivedTelemetry = null;
+    let feedTelemetry = {};
+    window.feedTelemetry = feedTelemetry;
     let isMirroredToMain = false;
 
     // --- Tactical Mission Room State ---
