@@ -1,4 +1,28 @@
 ============================================================
+v8.77.5.6 - CHROMEBOOK POINT SCOUT AUTO-DETECTION, SQUAD ROLE COLLISION PREVENTION & DIRECT URL DEEP-LINKS
+* Chromebook & Multi-Device Scout Auto-Detection:
+  - Eliminated Role Collision: ChromeOS and desktop laptops are no longer falsely defaulted to Base C2 when PC Command is already transmitting.
+  - Smart Squad Assignment: When opening the broadcaster, TRC dynamically queries active server streams (/api/isr_active). If Base C2 or Lead Bodycam is already streaming, it automatically defaults to the next free squad slot (feed-body-2: Point Scout).
+  - Explicit ChromeOS Detection: Detects /CrOS/ user-agent and configures the interface as Scout Chest/Pack Rig.
+* Real-Time Role Badges in Broadcaster Modal:
+  - Role dropdown dynamically labels each channel with live status:
+    * [🔴 IN USE BY SQUAD] for channels currently streaming from other devices.
+    * [🟢 AVAILABLE] for free channels.
+    * [🟢 BROADCASTING FROM THIS DEVICE] for active transmissions.
+  - Added Conflict Warning banner when selecting a role currently active on another device.
+* Direct URL Role Parameters (?role=scout, ?role=lead, ?role=c2):
+  - Direct deep-links allow opening any phone, tablet, or Chromebook directly into its assigned squad role.
+  - Automatically maximizes Window 7 (Tactical ISR Matrix) when launched via role parameter.
+  - Added Role QR Switcher in Squad Phones tab: 1-click generation of QR codes for Lead Bodycam (?role=lead), Point Scout (?role=scout), or Base C2 (?role=c2).
+* 2x2 Matrix Direct [📡 CAST] Buttons on Every Quadrant:
+  - Every quadrant tile (Tile 1: Drone, Tile 2: Lead Bodycam, Tile 3: Point Scout, Tile 4: Base C2) now has a dedicated [📡 CAST] button.
+  - Tapping [📡 CAST] on Tile 3 instantly opens the broadcaster pre-configured for Point Scout.
+* Point Scout Geolocation & Map Pinning:
+  - Point Scout telemetry now sets role: 'POINT_SCOUT' and label: 'POINT SCOUT BODYCAM'.
+  - Added automated 50m scout flank tactical offset if Chromebook lacks built-in GPS hardware, preventing coordinate overlaps with Lead Bodycam or Command Post.
+  - Pinned with custom purple '🎯' tactical icon on Geo Matrix orbital map.
+
+============================================================
 v8.77.5.5 - DUAL PC & MOBILE GEO MATRIX PINNING, PER-FEED TELEMETRY & TACTICAL ASSET ICONS
 * Dual PC & Mobile Pinning Fix:
   - Eliminated string coordinate bug: Base C2 broadcaster was transmitting string labels ('C2 COMMAND' / 'OPS DESK') instead of numeric floats, causing parseFloat to return NaN and Leaflet map pin placement to fail.

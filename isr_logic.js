@@ -136,6 +136,7 @@
     let broadcastInterval = null;
     let isBroadcasting = false;
     let broadcastRoleId = 'feed-body-1';
+    let lastActiveStreamsList = [];
     let broadcastFacingMode = 'environment';
     let broadcastFps = 10;
     let deviceSensors = {
@@ -307,10 +308,26 @@
         if (window.lucide) window.lucide.createIcons();
     };
 
+    // Helper to generate role-specific QR code
+    window.generateQrForRole = function(roleId) {
+        const host = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '192.168.12.112' : location.hostname;
+        const targetUrl = `https://${host}:8443/?role=${encodeURIComponent(roleId)}&mission=${encodeURIComponent(currentMissionCode)}`;
+        const qrImg = document.getElementById('isr-phone-qr-img');
+        const phoneLink = document.getElementById('isr-phone-connect-url');
+        if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(targetUrl)}`;
+        if (phoneLink) {
+            phoneLink.href = targetUrl;
+            phoneLink.textContent = targetUrl;
+        }
+        showToast(`📲 QR CODE & LINK UPDATED FOR: ${roleId.replace('feed-', '').toUpperCase()}`);
+    };
+
     window.onBroadcastRoleChange = function() {
         const roleSelect = document.getElementById('isr-broadcast-role-select');
         const sourceBox = document.getElementById('isr-broadcast-source-box');
         const facingSelect = document.getElementById('isr-broadcast-facing-select');
+        const warnBox = document.getElementById('isr-broadcast-role-warning');
+        const warnText = document.getElementById('isr-broadcast-role-warning-text');
         const role = roleSelect ? roleSelect.value : 'feed-base-c2';
 
         if (role === 'feed-base-c2') {
@@ -318,7 +335,24 @@
             if (facingSelect) facingSelect.value = 'user';
         } else {
             if (sourceBox) sourceBox.classList.add('hidden');
-            if (facingSelect) facingSelect.value = 'environment';
+            if (facingSelect) facingSelect.value = (role === 'feed-body-2' && /CrOS/i.test(navigator.userAgent)) ? 'user' : 'environment';
+        }
+
+        // Check if selected role is currently in use by another device
+        if (warnBox && warnText) {
+            const inUseByOther = (lastActiveStreamsList || []).some(s => s.feedId === role && (!isBroadcasting || broadcastRoleId !== role));
+            if (inUseByOther) {
+                const roleNames = {
+                    'feed-base-c2': 'Base C2 Command (PC)',
+                    'feed-body-1': 'Lead Bodycam (Phone #1)',
+                    'feed-body-2': 'Point Scout (Chromebook / Phone #2)',
+                    'feed-drone-1': 'Air-1 Drone'
+                };
+                warnText.innerHTML = `<strong>CHANNEL IN USE:</strong> ${roleNames[role] || role} is already streaming live from another squad device! Broadcasting here will overwrite their feed. Recommended: Select an available channel (e.g. POINT SCOUT).`;
+                warnBox.classList.remove('hidden');
+            } else {
+                warnBox.classList.add('hidden');
+            }
         }
     };
 
@@ -368,29 +402,101 @@
     };
 
     // --- Broadcast Setup Modal Controls ---
-    window.openBroadcastSetupModal = function(roleHint) {
+    window.openBroadcastSetupModal = async function(roleHint) {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+        const isChromeOS = /CrOS/i.test(navigator.userAgent);
         const host = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '192.168.12.112' : location.hostname;
-        const phoneUrl = `https://${host}:8443/?mission=${encodeURIComponent(currentMissionCode)}`;
 
-        const qrImg = document.getElementById('isr-phone-qr-img');
-        const phoneLink = document.getElementById('isr-phone-connect-url');
-        if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(phoneUrl)}`;
-        if (phoneLink) {
-            phoneLink.href = phoneUrl;
-            phoneLink.textContent = phoneUrl;
+        // Query URL parameters for explicit role assignment
+        const urlParams = new URLSearchParams(window.location.search);
+        let requestedRole = roleHint || urlParams.get('role') || urlParams.get('feed');
+        if (requestedRole) {
+            requestedRole = requestedRole.toLowerCase().trim();
+            if (['scout', 'point', 'body-2', 'feed-body-2', 'chromebook', 'player9'].includes(requestedRole)) requestedRole = 'feed-body-2';
+            else if (['lead', 'phone', 'body-1', 'feed-body-1', 'player1'].includes(requestedRole)) requestedRole = 'feed-body-1';
+            else if (['c2', 'base', 'pc', 'command', 'feed-base-c2'].includes(requestedRole)) requestedRole = 'feed-base-c2';
+            else if (['drone', 'air-1', 'feed-drone-1'].includes(requestedRole)) requestedRole = 'feed-drone-1';
+            else if (['trail-1', 'fence', 'feed-trail-1'].includes(requestedRole)) requestedRole = 'feed-trail-1';
+            else if (['trail-2', 'blind', 'feeder', 'feed-trail-2'].includes(requestedRole)) requestedRole = 'feed-trail-2';
         }
+
+        // Fetch fresh active streams from server to avoid squad collision
+        try {
+            const actRes = await fetch(`/api/isr_active?missionId=${encodeURIComponent(currentMissionCode)}`);
+            if (actRes.ok) {
+                const actData = await actRes.json();
+                lastActiveStreamsList = actData.activeStreams || [];
+            }
+        } catch(e) {}
+
+        const activeList = lastActiveStreamsList || [];
+        const inUseByOthers = activeList
+            .filter(s => (!isBroadcasting || s.feedId !== broadcastRoleId))
+            .map(s => s.feedId);
+
+        // Auto-select optimal conflict-free role
+        let targetRole = requestedRole;
+        if (!targetRole) {
+            if (isChromeOS) {
+                // Chromebook is a scout station: default to Point Scout (feed-body-2)
+                if (!inUseByOthers.includes('feed-body-2')) {
+                    targetRole = 'feed-body-2';
+                } else if (!inUseByOthers.includes('feed-body-1')) {
+                    targetRole = 'feed-body-1';
+                } else if (!inUseByOthers.includes('feed-base-c2')) {
+                    targetRole = 'feed-base-c2';
+                } else {
+                    targetRole = 'feed-drone-1';
+                }
+            } else if (isMobile) {
+                // Mobile phone: default to Lead Bodycam (feed-body-1)
+                if (!inUseByOthers.includes('feed-body-1')) {
+                    targetRole = 'feed-body-1';
+                } else if (!inUseByOthers.includes('feed-body-2')) {
+                    targetRole = 'feed-body-2';
+                } else {
+                    targetRole = 'feed-drone-1';
+                }
+            } else {
+                // Desktop PC: If Base C2 is free, pick Base C2. If in use by another PC, default to Point Scout!
+                if (!inUseByOthers.includes('feed-base-c2')) {
+                    targetRole = 'feed-base-c2';
+                } else if (!inUseByOthers.includes('feed-body-2')) {
+                    targetRole = 'feed-body-2';
+                } else {
+                    targetRole = 'feed-body-1';
+                }
+            }
+        }
+
+        // Decorate role options with live status badges
+        const roleLabels = {
+            'feed-base-c2': '💻 BASE C2 (Command Post PC Webcam / Screen)',
+            'feed-body-1': '🦺 LEAD BODYCAM (Player #1 - Chest Rig Phone)',
+            'feed-body-2': '🎯 POINT SCOUT BODYCAM (Player #9 - Pack / Chromebook)',
+            'feed-trail-1': '🌲 NORTH FENCE TRAIL-CAM (Solar Fence Post Phone)',
+            'feed-trail-2': '🦌 DEER BLIND / FEEDER CAM (Blind Window Phone)',
+            'feed-drone-1': '🚁 OVERHEAD DRONE (AIR-1 Relay)'
+        };
 
         const roleSelect = document.getElementById('isr-broadcast-role-select');
         if (roleSelect) {
-            if (roleHint) {
-                roleSelect.value = roleHint;
-            } else if (!isMobile) {
-                roleSelect.value = 'feed-base-c2';
-            } else {
-                roleSelect.value = 'feed-body-1';
+            Array.from(roleSelect.options).forEach(opt => {
+                const base = roleLabels[opt.value] || opt.textContent.split(' [')[0];
+                if (isBroadcasting && broadcastRoleId === opt.value) {
+                    opt.textContent = `${base} [🟢 CURRENTLY BROADCASTING]`;
+                } else if (inUseByOthers.includes(opt.value)) {
+                    opt.textContent = `${base} [🔴 IN USE BY SQUAD]`;
+                } else {
+                    opt.textContent = `${base} [🟢 AVAILABLE]`;
+                }
+            });
+            if (targetRole) {
+                roleSelect.value = targetRole;
             }
         }
+
+        window.generateQrForRole(targetRole || 'feed-body-1');
         window.onBroadcastRoleChange();
 
         // Populate physical camera hardware dropdown (filters out ghost phones)
@@ -599,21 +705,42 @@ ${secureUrl}`);
                 const dataUrl = captureCanvas.toDataURL('image/jpeg', 0.55);
 
                 const isC2 = broadcastRoleId === 'feed-base-c2';
+                const isScout = broadcastRoleId === 'feed-body-2';
                 let bLat = deviceSensors.lat;
                 let bLng = deviceSensors.lng;
-                if ((!bLat || !bLng || isNaN(parseFloat(bLat))) && isC2) {
-                    if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
-                        const c = window.orbitalMap.getCenter();
-                        bLat = c.lat;
-                        bLng = c.lng;
-                    } else if (feedTelemetry['feed-body-1'] && !isNaN(parseFloat(feedTelemetry['feed-body-1'].lat))) {
-                        bLat = parseFloat(feedTelemetry['feed-body-1'].lat) + 0.00035;
-                        bLng = parseFloat(feedTelemetry['feed-body-1'].lng) + 0.00035;
-                    } else {
-                        bLat = 31.9498;
-                        bLng = -102.1697;
+
+                if (!bLat || !bLng || isNaN(parseFloat(bLat))) {
+                    if (isScout) {
+                        // Point Scout flank separation offset from Lead Bodycam or Map Center
+                        if (feedTelemetry['feed-body-1'] && !isNaN(parseFloat(feedTelemetry['feed-body-1'].lat))) {
+                            bLat = parseFloat(feedTelemetry['feed-body-1'].lat) - 0.00045;
+                            bLng = parseFloat(feedTelemetry['feed-body-1'].lng) + 0.00045;
+                        } else if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
+                            const c = window.orbitalMap.getCenter();
+                            bLat = c.lat - 0.00045;
+                            bLng = c.lng + 0.00045;
+                        } else {
+                            bLat = 31.9494;
+                            bLng = -102.1693;
+                        }
+                    } else if (isC2) {
+                        if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
+                            const c = window.orbitalMap.getCenter();
+                            bLat = c.lat;
+                            bLng = c.lng;
+                        } else if (feedTelemetry['feed-body-1'] && !isNaN(parseFloat(feedTelemetry['feed-body-1'].lat))) {
+                            bLat = parseFloat(feedTelemetry['feed-body-1'].lat) + 0.00035;
+                            bLng = parseFloat(feedTelemetry['feed-body-1'].lng) + 0.00035;
+                        } else {
+                            bLat = 31.9498;
+                            bLng = -102.1697;
+                        }
                     }
                 }
+
+                const roleLabel = isC2 ? 'BASE C2 COMMAND' : (isScout ? 'POINT SCOUT BODYCAM' : 'LEAD BODYCAM');
+                const roleType = isC2 ? 'BASE_C2' : (isScout ? 'POINT_SCOUT' : 'FIELD_OPERATOR');
+
                 const payload = {
                     missionId: currentMissionCode,
                     feedId: broadcastRoleId,
@@ -624,8 +751,8 @@ ${secureUrl}`);
                         speed: isC2 ? '0.0 MPH' : (deviceSensors.speed || '0.0 MPH'),
                         lat: bLat,
                         lng: bLng,
-                        role: isC2 ? 'BASE_C2' : 'FIELD_OPERATOR',
-                        label: isC2 ? 'BASE C2 COMMAND' : 'LEAD BODYCAM',
+                        role: roleType,
+                        label: roleLabel,
                         fps: `${broadcastFps} FPS`
                     }
                 };
@@ -963,6 +1090,7 @@ ${secureUrl}`);
                     if (actRes.ok) {
                         const actData = await actRes.json();
                         const activeList = actData.activeStreams || [];
+                        lastActiveStreamsList = activeList;
 
                         // Update feed cards with LIVE indicator badges
                         feeds.forEach(f => {
@@ -1754,16 +1882,26 @@ ${secureUrl}`);
                     pinLng += 0.00035;
                 }
             }
+            // If Point Scout coordinates are identical to mobile, apply tactical scout separation (50m SE)
+            if (feedId === 'feed-body-2' && feedTelemetry['feed-body-1']) {
+                const mLat = parseFloat(feedTelemetry['feed-body-1'].lat);
+                const mLng = parseFloat(feedTelemetry['feed-body-1'].lng);
+                if (!isNaN(mLat) && Math.abs(pinLat - mLat) < 0.00005 && Math.abs(pinLng - mLng) < 0.00005) {
+                    pinLat -= 0.00045;
+                    pinLng += 0.00045;
+                }
+            }
 
             // 3. Determine tactical icon, halo, and labels based on feed type
             const isC2 = feedId === 'feed-base-c2';
             const isBody = feedId === 'feed-body-1';
+            const isScout = feedId === 'feed-body-2';
             const isDrone = feedId === 'feed-drone-1';
 
-            let pinEmoji = isC2 ? '💻' : (isBody ? '🦺' : (isDrone ? '🚁' : '🎯'));
-            let pinColor = isC2 ? '#06b6d4' : (isBody ? '#3b82f6' : (isDrone ? '#10b981' : '#a855f7'));
-            let pinBg = isC2 ? 'rgba(8, 51, 68, 0.95)' : (isBody ? 'rgba(30, 58, 138, 0.95)' : (isDrone ? 'rgba(6, 78, 59, 0.95)' : 'rgba(88, 28, 135, 0.95)'));
-            let pinTitle = isC2 ? '💻 BASE C2 COMMAND POST (PC)' : (isBody ? '🦺 LEAD BODYCAM (CHEST-RIG)' : (isDrone ? '🚁 AIR-1 RECON DRONE' : '🎯 POINT SCOUT'));
+            let pinEmoji = isC2 ? '💻' : (isBody ? '🦺' : (isScout ? '🎯' : (isDrone ? '🚁' : '🌲')));
+            let pinColor = isC2 ? '#06b6d4' : (isBody ? '#3b82f6' : (isScout ? '#a855f7' : (isDrone ? '#10b981' : '#eab308')));
+            let pinBg = isC2 ? 'rgba(8, 51, 68, 0.95)' : (isBody ? 'rgba(30, 58, 138, 0.95)' : (isScout ? 'rgba(88, 28, 135, 0.95)' : (isDrone ? 'rgba(6, 78, 59, 0.95)' : 'rgba(113, 63, 18, 0.95)')));
+            let pinTitle = isC2 ? '💻 BASE C2 COMMAND POST (PC)' : (isBody ? '🦺 LEAD BODYCAM (CHEST-RIG)' : (isScout ? '🎯 POINT SCOUT (CHROMEBOOK / SCOUT #9)' : (isDrone ? '🚁 AIR-1 RECON DRONE' : '🌲 TRAIL-CAM')));
 
             // 4. Plot to Leaflet Orbital Map (Window 3: Geo Matrix)
             if (window.orbitalMap && window.L) {
@@ -1915,11 +2053,38 @@ ${secureUrl}`);
         startViewerPolling();
 
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+        const isChromeOS = /CrOS/i.test(navigator.userAgent);
         const hdrText = document.getElementById('isr-header-broadcast-btn-text');
         const viewText = document.getElementById('isr-viewport-broadcast-btn-text');
         const qrQuickBtn = document.getElementById('isr-header-phone-qr-btn');
 
-        if (!isMobile) {
+        // Check URL parameters for direct role assignment
+        const urlParams = new URLSearchParams(window.location.search);
+        let requestedRole = urlParams.get('role') || urlParams.get('feed');
+        if (requestedRole) {
+            requestedRole = requestedRole.toLowerCase().trim();
+            if (['scout', 'point', 'body-2', 'feed-body-2', 'chromebook', 'player9'].includes(requestedRole)) requestedRole = 'feed-body-2';
+            else if (['lead', 'phone', 'body-1', 'feed-body-1', 'player1'].includes(requestedRole)) requestedRole = 'feed-body-1';
+            else if (['c2', 'base', 'pc', 'command', 'feed-base-c2'].includes(requestedRole)) requestedRole = 'feed-base-c2';
+            else if (['drone', 'air-1', 'feed-drone-1'].includes(requestedRole)) requestedRole = 'feed-drone-1';
+            
+            broadcastRoleId = requestedRole;
+
+            // Auto-maximize Window 7 if opened with role deep-link
+            setTimeout(() => {
+                const p = document.getElementById('panel-isr');
+                if (p && !p.classList.contains('is-maximized') && typeof window.toggleFullscreen === 'function') {
+                    window.toggleFullscreen('panel-isr');
+                }
+            }, 300);
+        }
+
+        if (requestedRole === 'feed-body-2' || isChromeOS) {
+            if (hdrText) hdrText.textContent = "[🎯 BROADCAST POINT SCOUT]";
+            if (viewText) viewText.textContent = "🎯 BROADCAST POINT SCOUT";
+            if (qrQuickBtn) qrQuickBtn.classList.remove('hidden');
+            broadcastRoleId = 'feed-body-2';
+        } else if (!isMobile) {
             if (hdrText) hdrText.textContent = "[💻 BROADCAST PC WEBCAM / C2]";
             if (viewText) viewText.textContent = "💻 BROADCAST PC WEBCAM";
             if (qrQuickBtn) qrQuickBtn.classList.remove('hidden');
