@@ -272,11 +272,67 @@
         renderCurrentActiveView();
     };
 
+    // --- Broadcast Modal Tab Switcher ---
+    window.switchBroadcastModalTab = function(tab) {
+        const btnBroadcast = document.getElementById('isr-tab-btn-broadcast');
+        const btnRemote = document.getElementById('isr-tab-btn-remote');
+        const formBox = document.getElementById('isr-broadcast-form-container');
+        const guideBox = document.getElementById('isr-broadcast-pc-guide');
+
+        if (tab === 'remote') {
+            if (btnRemote) {
+                btnRemote.className = "flex-1 py-2 px-3 text-center font-black text-[11px] uppercase tracking-wider rounded-t border-b-2 border-cyan-400 text-cyan-300 bg-cyan-950/60 transition-all cursor-pointer";
+            }
+            if (btnBroadcast) {
+                btnBroadcast.className = "flex-1 py-2 px-3 text-center font-black text-[11px] uppercase tracking-wider rounded-t border-b-2 border-transparent text-slate-400 hover:text-white bg-slate-900/60 transition-all cursor-pointer";
+            }
+            if (guideBox) guideBox.classList.remove('hidden');
+            if (formBox) formBox.classList.add('hidden');
+        } else {
+            if (btnBroadcast) {
+                btnBroadcast.className = "flex-1 py-2 px-3 text-center font-black text-[11px] uppercase tracking-wider rounded-t border-b-2 border-cyan-400 text-cyan-300 bg-cyan-950/60 transition-all cursor-pointer";
+            }
+            if (btnRemote) {
+                btnRemote.className = "flex-1 py-2 px-3 text-center font-black text-[11px] uppercase tracking-wider rounded-t border-b-2 border-transparent text-slate-400 hover:text-white bg-slate-900/60 transition-all cursor-pointer";
+            }
+            if (formBox) formBox.classList.remove('hidden');
+            if (guideBox) guideBox.classList.add('hidden');
+        }
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    window.onBroadcastRoleChange = function() {
+        const roleSelect = document.getElementById('isr-broadcast-role-select');
+        const sourceBox = document.getElementById('isr-broadcast-source-box');
+        const facingSelect = document.getElementById('isr-broadcast-facing-select');
+        const role = roleSelect ? roleSelect.value : 'feed-base-c2';
+
+        if (role === 'feed-base-c2') {
+            if (sourceBox) sourceBox.classList.remove('hidden');
+            if (facingSelect) facingSelect.value = 'user';
+        } else {
+            if (sourceBox) sourceBox.classList.add('hidden');
+            if (facingSelect) facingSelect.value = 'environment';
+        }
+    };
+
+    window.onBroadcastSourceTypeChange = function() {
+        const srcType = document.getElementById('isr-broadcast-source-type')?.value;
+        const facingBox = document.getElementById('isr-broadcast-facing-box');
+        if (facingBox) {
+            if (srcType === 'screen') {
+                facingBox.classList.add('hidden');
+            } else {
+                facingBox.classList.remove('hidden');
+            }
+        }
+    };
+
     // --- Broadcast Setup Modal Controls ---
-    window.openBroadcastSetupModal = function() {
+    window.openBroadcastSetupModal = function(roleHint) {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
         const host = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '192.168.12.112' : location.hostname;
-        const phoneUrl = `https://${host}:8443/`;
+        const phoneUrl = `https://${host}:8443/?mission=${encodeURIComponent(currentMissionCode)}`;
 
         const qrImg = document.getElementById('isr-phone-qr-img');
         const phoneLink = document.getElementById('isr-phone-connect-url');
@@ -286,14 +342,21 @@
             phoneLink.textContent = phoneUrl;
         }
 
-        const pcGuide = document.getElementById('isr-broadcast-pc-guide');
-        if (pcGuide) {
-            if (!isMobile) {
-                pcGuide.classList.remove('hidden');
+        const roleSelect = document.getElementById('isr-broadcast-role-select');
+        if (roleSelect) {
+            if (roleHint) {
+                roleSelect.value = roleHint;
+            } else if (!isMobile) {
+                roleSelect.value = 'feed-base-c2';
             } else {
-                pcGuide.classList.add('hidden');
+                roleSelect.value = 'feed-body-1';
             }
         }
+        window.onBroadcastRoleChange();
+
+        // Default to broadcast tab
+        window.switchBroadcastModalTab('broadcast');
+
         const m = document.getElementById('modal-isr-broadcast');
         if (m) {
             m.style.setProperty('display', 'flex', 'important');
@@ -328,39 +391,79 @@
         }
     };
 
-    // --- Start Broadcasting From Local Device Camera ---
+    // --- Start Broadcasting From Local Device Camera or Screen ---
     window.startLocalBroadcasting = async function() {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
         const roleSelect = document.getElementById('isr-broadcast-role-select');
         const facingSelect = document.getElementById('isr-broadcast-facing-select');
+        const srcTypeSelect = document.getElementById('isr-broadcast-source-type');
+
         if (roleSelect) broadcastRoleId = roleSelect.value;
         if (facingSelect) broadcastFacingMode = facingSelect.value;
+        const sourceType = srcTypeSelect ? srcTypeSelect.value : 'camera';
 
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (!navigator.mediaDevices) {
             const secureUrl = `https://${location.hostname}:8443/`;
-            alert(`⚠️ MOBILE BROWSER SECURITY NOTICE:\n\nMobile Chrome & Safari require HTTPS to access camera hardware.\n\nPlease open:\n${secureUrl}\n\n(Tap "Advanced" -> "Proceed" when your phone asks to trust the local network connection).`);
+            alert(`⚠️ BROWSER SECURITY NOTICE:
+
+Camera & Display APIs require a secure context.
+
+Please open:
+${secureUrl}`);
             return;
         }
 
         window.closeBroadcastSetupModal();
 
         try {
-            // Stop existing if any
+            // Stop existing broadcast stream if any
             if (activeMediaStream) {
                 activeMediaStream.getTracks().forEach(t => t.stop());
             }
 
-            const constraints = {
-                video: {
-                    facingMode: broadcastFacingMode,
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                },
-                audio: false
-            };
+            let stream = null;
 
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            if (sourceType === 'screen' && !isMobile) {
+                if (!navigator.mediaDevices.getDisplayMedia) {
+                    alert("⚠️ Screen capture is not supported by your current browser.");
+                    return;
+                }
+                try {
+                    stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            displaySurface: 'monitor',
+                            frameRate: { ideal: 10, max: 15 }
+                        },
+                        audio: false
+                    });
+                    if (stream && stream.getVideoTracks().length > 0) {
+                        stream.getVideoTracks()[0].addEventListener('ended', () => {
+                            window.stopLocalBroadcasting();
+                        });
+                    }
+                } catch(err) {
+                    if (err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+                        console.error('Screen capture error:', err);
+                    }
+                    return;
+                }
+            } else {
+                const constraints = {
+                    video: {
+                        facingMode: broadcastFacingMode,
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            }
+
             activeMediaStream = stream;
             isBroadcasting = true;
+
+            // Acquire Screen WakeLock so device stays on
+            acquireScreenWakeLock();
 
             let video = document.getElementById('isr-broadcaster-video');
             if (!video) {
@@ -401,16 +504,17 @@
                 captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
                 const dataUrl = captureCanvas.toDataURL('image/jpeg', 0.55);
 
+                const isC2 = broadcastRoleId === 'feed-base-c2';
                 const payload = {
                     missionId: currentMissionCode,
                     feedId: broadcastRoleId,
                     image: dataUrl,
                     telemetry: {
-                        battery: deviceSensors.battery,
-                        heading: deviceSensors.heading,
-                        speed: deviceSensors.speed,
-                        lat: deviceSensors.lat,
-                        lng: deviceSensors.lng,
+                        battery: isC2 ? '100% (AC)' : deviceSensors.battery,
+                        heading: isC2 ? '000° N' : deviceSensors.heading,
+                        speed: isC2 ? '0.0 MPH' : deviceSensors.speed,
+                        lat: isC2 ? 'C2 COMMAND' : deviceSensors.lat,
+                        lng: isC2 ? 'OPS DESK' : deviceSensors.lng,
                         fps: `${broadcastFps} FPS`
                     }
                 };
@@ -424,7 +528,13 @@
             }, intervalMs);
 
             showToast(`🟢 BROADCASTING LIVE AS ${broadcastRoleId.toUpperCase()}!`);
-            window.switchIsrFeed(broadcastRoleId);
+
+            // If not in 2x2 matrix mode and not Base C2 on PC, switch to this feed
+            if (broadcastRoleId !== 'feed-base-c2' && !isMatrixGridMode) {
+                window.switchIsrFeed(broadcastRoleId);
+            } else if (isMatrixGridMode) {
+                renderCurrentActiveView();
+            }
 
         } catch (err) {
             console.error('Camera access error:', err);
@@ -654,6 +764,17 @@
                             if (!hasActive) {
                                 window.switchIsrFeed(activeList[0].feedId);
                                 showToast(`🔴 LIVE MOBILE STREAM DETECTED: AUTO-SWITCHED TO ${activeList[0].feedId.toUpperCase()}`);
+                            }
+                        }
+
+                        // Incoming Base C2 Command Live Alert Banner (for field phones)
+                        const c2Active = activeList.some(s => s.feedId === 'feed-base-c2');
+                        const c2Banner = document.getElementById('isr-c2-live-banner');
+                        if (c2Banner) {
+                            if (c2Active && currentActiveFeedId !== 'feed-base-c2' && !isMatrixGridMode && broadcastRoleId !== 'feed-base-c2') {
+                                c2Banner.classList.remove('hidden');
+                            } else {
+                                c2Banner.classList.add('hidden');
                             }
                         }
                     }
@@ -1324,6 +1445,21 @@
     function initIsr() {
         initDeviceSensors();
         startViewerPolling();
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+        const hdrText = document.getElementById('isr-header-broadcast-btn-text');
+        const viewText = document.getElementById('isr-viewport-broadcast-btn-text');
+        const qrQuickBtn = document.getElementById('isr-header-phone-qr-btn');
+
+        if (!isMobile) {
+            if (hdrText) hdrText.textContent = "[💻 BROADCAST PC WEBCAM / C2]";
+            if (viewText) viewText.textContent = "💻 BROADCAST PC WEBCAM";
+            if (qrQuickBtn) qrQuickBtn.classList.remove('hidden');
+        } else {
+            if (hdrText) hdrText.textContent = "[🦺 BROADCAST BODYCAM]";
+            if (viewText) viewText.textContent = "🦺 BROADCAST BODYCAM";
+            if (qrQuickBtn) qrQuickBtn.classList.add('hidden');
+        }
 
         const lbl = document.getElementById('isr-mission-label');
         if (lbl) lbl.textContent = `ROOM: ${currentMissionCode}`;

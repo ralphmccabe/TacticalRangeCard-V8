@@ -6807,8 +6807,13 @@ try {
                                 </button>
 
                                 <!-- Broadcast from Phone Quick Action Button -->
-                                <button type="button" id="isr-header-broadcast-btn" onclick="window.openBroadcastSetupModal()" style="background: linear-gradient(135deg, #06b6d4, #10b981) !important; color: #000000 !important; font-weight: 900 !important;" class="isr-broadcast-phone-btn border-2 border-cyan-300 text-black font-black text-[10px] sm:text-xs px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(6,182,212,0.7)] cursor-pointer" title="Transmit Phone Camera Stream">
-                                    <i data-lucide="smartphone" class="w-4 h-4 text-black shrink-0"></i> <span>[📱 BROADCAST FROM PHONE]</span>
+                                <!-- Dynamic Broadcast Button (PC Webcam / Phone Bodycam) -->
+                                <button type="button" id="isr-header-broadcast-btn" onclick="window.openBroadcastSetupModal()" style="background: linear-gradient(135deg, #06b6d4, #10b981) !important; color: #000000 !important; font-weight: 900 !important;" class="isr-broadcast-phone-btn border-2 border-cyan-300 text-black font-black text-[10px] sm:text-xs px-3 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(6,182,212,0.7)] cursor-pointer" title="Transmit Camera or Screen">
+                                    <i data-lucide="radio" class="w-4 h-4 text-black shrink-0"></i> <span id="isr-header-broadcast-btn-text">[💻 BROADCAST PC / PHONE]</span>
+                                </button>
+                                <!-- Quick Squad Phone QR Invite Button -->
+                                <button type="button" id="isr-header-phone-qr-btn" onclick="window.openMissionRoomModal()" class="bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-300 font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow cursor-pointer" title="Squad Phone Connect QR Code">
+                                    <i data-lucide="smartphone" class="w-3.5 h-3.5 text-cyan-400"></i> <span class="hidden sm:inline">[📱 SQUAD QR]</span>
                                 </button>
 
                                 <!-- How to Use Guide Button -->
@@ -6841,6 +6846,11 @@ try {
                             </div>
 
                             <!-- Canvas Stream / HUD Display -->
+                            <!-- Incoming Base C2 Live Alert Banner (Tappable on Mobile) -->
+                            <div id="isr-c2-live-banner" class="hidden absolute top-12 left-1/2 -translate-x-1/2 z-20 bg-cyan-950/95 border-2 border-cyan-400 text-cyan-200 px-3.5 py-1.5 rounded-full shadow-[0_0_25px_rgba(6,182,212,0.9)] flex items-center gap-2 cursor-pointer animate-pulse hover:bg-cyan-900 transition-all" onclick="window.switchIsrFeed('feed-base-c2')">
+                                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                                <span class="font-mono font-black text-[10px] tracking-wide uppercase">💻 BASE C2 COMMAND IS STREAMING LIVE &mdash; TAP TO WATCH</span>
+                            </div>
                             <canvas id="isr-stream-canvas" class="w-full h-full absolute inset-0 object-cover cursor-crosshair"></canvas>
                             <!-- 2x2 Multi-Cam Quad Matrix View -->
                             <div id="isr-matrix-grid" class="hidden absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1.5 p-1.5 bg-black/95 z-10">
@@ -6901,7 +6911,7 @@ try {
 
                                 <div class="flex items-center gap-1.5">
                                     <button type="button" id="isr-live-cam-toggle-btn" onclick="window.openBroadcastSetupModal()" style="background: linear-gradient(135deg, #06b6d4, #10b981) !important; color: #000000 !important; font-weight: 900 !important; border: 2px solid #22d3ee !important; box-shadow: 0 0 20px rgba(6,182,212,0.8) !important;" class="isr-broadcast-phone-btn text-black font-black text-[10px] sm:text-[11px] px-3.5 py-1.5 rounded-md uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer" title="Broadcast from Phone or PC Camera">
-                                        <i data-lucide="smartphone" class="w-4 h-4 text-black shrink-0"></i> <span>📱 BROADCAST FROM PHONE</span>
+                                        <i data-lucide="radio" class="w-4 h-4 text-black shrink-0"></i> <span id="isr-viewport-broadcast-btn-text">BROADCAST CAM</span>
                                     </button>
                                 </div>
                             </div>
@@ -6975,6 +6985,9 @@ try {
                                         </span>
                                         <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                                     </div>
+                                    <div class="font-bold text-[11px] text-white truncate">FEEDER / BLIND</div>
+                                    <div class="text-[8px] text-slate-400 truncate">RTSP Cam • Solar</div>
+                                </div>
 
                                 <!-- Feed 6: Base C2 / Command Post -->
                                 <div onclick="window.switchIsrFeed('feed-base-c2')" data-feed-id="feed-base-c2" class="isr-feed-card p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 flex flex-col justify-between gap-1.5 cursor-pointer hover:border-emerald-500/50 hover:brightness-125 transition-all">
@@ -6986,9 +6999,6 @@ try {
                                     </div>
                                     <div class="font-bold text-[11px] text-white truncate">COMMAND POST</div>
                                     <div class="text-[8px] text-slate-400 truncate">PC / Ops Webcam</div>
-                                </div>
-                                    <div class="font-bold text-[11px] text-white truncate">FEEDER / BLIND</div>
-                                    <div class="text-[8px] text-slate-400 truncate">RTSP Cam • Solar</div>
                                 </div>
                             </div>
                         </div>
@@ -7263,7 +7273,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.5.0';
+        window.APP_VERSION = 'v8.77.5.1';
 
         if(document.getElementById('header-version-display')) {
 
@@ -8404,11 +8414,25 @@ try {
 
 
   <!-- ISR BROADCASTING FLOATING HUD -->
-    <div id="isr-broadcasting-hud" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[100000080] bg-red-950/95 border-2 border-red-500 text-white rounded-2xl px-5 py-2.5 shadow-[0_0_35px_rgba(239,68,68,0.9)] flex items-center gap-4 font-mono text-sm backdrop-blur-md">
-        <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
-        <span class="font-black tracking-wider text-red-100 uppercase text-xs sm:text-sm" id="isr-broadcasting-hud-label">🔴 LIVE: LEAD BODYCAM</span>
-        <button type="button" onclick="window.stopLocalBroadcasting()" class="bg-red-600 hover:bg-red-500 text-white font-black px-4 py-1.5 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg border border-red-300 flex items-center gap-1.5 active:scale-95">
-            <i data-lucide="square" class="w-3.5 h-3.5 fill-white"></i> <span>STOP BROADCAST</span>
+    <div id="isr-broadcasting-hud" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[100000080] bg-red-950/95 border-2 border-red-500 text-white rounded-2xl px-4 py-2 shadow-[0_0_35px_rgba(239,68,68,0.9)] flex items-center gap-3 font-mono text-sm backdrop-blur-md max-w-[95vw] flex-wrap justify-center">
+        <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+            <span class="font-black tracking-wider text-red-100 uppercase text-xs" id="isr-broadcasting-hud-label">🔴 LIVE</span>
+        </div>
+        <!-- Quick View Controls on the HUD -->
+        <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.switchIsrFeed('feed-base-c2')" class="bg-cyan-900/90 hover:bg-cyan-700 text-cyan-200 border border-cyan-400/60 font-bold px-2.5 py-1 rounded text-[10px] uppercase flex items-center gap-1 transition-all cursor-pointer shadow" title="Watch Base C2 Command Post">
+                <i data-lucide="laptop" class="w-3 h-3 text-cyan-300"></i> <span>WATCH C2</span>
+            </button>
+            <button type="button" onclick="window.toggleIsrMatrixView()" class="bg-indigo-900/90 hover:bg-indigo-700 text-indigo-200 border border-indigo-400/60 font-bold px-2.5 py-1 rounded text-[10px] uppercase flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x2 Matrix">
+                <i data-lucide="layout-grid" class="w-3 h-3 text-indigo-300"></i> <span>2x2 MATRIX</span>
+            </button>
+            <button type="button" onclick="window.switchIsrFeed('feed-body-1')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 font-bold px-2 py-1 rounded text-[10px] uppercase flex items-center gap-1 transition-all cursor-pointer shadow" title="Watch My Camera">
+                <i data-lucide="shield" class="w-3 h-3 text-blue-400"></i> <span>MY CAM</span>
+            </button>
+        </div>
+        <button type="button" onclick="window.stopLocalBroadcasting()" class="bg-red-600 hover:bg-red-500 text-white font-black px-3 py-1 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg border border-red-300 flex items-center gap-1 active:scale-95">
+            <i data-lucide="square" class="w-3 h-3 fill-white"></i> <span>STOP</span>
         </button>
     </div>
 
@@ -8479,14 +8503,14 @@ try {
     <div id="modal-isr-broadcast" style="z-index: 100000070; display: none;" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-start justify-center p-2 sm:p-4 overflow-y-auto">
         <div class="bg-slate-900 border-2 border-cyan-500/80 rounded-xl shadow-[0_0_40px_rgba(6,182,212,0.3)] w-full p-3 sm:p-6 font-mono text-white relative flex flex-col" style="max-width: 36rem; max-height: 95vh; margin: 1rem auto;">
             <!-- Header -->
-            <div class="flex justify-between items-start border-b border-cyan-500/30 pb-3 mb-4">
+            <div class="flex justify-between items-start border-b border-cyan-500/30 pb-3 mb-3">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-lg bg-cyan-950/80 border border-cyan-500/50 flex items-center justify-center text-cyan-400 shrink-0">
                         <i data-lucide="radio" class="w-5 h-5 animate-pulse"></i>
                     </div>
                     <div>
-                        <h3 class="font-black text-sm sm:text-base uppercase tracking-wider text-cyan-400">PHONE CAMERA BROADCASTER</h3>
-                        <p class="text-[10px] text-slate-400">TRANSMIT BODYCAM OR TRAIL-CAM STREAM TO SQUAD &amp; PC</p>
+                        <h3 class="font-black text-sm sm:text-base uppercase tracking-wider text-cyan-400" id="isr-modal-title">TACTICAL BROADCASTER</h3>
+                        <p class="text-[10px] text-slate-400">TRANSMIT LIVE VIDEO &amp; SENSORS TO SQUAD &amp; COMMAND POST</p>
                     </div>
                 </div>
                 <button type="button" onclick="window.closeBroadcastSetupModal()" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer" aria-label="Close Broadcaster">
@@ -8494,11 +8518,21 @@ try {
                 </button>
             </div>
 
-            <!-- Phone Connection & QR Code Guide (Shown on PC) -->
-            <div id="isr-broadcast-pc-guide" class="mb-4 bg-gradient-to-br from-slate-950 via-cyan-950/40 to-slate-950 border-2 border-cyan-400/80 rounded-xl p-3 sm:p-4 text-cyan-100 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+            <!-- Tab Switcher (Broadcast This Device vs Connect Remote Phones) -->
+            <div class="flex border-b border-cyan-500/30 mb-3 gap-2">
+                <button type="button" id="isr-tab-btn-broadcast" onclick="window.switchBroadcastModalTab('broadcast')" class="flex-1 py-2 px-3 text-center font-black text-[11px] uppercase tracking-wider rounded-t border-b-2 border-cyan-400 text-cyan-300 bg-cyan-950/60 transition-all cursor-pointer">
+                    <i data-lucide="radio" class="w-3.5 h-3.5 inline mr-1 text-cyan-400"></i> BROADCAST THIS DEVICE
+                </button>
+                <button type="button" id="isr-tab-btn-remote" onclick="window.switchBroadcastModalTab('remote')" class="flex-1 py-2 px-3 text-center font-black text-[11px] uppercase tracking-wider rounded-t border-b-2 border-transparent text-slate-400 hover:text-white bg-slate-900/60 transition-all cursor-pointer">
+                    <i data-lucide="smartphone" class="w-3.5 h-3.5 inline mr-1 text-slate-400"></i> SQUAD PHONES (QR)
+                </button>
+            </div>
+
+            <!-- Phone Connection & QR Code Guide (Remote Phone Tab) -->
+            <div id="isr-broadcast-pc-guide" class="hidden mb-4 bg-gradient-to-br from-slate-950 via-cyan-950/40 to-slate-950 border-2 border-cyan-400/80 rounded-xl p-3 sm:p-4 text-cyan-100 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
                 <div class="flex items-center gap-2 mb-2 pb-2 border-b border-cyan-500/30">
                     <i data-lucide="smartphone" class="w-5 h-5 text-cyan-400 animate-bounce"></i>
-                    <span class="font-black text-sm uppercase tracking-wider text-cyan-300">HOW TO BROADCAST FROM YOUR PHONE</span>
+                    <span class="font-black text-sm uppercase tracking-wider text-cyan-300">HOW TO BROADCAST FROM A REMOTE PHONE</span>
                 </div>
                 
                 <div class="flex flex-col sm:flex-row items-center gap-4 py-1">
@@ -8538,27 +8572,36 @@ try {
                 </div>
             </div>
 
-            <!-- Form Body -->
-            <div class="flex flex-col gap-3.5 text-xs">
+            <!-- Form Body (Broadcast This Device) -->
+            <div id="isr-broadcast-form-container" class="flex flex-col gap-3.5 text-xs">
                 <!-- Select Tactical Role -->
                 <div class="bg-slate-950/80 p-3 rounded-lg border border-cyan-500/30 space-y-1.5">
                     <label class="block font-black text-cyan-300 uppercase tracking-widest text-[10px]">1. SELECT TACTICAL BROADCAST ROLE</label>
-                    <select id="isr-broadcast-role-select" class="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-xs font-mono font-bold">
+                    <select id="isr-broadcast-role-select" onchange="window.onBroadcastRoleChange()" class="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-xs font-mono font-bold">
+                        <option value="feed-base-c2">💻 BASE C2 (Command Post PC Webcam / Screen)</option>
                         <option value="feed-body-1">🦺 LEAD BODYCAM (Player #1 - Chest Rig Phone)</option>
                         <option value="feed-body-2">🎯 POINT SCOUT BODYCAM (Player #9 - Pack Mount Phone)</option>
-                        <option value="feed-base-c2">💻 BASE C2 (Command Post PC Webcam)</option>
                         <option value="feed-trail-1">🌲 NORTH FENCE TRAIL-CAM (Solar Fence Post Phone)</option>
                         <option value="feed-trail-2">🦌 DEER BLIND / FEEDER CAM (Blind Window Phone)</option>
                         <option value="feed-drone-1">🚁 OVERHEAD DRONE (AIR-1 Relay)</option>
                     </select>
                 </div>
 
-                <!-- Select Camera Lens -->
-                <div class="bg-slate-950/80 p-3 rounded-lg border border-cyan-500/30 space-y-1.5">
-                    <label class="block font-black text-cyan-300 uppercase tracking-widest text-[10px]">2. SELECT CAMERA LENS</label>
+                <!-- Select Video Source (Camera vs Screen Share) -->
+                <div id="isr-broadcast-source-box" class="bg-slate-950/80 p-3 rounded-lg border border-cyan-500/30 space-y-1.5">
+                    <label class="block font-black text-cyan-300 uppercase tracking-widest text-[10px]">2. SELECT VIDEO FEED SOURCE</label>
+                    <select id="isr-broadcast-source-type" onchange="window.onBroadcastSourceTypeChange()" class="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-xs font-mono font-bold">
+                        <option value="camera">📷 Live Camera / Webcam (Integrated or USB Webcam)</option>
+                        <option value="screen">🖥️ Screen / Map Share (Stream Full TRC View or Map)</option>
+                    </select>
+                </div>
+
+                <!-- Select Camera Lens (Hidden when Screen Share) -->
+                <div id="isr-broadcast-facing-box" class="bg-slate-950/80 p-3 rounded-lg border border-cyan-500/30 space-y-1.5">
+                    <label class="block font-black text-cyan-300 uppercase tracking-widest text-[10px]">3. SELECT CAMERA LENS</label>
                     <select id="isr-broadcast-facing-select" class="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-xs font-mono font-bold">
-                        <option value="environment">📷 Back Camera (Outward / Field Facing - Recommended)</option>
-                        <option value="user">🤳 Front Camera (Operator Facing)</option>
+                        <option value="user">💻 Front / Operator Facing (Webcam Default)</option>
+                        <option value="environment">📷 Back Camera (Outward / Field Facing)</option>
                     </select>
                 </div>
 

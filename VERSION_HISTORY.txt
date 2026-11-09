@@ -1,4 +1,17 @@
 ============================================================
+v8.77.5.1 - TWO-WAY SQUAD VIDEO: PC COMMAND STREAMING & MOBILE RECEPTION
+* Seamless Two-Way Tactical Video:
+  - Phone-to-PC & PC-to-Phone: Operators can now broadcast the PC Command Post webcam (or PC screen) directly out to field agents, and field agents can watch command while broadcasting their bodycams.
+* Context-Aware Broadcaster Interface:
+  - On PC/Desktop: Broadcast buttons dynamically label as [💻 BROADCAST PC WEBCAM / C2], pre-selecting BASE C2 role and front/user camera mode. Added dedicated [📱 SQUAD QR] header button.
+  - On Mobile: Broadcast buttons dynamically label as [🦺 BROADCAST BODYCAM] with back camera default.
+  - Modal Tabbed Design: Added [BROADCAST THIS DEVICE] and [SQUAD PHONES (QR)] tabs so desktop operators can instantly broadcast without confusion.
+  - Video Feed Source Selection: Supports both Live Camera / Webcam and Screen / Map Sharing (Display Capture via getDisplayMedia).
+* Field Phone Reception & Quick Switcher HUD:
+  - Incoming Command Alert Banner (#isr-c2-live-banner): Tapping the glowing alert banner on mobile instantly switches the phone's viewer to the PC's live stream.
+  - Floating Broadcaster HUD Quick Switcher: Field agents broadcasting from a chest rig now have 1-tap [WATCH C2], [2x2 MATRIX], and [MY CAM] pills right on their floating HUD so they can monitor the command post without interrupting their own broadcast.
+
+============================================================
 v8.77.5.0 - SQUAD MISSION ROOMS, 2X2 MULTI-CAM MATRIX & BASE C2 WEBCAM
 * Isolated Tactical Mission Rooms (Multi-User Squad Mesh):
   - Added Mission Room architecture to segregate video streams, telemetry, and sensors by mission room code (e.g. ALPHA-1, BRAVO-6, GHOST-9, HUNT-WEST).
