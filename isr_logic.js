@@ -448,15 +448,37 @@ ${secureUrl}`);
                     return;
                 }
             } else {
-                const constraints = {
-                    video: {
-                        facingMode: broadcastFacingMode,
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    },
-                    audio: false
-                };
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                try {
+                    const constraints = isMobile ? {
+                        video: {
+                            facingMode: { ideal: broadcastFacingMode },
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        },
+                        audio: false
+                    } : {
+                        video: {
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        },
+                        audio: false
+                    };
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch(e1) {
+                    console.warn("Primary broadcast camera constraint failed, falling back to video: true", e1);
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    } catch(e2) {
+                        if (e2.name === 'NotReadableError' || e2.name === 'TrackStartError') {
+                            alert("⚠️ PC WEBCAM IS CURRENTLY IN USE BY ANOTHER APP:\n\nWindows Settings or the Windows Camera app is holding your webcam preview.\n\nPlease close the Windows Settings / Troubleshooting camera window and try again!");
+                        } else if (e2.name === 'NotAllowedError' || e2.name === 'PermissionDeniedError') {
+                            alert("⚠️ CAMERA ACCESS BLOCKED:\n\nPlease click the lock or camera icon in your browser URL bar and click 'Allow' to grant camera access.");
+                        } else {
+                            alert(`⚠️ WEBCAM ACCESS ERROR: ${e2.message || e2.name}`);
+                        }
+                        throw e2;
+                    }
+                }
             }
 
             activeMediaStream = stream;

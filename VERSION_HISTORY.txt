@@ -1,4 +1,13 @@
 ============================================================
+v8.77.5.2 - PC INTEGRATED WEBCAM HARDWARE DETECTION & MULTI-TIER FALLBACK
+* PC / Laptop Integrated Webcam Fix:
+  - Eliminated mobile-only constraints on desktop: PC webcams no longer request 'environment' (rear camera) which caused OverconstrainedError and NotFoundError on Windows laptops.
+  - Multi-Tier Hardware Fallback: If ideal resolution or constraints fail, automatically falls back to raw { video: true } so integrated webcams, USB cameras, and virtual cams activate immediately.
+  - Windows Device Lock Notification: If Windows Settings or the Windows Camera app is holding an exclusive hardware lock on the webcam (NotReadableError), TRC alerts the operator to close the preview window so TRC can take control.
+  - Secure Context Verification: Explicit guidance if the PC connects via unencrypted IP rather than localhost or https, ensuring getUserMedia is never silently undefined.
+  - Updated camera label on desktop to 'PC WEBCAM' in surveillance HUD.
+
+============================================================
 v8.77.5.1 - TWO-WAY SQUAD VIDEO: PC COMMAND STREAMING & MOBILE RECEPTION
 * Seamless Two-Way Tactical Video:
   - Phone-to-PC & PC-to-Phone: Operators can now broadcast the PC Command Post webcam (or PC screen) directly out to field agents, and field agents can watch command while broadcasting their bodycams.

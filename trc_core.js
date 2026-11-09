@@ -6979,7 +6979,8 @@ function initializeTacticalDashboard2() {
     // CENTRAL HUB: DUAL SURVEILLANCE CAMERA ENGINE
     // ========================================================================
     let activeStream = null;
-    let currentFacingMode = "environment"; // Start with rear cam
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    let currentFacingMode = isMobileDevice ? "environment" : "user";
     let isVideoMode = false;
     let mediaRecorder = null;
     let recordedChunks = [];
@@ -7151,19 +7152,44 @@ function initializeTacticalDashboard2() {
             activeStream.getTracks().forEach(track => track.stop());
         }
 
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert(`⚠️ WEBCAM ACCESS REQUIRES SECURE CONTEXT:\n\nChrome & Edge disable camera hardware on unencrypted IP addresses.\n\nPlease open:\nhttps://${location.hostname}:8443/\nOR\nhttp://localhost:8080/`);
+            return;
+        }
+
+        let stream = null;
         try {
             const constraints = {
-                video: {
-                    facingMode: currentFacingMode,
+                video: isMobileDevice ? {
+                    facingMode: { ideal: currentFacingMode },
                     width: { ideal: 1920 },
                     height: { ideal: 1080 }
+                } : {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 },
                 audio: isVideoMode ? true : false
             };
-
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            activeStream = stream;
-            
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e1) {
+            console.warn("Primary camera constraints failed, attempting fallback to video:true", e1);
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: isVideoMode ? true : false });
+            } catch (e2) {
+                console.error("Camera access failed:", e2);
+                if (e2.name === 'NotReadableError' || e2.name === 'TrackStartError') {
+                    alert("⚠️ PC WEBCAM IS CURRENTLY IN USE BY ANOTHER APP:\n\nWindows Settings or the Windows Camera app is currently holding your webcam preview.\n\nPlease close the Windows Settings / Troubleshooting camera window and click SCOPE CAM again!");
+                } else if (e2.name === 'NotAllowedError' || e2.name === 'PermissionDeniedError') {
+                    alert("⚠️ BROWSER CAMERA PERMISSION BLOCKED:\n\nPlease click the lock or camera icon in your browser URL bar and click 'Allow' to grant camera access.");
+                } else {
+                    alert(`⚠️ WEBCAM ERROR: ${e2.message || e2.name}`);
+                }
+                window.pushTacLog("CAMERA ACCESS DENIED: " + (e2.name || 'ERROR'), "ERROR");
+                return;
+            }
+        }
+        activeStream = stream;
+        try {
             if (isVideoMode && !window.videoAudioAlertShown) {
                 window.videoAudioAlertShown = true;
                 setTimeout(() => alert("VIDEO RECORDING:\nMicrophones for 2-way radio and AI Spotter are temporarily inactive."), 500);
@@ -7221,7 +7247,7 @@ function initializeTacticalDashboard2() {
             const flipBtn = document.getElementById('feed-switch-cam-btn');
             if(flipBtn) flipBtn.classList.remove('hidden');
 
-            label.textContent = currentFacingMode === "environment" ? "REAR CAM" : "LOCAL HUD / FRONT";
+            label.textContent = !isMobileDevice ? "PC WEBCAM" : (currentFacingMode === "environment" ? "REAR CAM" : "LOCAL HUD / FRONT");
             
             initTacticalHUD(); // START HUD LOGIC
             
