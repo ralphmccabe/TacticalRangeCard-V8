@@ -1,4 +1,22 @@
 ============================================================
+v8.77.5.4 - PERSISTENT 2x2 MATRIX TOGGLE, UNBLOCKED VIEWPORT, & PER-CAM TILE CONTROLS
+* Persistent 2x2 Matrix & Single Focus View Switcher:
+  - Added dedicated, permanently visible [⊞ 2x2 MATRIX] / [⊡ SINGLE FOCUS] button in the Window 7 Subheader Toolbar right next to Room ID.
+  - Resolved Viewport Overlap: Structured #isr-stream-viewport-box into a clean flex column with Top Telemetry Ribbon (z-30) and Bottom Viewport Action Buttons (z-30) flanking the Central Stage.
+  - The 2x2 Matrix Grid now lives inside the Central Stage (top ribbon and bottom buttons never cover or clip the 4 quad camera feeds).
+* Dedicated Per-Camera & 2x2 Quad Actions ("For Both"):
+  - On Every 2x2 Tile: Added quick-action pills directly on each quadrant:
+    * [TAP TO FOCUS] / Tile Click: Smoothly expands into full single-camera cinema view.
+    * [📸 SNAP]: Instantly captures a high-resolution snapshot of just that specific camera (e.g. Lead Bodycam or Base C2) into the Intel Vault.
+    * [⏹ STOP]: Immediately terminates and disconnects that specific camera stream.
+  - In 2x2 Quad Matrix Mode:
+    * [📸 SNAPSHOT ALL (4-CAM QUAD)]: Composites all 4 live channels into a single tactical squad reconnaissance card complete with green HUD crosshairs, channel callsigns, room code, and timestamp into the Intel Vault!
+    * [🔴 REC MATRIX]: Records a live video clip of the entire 4-quadrant grid into the Intel Vault.
+    * [🛑 STOP ALL FEEDS]: Terminates all live streams in one click.
+  - In Single Focus Mode:
+    * Action buttons operate directly on the focused camera (Lead Bodycam or Base C2), with a one-click [⊞ 2x2 MATRIX] button to return to the squad grid.
+
+============================================================
 v8.77.5.3 - GHOST PHONE LINK BYPASS & PHYSICAL HARDWARE LOCK-ON
 * Windows Phone Link / Ghost Device Bypass:
   - Eliminated the 'Connecting to Phone' OS dialog caused by Windows 11 Phone Link registering disconnected phones (e.g. Ralph's S25) as primary camera #0.

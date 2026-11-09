@@ -672,6 +672,26 @@ ${secureUrl}`);
         if (isBroadcasting) {
             window.stopLocalBroadcasting();
         }
+
+        if (isMatrixGridMode) {
+            const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2'];
+            for (const qf of quadFeedIds) {
+                try {
+                    await fetch(`/api/isr_stop?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${encodeURIComponent(qf)}`, { method: 'POST' });
+                } catch(e) {}
+                const f = feeds.find(x => x.id === qf);
+                if (f) { f.isOnline = false; f.currentImg = null; }
+            }
+            lastReceivedFrame = null;
+            lastReceivedTelemetry = null;
+            renderCurrentActiveView();
+            showToast("🛑 ALL SQUAD FEEDS TERMINATED & DISCONNECTED");
+            if (typeof window.pushTacLog === 'function') {
+                window.pushTacLog("ALL ISR SQUAD FEEDS TERMINATED", "WARN");
+            }
+            return;
+        }
+
         try {
             await fetch(`/api/isr_stop?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${encodeURIComponent(currentActiveFeedId)}`, { method: 'POST' });
         } catch(e) {}
@@ -685,10 +705,33 @@ ${secureUrl}`);
         lastReceivedTelemetry = null;
 
         renderCurrentActiveView();
-        showToast(`⏹️ LIVE FEED STOPPED: ${currentActiveFeedId.replace('feed-', '').toUpperCase()}`);
+        showToast(`🛑 LIVE FEED STOPPED: ${currentActiveFeedId.replace('feed-', '').toUpperCase()}`);
         if (typeof window.pushTacLog === 'function') {
             window.pushTacLog(`ISR LIVE FEED TERMINATED: ${currentActiveFeedId.toUpperCase()}`, "WARN");
         }
+    };
+
+    // Stop a specific single feed from 2x2 tile or control
+    window.stopSpecificIsrFeed = async function(feedId) {
+        if (feedId === 'feed-base-c2' || feedId === broadcastRoleId) {
+            if (isBroadcasting) {
+                window.stopLocalBroadcasting();
+            }
+        }
+        try {
+            await fetch(`/api/isr_stop?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${encodeURIComponent(feedId)}`, { method: 'POST' });
+        } catch(e) {}
+
+        const feed = feeds.find(f => f.id === feedId);
+        if (feed) {
+            feed.isOnline = false;
+            feed.currentImg = null;
+        }
+        showToast(`🛑 FEED TERMINATED: ${feed ? feed.name.toUpperCase() : feedId.toUpperCase()}`);
+        if (typeof window.pushTacLog === 'function') {
+            window.pushTacLog(`ISR FEED STOPPED: ${feed ? feed.name : feedId}`, "WARN");
+        }
+        renderCurrentActiveView();
     };
 
     function showBroadcastingHud(roleId) {
@@ -787,19 +830,36 @@ ${secureUrl}`);
         const grid = document.getElementById('isr-matrix-grid');
         const singleCanvas = document.getElementById('isr-stream-canvas');
         const btnText = document.getElementById('isr-matrix-view-btn-text');
+        const hdrLabel = document.getElementById('isr-hdr-matrix-label');
+        const titleEl = document.getElementById('isr-active-cam-title');
+        const snapBtnText = document.getElementById('isr-snapshot-btn-text');
+        const recBtnText = document.getElementById('isr-record-btn-text');
+        const stopBtnText = document.getElementById('isr-stop-feed-btn-text');
 
         if (isMatrixGridMode) {
             if (singleCanvas) singleCanvas.classList.add('hidden');
             if (grid) grid.classList.remove('hidden');
             if (btnText) btnText.textContent = "⊡ SINGLE FOCUS";
-            showToast("⊞ 2x2 QUAD-CAM MATRIX ACTIVE");
+            if (hdrLabel) hdrLabel.textContent = "⊡ SINGLE FOCUS";
+            if (titleEl) titleEl.textContent = "⊞ 2x2 SQUAD TACTICAL MATRIX (4 ACTIVE CHANNELS)";
+            if (snapBtnText) snapBtnText.textContent = "SNAPSHOT (4-CAM QUAD)";
+            if (recBtnText && !isRecording) recBtnText.textContent = "REC MATRIX";
+            if (stopBtnText) stopBtnText.textContent = "STOP ACTIVE FEEDS";
+            showToast("⊞ 2x2 QUAD-CAM MATRIX ACTIVE — TAP ANY TILE TO EXPAND");
         } else {
             if (grid) grid.classList.add('hidden');
             if (singleCanvas) singleCanvas.classList.remove('hidden');
             if (btnText) btnText.textContent = "⊞ 2x2 MATRIX";
-            showToast("⊡ SINGLE FOCUS VIEW ACTIVE");
+            if (hdrLabel) hdrLabel.textContent = "⊞ 2x2 MATRIX";
+            const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+            if (titleEl) titleEl.textContent = feed.name;
+            if (snapBtnText) snapBtnText.textContent = "SNAPSHOT";
+            if (recBtnText && !isRecording) recBtnText.textContent = "REC";
+            if (stopBtnText) stopBtnText.textContent = "STOP FEED";
+            showToast(`⊡ SINGLE FOCUS ACTIVE: ${feed.name.toUpperCase()}`);
             renderCurrentActiveView();
         }
+        if (window.lucide) window.lucide.createIcons();
     };
 
     window.selectMatrixTile = function(feedId) {
@@ -807,6 +867,63 @@ ${secureUrl}`);
         // Switch back to single focus on click
         if (isMatrixGridMode) {
             window.toggleIsrMatrixView();
+        }
+        const feed = feeds.find(f => f.id === feedId) || { name: feedId };
+        showToast(`🔍 FOCUSED ON ${feed.name.toUpperCase()}`);
+    };
+
+    // Instant snapshot of a specific tile in the 2x2 matrix
+    window.captureSingleTileSnapshot = async function(feedId, tileIndex) {
+        const qCanvas = document.getElementById(`isr-quad-canvas-${tileIndex}`);
+        if (!qCanvas) return;
+        const feed = feeds.find(f => f.id === feedId) || { name: feedId.replace('feed-', '').toUpperCase(), source: 'ISR' };
+        const dataUrl = qCanvas.toDataURL('image/jpeg', 0.90);
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+        const label = `ISR-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${timeStr}`;
+
+        // Shutter flash effect on the viewport
+        const vpBox = document.getElementById('isr-stream-viewport-box');
+        if (vpBox) {
+            const flash = document.createElement('div');
+            flash.className = 'absolute inset-0 bg-white z-50 pointer-events-none transition-opacity duration-300';
+            flash.style.opacity = '0.85';
+            vpBox.appendChild(flash);
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                setTimeout(() => flash.remove(), 300);
+            }, 60);
+        }
+
+        try {
+            if (typeof window.saveIntelSnapshot === 'function') {
+                await window.saveIntelSnapshot(label, dataUrl, {
+                    type: 'isr-snapshot',
+                    feedId: feedId,
+                    feedName: feed.name,
+                    telemetry: lastReceivedTelemetry || {},
+                    notes: `Optics snapshot from ${feed.name} (${feed.source || 'ISR'})`
+                });
+            } else if (window.TRC_IDB) {
+                const entry = {
+                    id: Date.now(),
+                    label: label,
+                    timestamp: now.toISOString(),
+                    image: dataUrl,
+                    type: 'isr-snapshot',
+                    feedName: feed.name
+                };
+                await window.TRC_IDB.set('intelVault', entry.id.toString(), entry);
+                if (typeof window.refreshVaultGrid === 'function') window.refreshVaultGrid();
+            }
+
+            if (typeof window.pushTacLog === 'function') {
+                window.pushTacLog(`ISR TILE SNAPSHOT SAVED: ${label}`, "INTEL");
+            }
+            showToast(`📸 SNAPSHOT OF ${feed.name.toUpperCase()} SAVED TO INTEL VAULT!`);
+        } catch(e) {
+            console.error("Tile snapshot error:", e);
+            showToast(`✅ SNAPSHOT CAPTURED`);
         }
     };
     
@@ -1256,15 +1373,6 @@ ${secureUrl}`);
 
     // --- Snapshot to Intel Vault ---
     window.captureIsrSnapshotToVault = async function() {
-        const canvas = document.getElementById('isr-stream-canvas');
-        if (!canvas) return;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
-        const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
-        const label = `ISR-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${timeStr}`;
-
-        // Shutter flash effect on the viewport
         const vpBox = document.getElementById('isr-stream-viewport-box');
         if (vpBox) {
             const flash = document.createElement('div');
@@ -1276,6 +1384,98 @@ ${secureUrl}`);
                 setTimeout(() => flash.remove(), 300);
             }, 60);
         }
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+
+        if (isMatrixGridMode) {
+            // COMPOSITE ALL 4 QUAD CANVASES INTO ONE TACTICAL RECON IMAGE
+            const comp = document.createElement('canvas');
+            comp.width = 640;
+            comp.height = 480;
+            const cCtx = comp.getContext('2d');
+            cCtx.fillStyle = '#020617';
+            cCtx.fillRect(0, 0, 640, 480);
+
+            const q1 = document.getElementById('isr-quad-canvas-1');
+            const q2 = document.getElementById('isr-quad-canvas-2');
+            const q3 = document.getElementById('isr-quad-canvas-3');
+            const q4 = document.getElementById('isr-quad-canvas-4');
+
+            if (q1) cCtx.drawImage(q1, 0, 0, 320, 240);
+            if (q2) cCtx.drawImage(q2, 320, 0, 320, 240);
+            if (q3) cCtx.drawImage(q3, 0, 240, 320, 240);
+            if (q4) cCtx.drawImage(q4, 320, 240, 320, 240);
+
+            // Tactical Matrix HUD Overlays
+            cCtx.strokeStyle = 'rgba(16, 185, 129, 0.7)';
+            cCtx.lineWidth = 2;
+            cCtx.strokeRect(0, 0, 640, 480);
+            cCtx.beginPath();
+            cCtx.moveTo(320, 0); cCtx.lineTo(320, 480);
+            cCtx.moveTo(0, 240); cCtx.lineTo(640, 240);
+            cCtx.stroke();
+
+            // Quad Labels
+            cCtx.font = 'bold 11px monospace';
+            cCtx.fillStyle = '#10b981';
+            cCtx.fillText('🚁 CH-1: AIR-1 DRONE', 10, 18);
+            cCtx.fillText('🦺 CH-2: LEAD BODYCAM', 330, 18);
+            cCtx.fillText('🎯 CH-3: POINT SCOUT', 10, 258);
+            cCtx.fillText('💻 CH-4: BASE C2 COMMAND', 330, 258);
+
+            // Footer Telemetry Stamp
+            cCtx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            cCtx.fillRect(160, 458, 320, 22);
+            cCtx.strokeStyle = '#06b6d4';
+            cCtx.strokeRect(160, 458, 320, 22);
+            cCtx.fillStyle = '#38bdf8';
+            cCtx.font = 'bold 9px monospace';
+            cCtx.textAlign = 'center';
+            cCtx.fillText(`TACTICAL ISR QUAD RECON | ROOM: ${currentMissionCode} | ${timeStr}`, 320, 473);
+
+            const dataUrl = comp.toDataURL('image/jpeg', 0.90);
+            const label = `QUAD_ISR_MATRIX_${timeStr.replace(/[^0-9]/g, '')}`;
+
+            try {
+                if (typeof window.saveIntelSnapshot === 'function') {
+                    await window.saveIntelSnapshot(label, dataUrl, {
+                        type: 'isr-quad-matrix',
+                        feedId: 'quad-matrix',
+                        feedName: '4-CAM SQUAD MATRIX',
+                        telemetry: lastReceivedTelemetry || {},
+                        notes: `4-Channel Tactical Quad Recon Matrix snapshot (Room: ${currentMissionCode})`
+                    });
+                } else if (window.TRC_IDB) {
+                    const entry = {
+                        id: Date.now(),
+                        label: label,
+                        timestamp: now.toISOString(),
+                        image: dataUrl,
+                        type: 'isr-quad-matrix',
+                        feedName: '4-CAM SQUAD MATRIX'
+                    };
+                    await window.TRC_IDB.set('intelVault', entry.id.toString(), entry);
+                    if (typeof window.refreshVaultGrid === 'function') window.refreshVaultGrid();
+                }
+
+                if (typeof window.pushTacLog === 'function') {
+                    window.pushTacLog(`QUAD ISR MATRIX SNAPSHOT SAVED: ${label}`, "INTEL");
+                }
+                showToast(`📸 4-CAM SQUAD MATRIX RECON SAVED TO INTEL VAULT!`);
+            } catch(e) {
+                console.error("Quad snapshot save error:", e);
+                showToast(`✅ QUAD MATRIX CAPTURED LOCALLY`);
+            }
+            return;
+        }
+
+        // SINGLE VIEW CANVAS SNAPSHOT
+        const canvas = document.getElementById('isr-stream-canvas');
+        if (!canvas) return;
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+        const label = `ISR-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${timeStr}`;
 
         try {
             if (typeof window.saveIntelSnapshot === 'function') {
@@ -1311,20 +1511,57 @@ ${secureUrl}`);
 
     // --- Record Video Clip Toggle ---
     window.toggleIsrRecording = function() {
-        const canvas = document.getElementById('isr-stream-canvas');
         const btn = document.getElementById('isr-record-btn');
-        const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
+        const feed = isMatrixGridMode ? { name: 'QUAD_MATRIX' } : (feeds.find(f => f.id === currentActiveFeedId) || feeds[0]);
 
         if (!isRecording) {
             // START RECORDING
-            if (!canvas) {
-                showToast("⚠️ CANVAS NOT READY");
-                return;
-            }
-
             try {
                 isrRecordedChunks = [];
-                const stream = canvas.captureStream ? canvas.captureStream(20) : null;
+                let stream = null;
+                let recordCanvas = null;
+
+                if (isMatrixGridMode) {
+                    recordCanvas = document.createElement('canvas');
+                    recordCanvas.width = 640;
+                    recordCanvas.height = 480;
+                    const rCtx = recordCanvas.getContext('2d');
+
+                    const compInterval = setInterval(() => {
+                        if (!isRecording) {
+                            clearInterval(compInterval);
+                            return;
+                        }
+                        const q1 = document.getElementById('isr-quad-canvas-1');
+                        const q2 = document.getElementById('isr-quad-canvas-2');
+                        const q3 = document.getElementById('isr-quad-canvas-3');
+                        const q4 = document.getElementById('isr-quad-canvas-4');
+                        rCtx.fillStyle = '#020617';
+                        rCtx.fillRect(0, 0, 640, 480);
+                        if (q1) rCtx.drawImage(q1, 0, 0, 320, 240);
+                        if (q2) rCtx.drawImage(q2, 320, 0, 320, 240);
+                        if (q3) rCtx.drawImage(q3, 0, 240, 320, 240);
+                        if (q4) rCtx.drawImage(q4, 320, 240, 320, 240);
+                        rCtx.strokeStyle = '#10b981';
+                        rCtx.lineWidth = 2;
+                        rCtx.strokeRect(0, 0, 640, 480);
+                        rCtx.beginPath();
+                        rCtx.moveTo(320, 0); rCtx.lineTo(320, 480);
+                        rCtx.moveTo(0, 240); rCtx.lineTo(640, 240);
+                        rCtx.stroke();
+                    }, 50);
+
+                    stream = recordCanvas.captureStream ? recordCanvas.captureStream(20) : null;
+                } else {
+                    const canvas = document.getElementById('isr-stream-canvas');
+                    if (!canvas) {
+                        showToast("⚠️ CANVAS NOT READY");
+                        return;
+                    }
+                    recordCanvas = canvas;
+                    stream = canvas.captureStream ? canvas.captureStream(20) : null;
+                }
+
                 if (!stream) {
                     showToast("⚠️ VIDEO STREAM CAPTURE UNSUPPORTED");
                     return;
@@ -1342,11 +1579,10 @@ ${secureUrl}`);
 
                 isrMediaRecorder.onstop = async function() {
                     const blob = new Blob(isrRecordedChunks, { type: 'video/webm' });
-                    const thumbDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                    const clipName = `VIDEO_ISR_${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now().toString().slice(-4)}`;
+                    const thumbDataUrl = recordCanvas ? recordCanvas.toDataURL('image/jpeg', 0.85) : '';
+                    const clipName = `VIDEO_${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now().toString().slice(-4)}`;
                     const durationSec = Math.max(1, Math.round((Date.now() - isrRecordStartTime) / 1000));
 
-                    // Convert Blob to Data URL so video is preserved inside Intel Vault (IndexedDB)
                     const reader = new FileReader();
                     reader.onloadend = async function() {
                         const videoDataUrl = reader.result;
@@ -1356,7 +1592,7 @@ ${secureUrl}`);
                                 type: 'video',
                                 video: videoDataUrl,
                                 thumb: thumbDataUrl,
-                                feedId: currentActiveFeedId,
+                                feedId: isMatrixGridMode ? 'quad-matrix' : currentActiveFeedId,
                                 feedName: feed.name,
                                 duration: `${durationSec}s`,
                                 notes: `Live video clip from ${feed.name} (${durationSec}s)`
@@ -1371,15 +1607,15 @@ ${secureUrl}`);
                     reader.readAsDataURL(blob);
                 };
 
-                isrMediaRecorder.start(250); // chunk timeslice every 250ms
+                isrMediaRecorder.start(250);
                 isRecording = true;
                 isrRecordStartTime = Date.now();
 
                 if (btn) {
                     btn.className = "bg-red-600 hover:bg-red-500 text-white font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 shadow animate-pulse border border-red-400 cursor-pointer";
-                    btn.innerHTML = `<i data-lucide="circle-stop" class="w-3.5 h-3.5"></i> STOP REC`;
+                    btn.innerHTML = `<i data-lucide="circle-stop" class="w-3.5 h-3.5"></i> <span id="isr-record-btn-text">STOP REC</span>`;
                 }
-                showToast(`🔴 RECORDING LIVE ISR CLIP...`);
+                showToast(`🔴 RECORDING LIVE ${isMatrixGridMode ? 'QUAD MATRIX' : feed.name.toUpperCase()} CLIP...`);
             } catch (err) {
                 console.error("Recording error:", err);
                 showToast(`⚠️ RECORDING ERROR: ${err.message}`);
@@ -1392,7 +1628,7 @@ ${secureUrl}`);
             }
             if (btn) {
                 btn.className = "bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 border border-slate-600 transition-all cursor-pointer";
-                btn.innerHTML = `<i data-lucide="video" class="w-3.5 h-3.5"></i> REC`;
+                btn.innerHTML = `<i data-lucide="video" class="w-3.5 h-3.5"></i> <span id="isr-record-btn-text">${isMatrixGridMode ? 'REC MATRIX' : 'REC'}</span>`;
             }
         }
 
@@ -1531,6 +1767,8 @@ ${secureUrl}`);
 
     // Initialize on window load or script load
     function initIsr() {
+        const hdrMatrixLabel = document.getElementById('isr-hdr-matrix-label');
+        if (hdrMatrixLabel) hdrMatrixLabel.textContent = isMatrixGridMode ? "⊡ SINGLE FOCUS" : "⊞ 2x2 MATRIX";
         initDeviceSensors();
         startViewerPolling();
 
