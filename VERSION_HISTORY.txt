@@ -1,4 +1,19 @@
 ============================================================
+v8.77.5.0 - SQUAD MISSION ROOMS, 2X2 MULTI-CAM MATRIX & BASE C2 WEBCAM
+* Isolated Tactical Mission Rooms (Multi-User Squad Mesh):
+  - Added Mission Room architecture to segregate video streams, telemetry, and sensors by mission room code (e.g. ALPHA-1, BRAVO-6, GHOST-9, HUNT-WEST).
+  - Stream routing and buffer storage in serve_mobile.js are strictly partitioned by missionId: ACTIVE_ISR_STREAMS[missionId][feedId].
+  - One-click Room selector modal with custom code input, quick squad presets, auto-generated squad QR codes, and URL parameter synchronization (?mission=<CODE>).
+  - Squad join links can be copied or scanned by teammates in the field to automatically link bodycams, drones, and trailcams into the squad's private room.
+* 2x2 Multi-Cam Quad Matrix View:
+  - Toggle between single camera focus and [⊞ 2x2 MATRIX] quad grid inside Window 7 (Tactical ISR).
+  - Displays 4 live cameras simultaneously (Air-1 Drone, Lead Bodycam, Point Scout, Base C2 Command Post).
+  - Each quad tile includes active live indicators and 1-tap zoom to expand any camera to full view.
+* Two-Way Video & Base C2 Command Post PC Webcam:
+  - Added BASE C2 (Command Post) feed option in broadcaster selector and camera grid.
+  - PC operators can broadcast their laptop/desktop webcam directly out to chest rigs and scouts in the field for true 2-way tactical video communication.
+
+============================================================
 v8.77.4.9 - INTEL VAULT VIDEO VIEWER NAVIGATION & CLOSE VIDEO CONTROLS
 * Seamless Vault-to-Camera Video Playback:
   - Tapping or clicking any video card in the Intel Vault now minimizes the vault and scrolls directly to the Main Camera Viewer (#panel-mainview) on both desktop and mobile.

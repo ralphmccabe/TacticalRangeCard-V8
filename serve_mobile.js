@@ -25,7 +25,14 @@ const MIME_TYPES = {
     '.txt': 'text/plain; charset=utf-8'
 };
 
+// Mission-partitioned active ISR streams: { [missionId]: { [feedId]: { image, telemetry, ts } } }
 const ACTIVE_ISR_STREAMS = {};
+
+function getMissionStreams(missionId) {
+    const mid = (missionId || 'ALPHA-1').toString().toUpperCase().trim();
+    if (!ACTIVE_ISR_STREAMS[mid]) ACTIVE_ISR_STREAMS[mid] = {};
+    return ACTIVE_ISR_STREAMS[mid];
+}
 
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
@@ -58,7 +65,7 @@ function handleRequest(req, res) {
         return;
     }
 
-    // High Speed ISR Camera Frame Relay
+    // High Speed ISR Camera Frame Relay (Mission-Partitioned)
     if (req.url.startsWith('/api/isr_frame')) {
         if (req.method === 'POST') {
             let body = '';
@@ -66,14 +73,16 @@ function handleRequest(req, res) {
             req.on('end', () => {
                 try {
                     const data = JSON.parse(body);
+                    const missionId = (data.missionId || 'ALPHA-1').toUpperCase().trim();
                     const feedId = data.feedId || 'feed-body-1';
-                    ACTIVE_ISR_STREAMS[feedId] = {
+                    const missionStreams = getMissionStreams(missionId);
+                    missionStreams[feedId] = {
                         image: data.image,
                         telemetry: data.telemetry || {},
                         ts: Date.now()
                     };
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ status: 'ok' }));
+                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ status: 'ok', missionId, feedId }));
                 } catch (e) {
                     res.writeHead(500, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: e.message }));
@@ -82,44 +91,51 @@ function handleRequest(req, res) {
             return;
         } else if (req.method === 'GET') {
             const parsedUrl = new URL(req.url, 'http://localhost');
+            const missionId = (parsedUrl.searchParams.get('missionId') || 'ALPHA-1').toUpperCase().trim();
             const feedId = parsedUrl.searchParams.get('feedId') || 'feed-body-1';
-            const stream = ACTIVE_ISR_STREAMS[feedId];
+            const missionStreams = getMissionStreams(missionId);
+            const stream = missionStreams[feedId];
 
             res.writeHead(200, {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache, no-store'
+                'Cache-Control': 'no-cache, no-store',
+                'Access-Control-Allow-Origin': '*'
             });
 
             if (stream && (Date.now() - stream.ts < 8000)) {
                 res.end(JSON.stringify({
                     active: true,
+                    missionId: missionId,
                     feedId: feedId,
                     image: stream.image,
                     telemetry: stream.telemetry,
                     ageMs: Date.now() - stream.ts
                 }));
             } else {
-                res.end(JSON.stringify({ active: false }));
+                res.end(JSON.stringify({ active: false, missionId, feedId }));
             }
             return;
         }
     }
 
-    // Stop / Purge Active ISR Stream
+    // Stop / Purge Active ISR Stream in Mission
     if (req.url.startsWith('/api/isr_stop')) {
         let feedId = null;
+        let missionId = 'ALPHA-1';
         try {
             const parsedUrl = new URL(req.url, 'http://localhost');
             feedId = parsedUrl.searchParams.get('feedId');
+            if (parsedUrl.searchParams.get('missionId')) missionId = parsedUrl.searchParams.get('missionId').toUpperCase().trim();
         } catch(e) {}
 
-        const clearFeed = (fid) => {
-            if (fid && ACTIVE_ISR_STREAMS[fid]) {
-                delete ACTIVE_ISR_STREAMS[fid];
-                console.log(`[ISR] Feed stopped: ${fid}`);
-            } else if (!fid) {
-                for (const k of Object.keys(ACTIVE_ISR_STREAMS)) delete ACTIVE_ISR_STREAMS[k];
-                console.log(`[ISR] All active feeds purged`);
+        const clearFeed = (mId, fId) => {
+            const missionStreams = getMissionStreams(mId);
+            if (fId && missionStreams[fId]) {
+                delete missionStreams[fId];
+                console.log(`[ISR] [${mId}] Feed stopped: ${fId}`);
+            } else if (!fId) {
+                for (const k of Object.keys(missionStreams)) delete missionStreams[k];
+                console.log(`[ISR] [${mId}] All active feeds cleared`);
             }
         };
 
@@ -131,31 +147,40 @@ function handleRequest(req, res) {
                     if (body) {
                         const data = JSON.parse(body);
                         if (data.feedId) feedId = data.feedId;
+                        if (data.missionId) missionId = data.missionId.toUpperCase().trim();
                     }
                 } catch(e) {}
-                clearFeed(feedId);
+                clearFeed(missionId, feedId);
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ status: 'stopped', feedId }));
+                res.end(JSON.stringify({ status: 'stopped', missionId, feedId }));
             });
             return;
         } else {
-            clearFeed(feedId);
+            clearFeed(missionId, feedId);
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ status: 'stopped', feedId }));
+            res.end(JSON.stringify({ status: 'stopped', missionId, feedId }));
             return;
         }
     }
 
+    // List all active streams in the requested Mission Room
     if (req.url.startsWith('/api/isr_active')) {
+        let missionId = 'ALPHA-1';
+        try {
+            const parsedUrl = new URL(req.url, 'http://localhost');
+            if (parsedUrl.searchParams.get('missionId')) missionId = parsedUrl.searchParams.get('missionId').toUpperCase().trim();
+        } catch(e) {}
+
+        const missionStreams = getMissionStreams(missionId);
         const now = Date.now();
         const activeList = [];
-        for (const [fid, s] of Object.entries(ACTIVE_ISR_STREAMS)) {
+        for (const [fid, s] of Object.entries(missionStreams)) {
             if (now - s.ts < 8000) {
                 activeList.push({ feedId: fid, telemetry: s.telemetry, ageMs: now - s.ts });
             }
         }
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache, no-store' });
-        res.end(JSON.stringify({ activeStreams: activeList }));
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache, no-store', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ missionId, activeStreams: activeList }));
         return;
     }
 

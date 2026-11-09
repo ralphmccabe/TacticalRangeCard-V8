@@ -45,6 +45,18 @@
             placeholderColor: '#312e81'
         },
         {
+            id: 'feed-base-c2',
+            type: 'basecam',
+            name: 'BASE C2 (COMMAND POST)',
+            source: 'PC Command Desk Webcam',
+            resolution: '1080P 30FPS',
+            battery: 'AC PWR',
+            signal: '100%',
+            status: 'ONLINE',
+            hudMode: 'crosshair',
+            placeholderColor: '#0f172a'
+        },
+        {
             id: 'feed-trail-1',
             type: 'trailcam',
             name: 'NORTH FENCE TRAIL-CAM',
@@ -139,6 +151,22 @@
     let lastReceivedFrame = null;
     let lastReceivedTelemetry = null;
     let isMirroredToMain = false;
+
+    // --- Tactical Mission Room State ---
+    let currentMissionCode = 'ALPHA-1';
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('mission')) {
+            currentMissionCode = urlParams.get('mission').toUpperCase().trim();
+            localStorage.setItem('trc_isr_mission', currentMissionCode);
+        } else {
+            const stored = localStorage.getItem('trc_isr_mission');
+            if (stored) currentMissionCode = stored.toUpperCase().trim();
+        }
+    } catch(e) {}
+
+    // --- Multi-Cam 2x2 Matrix Mode State ---
+    let isMatrixGridMode = false;
 
     // --- Screen WakeLock Management (Keeps bodycam/phone display awake during broadcast) ---
     let screenWakeLock = null;
@@ -374,6 +402,7 @@
                 const dataUrl = captureCanvas.toDataURL('image/jpeg', 0.55);
 
                 const payload = {
+                    missionId: currentMissionCode,
                     feedId: broadcastRoleId,
                     image: dataUrl,
                     telemetry: {
@@ -423,7 +452,7 @@
 
         // Notify relay server that stream has ended
         if (broadcastRoleId) {
-            fetch(`/api/isr_stop?feedId=${encodeURIComponent(broadcastRoleId)}`, { method: 'POST' }).catch(() => {});
+            fetch(`/api/isr_stop?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${encodeURIComponent(broadcastRoleId)}`, { method: 'POST' }).catch(() => {});
         }
 
         const broadcastBtn = document.getElementById('isr-live-cam-toggle-btn');
@@ -446,7 +475,7 @@
             window.stopLocalBroadcasting();
         }
         try {
-            await fetch(`/api/isr_stop?feedId=${encodeURIComponent(currentActiveFeedId)}`, { method: 'POST' });
+            await fetch(`/api/isr_stop?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${encodeURIComponent(currentActiveFeedId)}`, { method: 'POST' });
         } catch(e) {}
 
         const feed = feeds.find(f => f.id === currentActiveFeedId);
@@ -475,6 +504,114 @@
 
     // --- Viewer Frame Poller ---
     let pollTick = 0;
+
+    // --- Mission Room Manager Functions ---
+    window.openMissionRoomModal = function() {
+        const modal = document.getElementById('modal-isr-mission-room');
+        if (!modal) return;
+        const input = document.getElementById('isr-mission-code-input');
+        if (input) input.value = currentMissionCode;
+        const disp = document.getElementById('isr-mission-code-display');
+        if (disp) disp.textContent = currentMissionCode;
+        updateMissionRoomModalQr();
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    window.closeMissionRoomModal = function() {
+        const modal = document.getElementById('modal-isr-mission-room');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+    };
+
+    window.setMissionCode = function(newCode) {
+        if (!newCode) return;
+        currentMissionCode = newCode.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+        localStorage.setItem('trc_isr_mission', currentMissionCode);
+
+        // Update label in Window 7 header
+        const lbl = document.getElementById('isr-mission-label');
+        if (lbl) lbl.textContent = `ROOM: ${currentMissionCode}`;
+
+        // Sync to Window 5 Comms passcode
+        const commsCode = document.getElementById('comms-passcode');
+        if (commsCode) commsCode.value = currentMissionCode;
+
+        const disp = document.getElementById('isr-mission-code-display');
+        if (disp) disp.textContent = currentMissionCode;
+
+        updateMissionRoomModalQr();
+        showToast(`🔑 CONNECTED TO MISSION ROOM: ${currentMissionCode}`);
+        if (typeof window.pushTacLog === 'function') {
+            window.pushTacLog(`MISSION ROOM JOINED: ${currentMissionCode}`, "SUCCESS");
+        }
+
+        window.closeMissionRoomModal();
+        renderCurrentActiveView();
+    };
+
+    window.applyMissionCodeFromInput = function() {
+        const input = document.getElementById('isr-mission-code-input');
+        if (input && input.value) {
+            window.setMissionCode(input.value);
+        }
+    };
+
+    function updateMissionRoomModalQr() {
+        const qrImg = document.getElementById('isr-mission-qr-img');
+        const host = location.hostname || '192.168.12.112';
+        const fullUrl = `https://${host}:8443/?mission=${encodeURIComponent(currentMissionCode)}`;
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(fullUrl)}`;
+        }
+    }
+
+    window.copyMissionShareLink = function() {
+        const host = location.hostname || '192.168.12.112';
+        const fullUrl = `https://${host}:8443/?mission=${encodeURIComponent(currentMissionCode)}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(fullUrl).then(() => {
+                showToast("📋 SQUAD JOIN LINK COPIED TO CLIPBOARD!");
+            }).catch(() => {
+                prompt("Copy this Squad Join link:", fullUrl);
+            });
+        } else {
+            prompt("Copy this Squad Join link:", fullUrl);
+        }
+    };
+
+    // --- 2x2 Multi-Cam Quad Matrix Mode ---
+    window.toggleIsrMatrixView = function() {
+        isMatrixGridMode = !isMatrixGridMode;
+        const grid = document.getElementById('isr-matrix-grid');
+        const singleCanvas = document.getElementById('isr-stream-canvas');
+        const btnText = document.getElementById('isr-matrix-view-btn-text');
+
+        if (isMatrixGridMode) {
+            if (singleCanvas) singleCanvas.classList.add('hidden');
+            if (grid) grid.classList.remove('hidden');
+            if (btnText) btnText.textContent = "⊡ SINGLE FOCUS";
+            showToast("⊞ 2x2 QUAD-CAM MATRIX ACTIVE");
+        } else {
+            if (grid) grid.classList.add('hidden');
+            if (singleCanvas) singleCanvas.classList.remove('hidden');
+            if (btnText) btnText.textContent = "⊞ 2x2 MATRIX";
+            showToast("⊡ SINGLE FOCUS VIEW ACTIVE");
+            renderCurrentActiveView();
+        }
+    };
+
+    window.selectMatrixTile = function(feedId) {
+        window.switchIsrFeed(feedId);
+        // Switch back to single focus on click
+        if (isMatrixGridMode) {
+            window.toggleIsrMatrixView();
+        }
+    };
+    
     function startViewerPolling() {
         if (viewerPollInterval) clearInterval(viewerPollInterval);
 
@@ -484,7 +621,7 @@
             // Every ~1 second (8 ticks @ 120ms), poll active streams across all feeds
             if (pollTick % 8 === 0) {
                 try {
-                    const actRes = await fetch('/api/isr_active');
+                    const actRes = await fetch(`/api/isr_active?missionId=${encodeURIComponent(currentMissionCode)}`);
                     if (actRes.ok) {
                         const actData = await actRes.json();
                         const activeList = actData.activeStreams || [];
@@ -525,7 +662,51 @@
 
             // Check if current active feed has a live stream
             try {
-                const res = await fetch(`/api/isr_frame?feedId=${currentActiveFeedId}`);
+                const res = await fetch(`/api/isr_frame?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${currentActiveFeedId}`);
+                
+            // If in 2x2 Matrix Mode, update all 4 quad tiles
+            if (isMatrixGridMode && pollTick % 2 === 0) {
+                const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2'];
+                quadFeedIds.forEach(async (qFid, idx) => {
+                    try {
+                        const qRes = await fetch(`/api/isr_frame?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${qFid}`);
+                        if (qRes.ok) {
+                            const qData = await qRes.json();
+                            const qCanvas = document.getElementById(`isr-quad-canvas-${idx + 1}`);
+                            const qLiveBadge = document.getElementById(`isr-quad-live-${idx + 1}`);
+                            if (qCanvas) {
+                                const qCtx = qCanvas.getContext('2d');
+                                if (qData.active && qData.image) {
+                                    if (qLiveBadge) qLiveBadge.classList.remove('hidden');
+                                    const qImg = new Image();
+                                    qImg.onload = () => {
+                                        qCanvas.width = 320;
+                                        qCanvas.height = 240;
+                                        qCtx.drawImage(qImg, 0, 0, qCanvas.width, qCanvas.height);
+                                    };
+                                    qImg.src = qData.image;
+                                } else {
+                                    if (qLiveBadge) qLiveBadge.classList.add('hidden');
+                                    // Draw standby pattern
+                                    qCanvas.width = 320;
+                                    qCanvas.height = 240;
+                                    qCtx.fillStyle = '#090d16';
+                                    qCtx.fillRect(0, 0, 320, 240);
+                                    qCtx.strokeStyle = 'rgba(6,182,212,0.15)';
+                                    qCtx.lineWidth = 1;
+                                    for(let x=0; x<320; x+=20) { qCtx.beginPath(); qCtx.moveTo(x,0); qCtx.lineTo(x,240); qCtx.stroke(); }
+                                    for(let y=0; y<240; y+=20) { qCtx.beginPath(); qCtx.moveTo(0,y); qCtx.lineTo(320,y); qCtx.stroke(); }
+                                    qCtx.fillStyle = '#64748b';
+                                    qCtx.font = 'bold 11px monospace';
+                                    qCtx.textAlign = 'center';
+                                    qCtx.fillText('STANDBY / NO SIGNAL', 160, 125);
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                });
+            }
+    
                 if (!res.ok) return;
                 const data = await res.json();
 
@@ -1143,6 +1324,9 @@
     function initIsr() {
         initDeviceSensors();
         startViewerPolling();
+
+        const lbl = document.getElementById('isr-mission-label');
+        if (lbl) lbl.textContent = `ROOM: ${currentMissionCode}`;
 
         const feed = feeds[0];
         setTimeout(() => {

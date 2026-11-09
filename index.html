@@ -6796,6 +6796,11 @@ try {
                                     </button>
                                 </div>
 
+                                <!-- Mission Room Button -->
+                                <button type="button" id="isr-mission-room-btn" onclick="window.openMissionRoomModal()" class="bg-indigo-950 hover:bg-indigo-900 border border-indigo-500/80 text-indigo-300 hover:text-white font-mono font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(99,102,241,0.4)] cursor-pointer" title="Manage Squad Mission Room">
+                                    <i data-lucide="key" class="w-3.5 h-3.5 text-indigo-400"></i> <span id="isr-mission-label">ROOM: ALPHA-1</span>
+                                </button>
+
                                 <!-- Setup Wizard Button -->
                                 <button type="button" onclick="window.openByodWizardModal()" class="bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-300 font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow cursor-pointer">
                                     <i data-lucide="wrench" class="w-3.5 h-3.5 text-cyan-400"></i> [⚙️ SETUP GEAR]
@@ -6826,6 +6831,9 @@ try {
 
                                 <div class="flex items-center gap-2">
                                     <span id="isr-active-telemetry" class="text-[10px] text-emerald-400 font-mono font-bold hidden sm:inline">1080P 30FPS • BAT: 84% • SIGNAL: 98%</span>
+                                    <button type="button" id="isr-matrix-view-toggle-btn" onclick="window.toggleIsrMatrixView()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x2 Multi-Cam Grid">
+                                        <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-matrix-view-btn-text">⊞ 2x2 MATRIX</span>
+                                    </button>
                                     <button type="button" id="isr-top-screen-btn" onclick="window.displayIsrInMainViewport()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Mirror this feed to the top Main Viewport">
                                         <i data-lucide="tv" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-top-screen-btn-text">TOP SCREEN</span>
                                     </button>
@@ -6834,6 +6842,45 @@ try {
 
                             <!-- Canvas Stream / HUD Display -->
                             <canvas id="isr-stream-canvas" class="w-full h-full absolute inset-0 object-cover cursor-crosshair"></canvas>
+                            <!-- 2x2 Multi-Cam Quad Matrix View -->
+                            <div id="isr-matrix-grid" class="hidden absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1.5 p-1.5 bg-black/95 z-10">
+                                <!-- Tile 1: Air-1 Drone -->
+                                <div class="relative bg-slate-900 rounded border border-emerald-500/40 overflow-hidden cursor-pointer group hover:border-emerald-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-drone-1')">
+                                    <canvas id="isr-quad-canvas-1" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                                    <div class="flex justify-between items-center z-10 pointer-events-none">
+                                        <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🚁 AIR-1 DRONE</span>
+                                        <span id="isr-quad-live-1" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
+                                    </div>
+                                    <div class="text-[7px] text-emerald-400/80 font-mono z-10 pointer-events-none">TAP TO EXPAND</div>
+                                </div>
+                                <!-- Tile 2: Lead Bodycam -->
+                                <div class="relative bg-slate-900 rounded border border-blue-500/40 overflow-hidden cursor-pointer group hover:border-blue-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-body-1')">
+                                    <canvas id="isr-quad-canvas-2" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                                    <div class="flex justify-between items-center z-10 pointer-events-none">
+                                        <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🦺 LEAD BODYCAM</span>
+                                        <span id="isr-quad-live-2" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
+                                    </div>
+                                    <div class="text-[7px] text-blue-400/80 font-mono z-10 pointer-events-none">TAP TO EXPAND</div>
+                                </div>
+                                <!-- Tile 3: Point Scout -->
+                                <div class="relative bg-slate-900 rounded border border-purple-500/40 overflow-hidden cursor-pointer group hover:border-purple-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-body-2')">
+                                    <canvas id="isr-quad-canvas-3" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                                    <div class="flex justify-between items-center z-10 pointer-events-none">
+                                        <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🎯 POINT SCOUT</span>
+                                        <span id="isr-quad-live-3" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
+                                    </div>
+                                    <div class="text-[7px] text-purple-400/80 font-mono z-10 pointer-events-none">TAP TO EXPAND</div>
+                                </div>
+                                <!-- Tile 4: Base C2 / Command Post -->
+                                <div class="relative bg-slate-900 rounded border border-cyan-500/40 overflow-hidden cursor-pointer group hover:border-cyan-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-base-c2')">
+                                    <canvas id="isr-quad-canvas-4" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                                    <div class="flex justify-between items-center z-10 pointer-events-none">
+                                        <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">💻 BASE C2 (COMMAND)</span>
+                                        <span id="isr-quad-live-4" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
+                                    </div>
+                                    <div class="text-[7px] text-cyan-400/80 font-mono z-10 pointer-events-none">TAP TO EXPAND</div>
+                                </div>
+                            </div>
 
                             <!-- Bottom Viewport Action Buttons -->
                             <div class="bg-gradient-to-t from-black/95 via-black/70 to-transparent p-2 px-3 flex flex-wrap justify-between items-center gap-1.5 z-10">
@@ -6871,7 +6918,7 @@ try {
                                 </button>
                             </div>
 
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                                 <!-- Feed 1: Drone -->
                                 <div onclick="window.switchIsrFeed('feed-drone-1')" data-feed-id="feed-drone-1" class="isr-feed-card p-2.5 rounded-xl border-2 border-emerald-400 bg-emerald-950/40 ring-2 ring-emerald-400/50 flex flex-col justify-between gap-1.5 cursor-pointer hover:brightness-125 transition-all">
                                     <div class="flex justify-between items-center">
@@ -6928,6 +6975,18 @@ try {
                                         </span>
                                         <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                                     </div>
+
+                                <!-- Feed 6: Base C2 / Command Post -->
+                                <div onclick="window.switchIsrFeed('feed-base-c2')" data-feed-id="feed-base-c2" class="isr-feed-card p-2.5 rounded-xl border border-slate-800 bg-slate-900/80 flex flex-col justify-between gap-1.5 cursor-pointer hover:border-emerald-500/50 hover:brightness-125 transition-all">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-black uppercase text-cyan-300 flex items-center gap-1">
+                                            <i data-lucide="laptop" class="w-3 h-3 text-cyan-400"></i> BASE C2
+                                        </span>
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    </div>
+                                    <div class="font-bold text-[11px] text-white truncate">COMMAND POST</div>
+                                    <div class="text-[8px] text-slate-400 truncate">PC / Ops Webcam</div>
+                                </div>
                                     <div class="font-bold text-[11px] text-white truncate">FEEDER / BLIND</div>
                                     <div class="text-[8px] text-slate-400 truncate">RTSP Cam • Solar</div>
                                 </div>
@@ -7204,7 +7263,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.4.9';
+        window.APP_VERSION = 'v8.77.5.0';
 
         if(document.getElementById('header-version-display')) {
 
@@ -8353,6 +8412,69 @@ try {
         </button>
     </div>
 
+
+    <!-- ISR MISSION ROOM MODAL -->
+    <div id="modal-isr-mission-room" style="z-index: 100000075; display: none;" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-start justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="bg-slate-900 border-2 border-indigo-500/80 rounded-xl shadow-[0_0_40px_rgba(99,102,241,0.35)] w-full p-4 sm:p-6 font-mono text-white relative flex flex-col" style="max-width: 34rem; max-height: 95vh; margin: 1.5rem auto;">
+            <!-- Header -->
+            <div class="flex justify-between items-start border-b border-indigo-500/30 pb-3 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-950/80 border border-indigo-500/50 flex items-center justify-center text-indigo-400 shrink-0">
+                        <i data-lucide="key" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-sm sm:text-base uppercase tracking-wider text-indigo-300">TACTICAL MISSION ROOM</h3>
+                        <p class="text-[10px] text-slate-400">ISOLATE SQUAD CAMERAS &amp; SENSORS INTO A SECURE CHANNEL</p>
+                    </div>
+                </div>
+                <button type="button" onclick="window.closeMissionRoomModal()" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer" aria-label="Close Mission Room">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Current Room Code Input -->
+            <div class="space-y-3 mb-4">
+                <label class="block font-black text-indigo-300 uppercase tracking-widest text-[10px]">MISSION ROOM CODE</label>
+                <div class="flex gap-2">
+                    <input type="text" id="isr-mission-code-input" class="flex-1 bg-black border-2 border-indigo-500/60 rounded px-3 py-2 text-sm text-indigo-300 font-mono font-black uppercase tracking-widest outline-none focus:border-indigo-400 text-center" placeholder="e.g. ALPHA-1">
+                    <button type="button" onclick="window.applyMissionCodeFromInput()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2 rounded uppercase tracking-wider transition-all shadow cursor-pointer">
+                        JOIN ROOM
+                    </button>
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="flex flex-wrap gap-1.5 pt-1">
+                    <span class="text-[9px] text-slate-400 self-center mr-1">PRESETS:</span>
+                    <button type="button" onclick="window.setMissionCode('ALPHA-1')" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 text-[10px] px-2 py-1 rounded border border-indigo-500/40 cursor-pointer">ALPHA-1</button>
+                    <button type="button" onclick="window.setMissionCode('BRAVO-6')" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 text-[10px] px-2 py-1 rounded border border-indigo-500/40 cursor-pointer">BRAVO-6</button>
+                    <button type="button" onclick="window.setMissionCode('GHOST-9')" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 text-[10px] px-2 py-1 rounded border border-indigo-500/40 cursor-pointer">GHOST-9</button>
+                    <button type="button" onclick="window.setMissionCode('HUNT-WEST')" class="bg-slate-800 hover:bg-slate-700 text-indigo-300 text-[10px] px-2 py-1 rounded border border-indigo-500/40 cursor-pointer">HUNT-WEST</button>
+                </div>
+            </div>
+
+            <!-- Squad Connect Link & QR Code -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-indigo-500/30 flex flex-col sm:flex-row items-center gap-4 mb-4">
+                <div class="shrink-0 bg-white p-2 rounded-lg border-2 border-indigo-400 shadow flex flex-col items-center">
+                    <img id="isr-mission-qr-img" src="" alt="Mission QR Code" class="w-28 h-28">
+                    <span class="text-[8px] text-slate-800 font-bold mt-1 uppercase tracking-tighter">SQUAD SCAN TO JOIN</span>
+                </div>
+                <div class="flex-1 text-xs space-y-2">
+                    <span class="text-indigo-400 font-black text-xs uppercase block">INVITE TEAM TO THIS ROOM</span>
+                    <p class="text-slate-300 text-[11px] leading-relaxed">
+                        Any phone scanning this QR code automatically joins <strong class="text-indigo-300 font-mono" id="isr-mission-code-display">ALPHA-1</strong> and syncs bodycams, drones, and telemetry.
+                    </p>
+                    <button type="button" onclick="window.copyMissionShareLink()" class="w-full bg-slate-800 hover:bg-slate-700 border border-indigo-500/50 text-indigo-300 font-black text-[10px] py-2 px-3 rounded flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span>COPY SQUAD JOIN LINK</span>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" onclick="window.closeMissionRoomModal()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-2.5 rounded-lg uppercase tracking-wider text-xs transition-all cursor-pointer shadow">
+                RETURN TO ISR MATRIX
+            </button>
+        </div>
+    </div>
+
     <!-- ISR LIVE CAMERA BROADCASTER MODAL -->
     <div id="modal-isr-broadcast" style="z-index: 100000070; display: none;" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-start justify-center p-2 sm:p-4 overflow-y-auto">
         <div class="bg-slate-900 border-2 border-cyan-500/80 rounded-xl shadow-[0_0_40px_rgba(6,182,212,0.3)] w-full p-3 sm:p-6 font-mono text-white relative flex flex-col" style="max-width: 36rem; max-height: 95vh; margin: 1rem auto;">
@@ -8424,6 +8546,7 @@ try {
                     <select id="isr-broadcast-role-select" class="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-xs font-mono font-bold">
                         <option value="feed-body-1">🦺 LEAD BODYCAM (Player #1 - Chest Rig Phone)</option>
                         <option value="feed-body-2">🎯 POINT SCOUT BODYCAM (Player #9 - Pack Mount Phone)</option>
+                        <option value="feed-base-c2">💻 BASE C2 (Command Post PC Webcam)</option>
                         <option value="feed-trail-1">🌲 NORTH FENCE TRAIL-CAM (Solar Fence Post Phone)</option>
                         <option value="feed-trail-2">🦌 DEER BLIND / FEEDER CAM (Blind Window Phone)</option>
                         <option value="feed-drone-1">🚁 OVERHEAD DRONE (AIR-1 Relay)</option>
