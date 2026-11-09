@@ -7273,7 +7273,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.5.2';
+        window.APP_VERSION = 'v8.77.5.3';
 
         if(document.getElementById('header-version-display')) {
 
@@ -8593,6 +8593,14 @@ try {
                     <select id="isr-broadcast-source-type" onchange="window.onBroadcastSourceTypeChange()" class="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-xs font-mono font-bold">
                         <option value="camera">📷 Live Camera / Webcam (Integrated or USB Webcam)</option>
                         <option value="screen">🖥️ Screen / Map Share (Stream Full TRC View or Map)</option>
+                    </select>
+                </div>
+
+                <!-- Select Camera Hardware (Bypasses ghost phone links like Ralph's S25) -->
+                <div id="isr-broadcast-device-box" class="bg-slate-950/80 p-3 rounded-lg border border-cyan-500/30 space-y-1.5">
+                    <label class="block font-black text-cyan-300 uppercase tracking-widest text-[10px]">3. SELECT CAMERA HARDWARE DEVICE</label>
+                    <select id="isr-broadcast-device-select" class="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 text-xs font-mono font-bold">
+                        <option value="auto">🎯 Auto-Select Built-In PC Webcam</option>
                     </select>
                 </div>
 

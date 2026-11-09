@@ -7147,6 +7147,34 @@ function initializeTacticalDashboard2() {
     }
     // --- END TACTICAL HUD SENSOR LOGIC ---
 
+    async function getBestPhysicalCameraId() {
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return null;
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            if (videoDevices.length === 0) return null;
+
+            // Filter out virtual/phone-link cameras (e.g. Phone Link, Link to Windows, S25, Galaxy, DroidCam, Iriun, OBS)
+            const ghostKeywords = ['phone', 'link', 'virtual', 's25', 'galaxy', 'droidcam', 'iriun', 'epoccam', 'obs'];
+            const physicalCams = videoDevices.filter(d => {
+                const lbl = (d.label || '').toLowerCase();
+                return !ghostKeywords.some(k => lbl.includes(k));
+            });
+
+            const pool = physicalCams.length > 0 ? physicalCams : videoDevices;
+            
+            // Prioritize integrated / internal / HD webcam
+            const integrated = pool.find(d => {
+                const lbl = (d.label || '').toLowerCase();
+                return lbl.includes('integrated') || lbl.includes('internal') || lbl.includes('built-in') || lbl.includes('truevision') || lbl.includes('hd') || lbl.includes('camera') || lbl.includes('webcam');
+            });
+
+            return (integrated || pool[0]).deviceId;
+        } catch(e) {
+            return null;
+        }
+    }
+
     async function startFeed() {
         if (activeStream) {
             activeStream.getTracks().forEach(track => track.stop());
@@ -7157,35 +7185,56 @@ function initializeTacticalDashboard2() {
             return;
         }
 
+        let targetDeviceId = await getBestPhysicalCameraId();
         let stream = null;
-        try {
-            const constraints = {
-                video: isMobileDevice ? {
-                    facingMode: { ideal: currentFacingMode },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                } : {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: isVideoMode ? true : false
-            };
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (e1) {
-            console.warn("Primary camera constraints failed, attempting fallback to video:true", e1);
+
+        // 1. Try with explicit physical deviceId first to bypass Windows Phone Link / Ralph's S25
+        if (targetDeviceId && !isMobileDevice) {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: isVideoMode ? true : false });
-            } catch (e2) {
-                console.error("Camera access failed:", e2);
-                if (e2.name === 'NotReadableError' || e2.name === 'TrackStartError') {
-                    alert("⚠️ PC WEBCAM IS CURRENTLY IN USE BY ANOTHER APP:\n\nWindows Settings or the Windows Camera app is currently holding your webcam preview.\n\nPlease close the Windows Settings / Troubleshooting camera window and click SCOPE CAM again!");
-                } else if (e2.name === 'NotAllowedError' || e2.name === 'PermissionDeniedError') {
-                    alert("⚠️ BROWSER CAMERA PERMISSION BLOCKED:\n\nPlease click the lock or camera icon in your browser URL bar and click 'Allow' to grant camera access.");
-                } else {
-                    alert(`⚠️ WEBCAM ERROR: ${e2.message || e2.name}`);
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: targetDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: isVideoMode ? true : false
+                });
+            } catch(eExact) {
+                console.warn("Exact physical camera match failed, trying ideal:", eExact);
+            }
+        }
+
+        // 2. If not opened yet, try general constraints
+        if (!stream) {
+            try {
+                const constraints = {
+                    video: isMobileDevice ? {
+                        facingMode: { ideal: currentFacingMode },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    } : (targetDeviceId ? {
+                        deviceId: { ideal: targetDeviceId },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } : {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }),
+                    audio: isVideoMode ? true : false
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (e1) {
+                console.warn("Primary camera constraints failed, attempting fallback to video:true", e1);
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: isVideoMode ? true : false });
+                } catch (e2) {
+                    console.error("Camera access failed:", e2);
+                    if (e2.name === 'NotReadableError' || e2.name === 'TrackStartError') {
+                        alert("⚠️ PC WEBCAM IS CURRENTLY IN USE BY ANOTHER APP:\n\nWindows Settings, the Windows Camera app, or Phone Link is currently holding your camera preview.\n\nPlease close Windows Settings / Camera app and try clicking SCOPE CAM again!");
+                    } else if (e2.name === 'NotAllowedError' || e2.name === 'PermissionDeniedError') {
+                        alert("⚠️ BROWSER CAMERA PERMISSION BLOCKED:\n\nPlease click the lock or camera icon in your browser URL bar and click 'Allow' to grant camera access.");
+                    } else {
+                        alert(`⚠️ WEBCAM ERROR: ${e2.message || e2.name}`);
+                    }
+                    window.pushTacLog("CAMERA ACCESS DENIED: " + (e2.name || 'ERROR'), "ERROR");
+                    return;
                 }
-                window.pushTacLog("CAMERA ACCESS DENIED: " + (e2.name || 'ERROR'), "ERROR");
-                return;
             }
         }
         activeStream = stream;

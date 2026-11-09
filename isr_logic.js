@@ -316,6 +316,39 @@
         }
     };
 
+    async function populateCameraDeviceDropdown() {
+        const select = document.getElementById('isr-broadcast-device-select');
+        if (!select || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            if (videoDevices.length === 0) return;
+
+            select.innerHTML = '';
+            const ghostKeywords = ['phone', 'link', 'virtual', 's25', 'galaxy', 'droidcam', 'iriun', 'epoccam', 'obs'];
+            let autoChosen = false;
+
+            videoDevices.forEach((dev, idx) => {
+                const opt = document.createElement('option');
+                opt.value = dev.deviceId;
+                const lbl = dev.label || `Camera ${idx + 1}`;
+                const isGhost = ghostKeywords.some(k => lbl.toLowerCase().includes(k));
+
+                if (isGhost) {
+                    opt.textContent = `⚠️ ${lbl} (Ghost / Phone Link - Offline)`;
+                } else {
+                    opt.textContent = `📷 ${lbl} (Physical Hardware)`;
+                    if (!autoChosen) {
+                        opt.selected = true;
+                        autoChosen = true;
+                    }
+                }
+                select.appendChild(opt);
+            });
+        } catch(e) {}
+    }
+
     window.onBroadcastSourceTypeChange = function() {
         const srcType = document.getElementById('isr-broadcast-source-type')?.value;
         const facingBox = document.getElementById('isr-broadcast-facing-box');
@@ -353,6 +386,9 @@
             }
         }
         window.onBroadcastRoleChange();
+
+        // Populate physical camera hardware dropdown (filters out ghost phones)
+        populateCameraDeviceDropdown();
 
         // Default to broadcast tab
         window.switchBroadcastModalTab('broadcast');
@@ -449,21 +485,51 @@ ${secureUrl}`);
                 }
             } else {
                 try {
-                    const constraints = isMobile ? {
-                        video: {
-                            facingMode: { ideal: broadcastFacingMode },
-                            width: { ideal: 640 },
-                            height: { ideal: 480 }
-                        },
-                        audio: false
-                    } : {
-                        video: {
-                            width: { ideal: 640 },
-                            height: { ideal: 480 }
-                        },
-                        audio: false
-                    };
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    const devSelect = document.getElementById('isr-broadcast-device-select');
+                    const targetDevId = devSelect && devSelect.value && devSelect.value !== 'auto' ? devSelect.value : null;
+
+                    let constraints;
+                    if (isMobile) {
+                        constraints = {
+                            video: {
+                                facingMode: { ideal: broadcastFacingMode },
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: false
+                        };
+                    } else if (targetDevId) {
+                        // Explicitly target selected physical webcam deviceId to bypass ghost phone links
+                        constraints = {
+                            video: {
+                                deviceId: { exact: targetDevId },
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: false
+                        };
+                    } else {
+                        constraints = {
+                            video: {
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: false
+                        };
+                    }
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    } catch(eExact) {
+                        if (targetDevId) {
+                            // Retry with ideal deviceId
+                            stream = await navigator.mediaDevices.getUserMedia({
+                                video: { deviceId: { ideal: targetDevId }, width: { ideal: 640 }, height: { ideal: 480 } },
+                                audio: false
+                            });
+                        } else {
+                            throw eExact;
+                        }
+                    }
                 } catch(e1) {
                     console.warn("Primary broadcast camera constraint failed, falling back to video: true", e1);
                     try {

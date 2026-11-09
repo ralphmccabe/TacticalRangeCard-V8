@@ -1,4 +1,12 @@
 ============================================================
+v8.77.5.3 - GHOST PHONE LINK BYPASS & PHYSICAL HARDWARE LOCK-ON
+* Windows Phone Link / Ghost Device Bypass:
+  - Eliminated the 'Connecting to Phone' OS dialog caused by Windows 11 Phone Link registering disconnected phones (e.g. Ralph's S25) as primary camera #0.
+  - Added getBestPhysicalCameraId() device enumeration: Scans system cameras and automatically filters out virtual/phone-link devices, locking directly onto the PC's physical built-in integrated webcam.
+  - In both Scope Cam and Tactical ISR Broadcaster, requests exact hardware deviceId so Windows never triggers a wireless phone reconnect attempt.
+  - Added hardware camera selector dropdown in the broadcaster modal allowing explicit selection of physical vs virtual camera inputs.
+
+============================================================
 v8.77.5.2 - PC INTEGRATED WEBCAM HARDWARE DETECTION & MULTI-TIER FALLBACK
 * PC / Laptop Integrated Webcam Fix:
   - Eliminated mobile-only constraints on desktop: PC webcams no longer request 'environment' (rear camera) which caused OverconstrainedError and NotFoundError on Windows laptops.
