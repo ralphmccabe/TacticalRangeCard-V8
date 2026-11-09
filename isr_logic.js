@@ -228,16 +228,20 @@
             }, true);
         }
 
-        // GPS Geolocation
+        // GPS Geolocation (Instant Query + Continuous Watch)
         if (navigator.geolocation) {
-            navigator.geolocation.watchPosition((pos) => {
+            const onPos = (pos) => {
                 deviceSensors.lat = pos.coords.latitude;
                 deviceSensors.lng = pos.coords.longitude;
                 if (pos.coords.speed !== null && pos.coords.speed !== undefined) {
                     const mph = Math.round(pos.coords.speed * 2.23694);
                     deviceSensors.speed = `${mph} MPH`;
                 }
-            }, () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
+            };
+            try {
+                navigator.geolocation.getCurrentPosition(onPos, () => {}, { enableHighAccuracy: false, timeout: 6000 });
+                navigator.geolocation.watchPosition(onPos, () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
+            } catch(e) {}
         }
     }
 
@@ -595,20 +599,37 @@ ${secureUrl}`);
                 const dataUrl = captureCanvas.toDataURL('image/jpeg', 0.55);
 
                 const isC2 = broadcastRoleId === 'feed-base-c2';
+                let bLat = deviceSensors.lat;
+                let bLng = deviceSensors.lng;
+                if ((!bLat || !bLng || isNaN(parseFloat(bLat))) && isC2) {
+                    if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
+                        const c = window.orbitalMap.getCenter();
+                        bLat = c.lat;
+                        bLng = c.lng;
+                    } else if (feedTelemetry['feed-body-1'] && !isNaN(parseFloat(feedTelemetry['feed-body-1'].lat))) {
+                        bLat = parseFloat(feedTelemetry['feed-body-1'].lat) + 0.00035;
+                        bLng = parseFloat(feedTelemetry['feed-body-1'].lng) + 0.00035;
+                    } else {
+                        bLat = 31.9498;
+                        bLng = -102.1697;
+                    }
+                }
                 const payload = {
                     missionId: currentMissionCode,
                     feedId: broadcastRoleId,
                     image: dataUrl,
                     telemetry: {
-                        battery: isC2 ? '100% (AC)' : deviceSensors.battery,
-                        heading: isC2 ? '000° N' : deviceSensors.heading,
-                        speed: isC2 ? '0.0 MPH' : deviceSensors.speed,
-                        lat: isC2 ? 'C2 COMMAND' : deviceSensors.lat,
-                        lng: isC2 ? 'OPS DESK' : deviceSensors.lng,
+                        battery: isC2 ? '100% (AC)' : (deviceSensors.battery || '100%'),
+                        heading: isC2 ? '000° N (C2)' : (deviceSensors.heading || '000° N'),
+                        speed: isC2 ? '0.0 MPH' : (deviceSensors.speed || '0.0 MPH'),
+                        lat: bLat,
+                        lng: bLng,
+                        role: isC2 ? 'BASE_C2' : 'FIELD_OPERATOR',
+                        label: isC2 ? 'BASE C2 COMMAND' : 'LEAD BODYCAM',
                         fps: `${broadcastFps} FPS`
                     }
                 };
-
+                feedTelemetry[broadcastRoleId] = payload.telemetry;
                 // POST to local server
                 fetch('/api/isr_frame', {
                     method: 'POST',
@@ -1000,6 +1021,7 @@ ${secureUrl}`);
                         const qRes = await fetch(`/api/isr_frame?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${qFid}`);
                         if (qRes.ok) {
                             const qData = await qRes.json();
+                            if (qData.telemetry) { feedTelemetry[qFid] = qData.telemetry; }
                             const qCanvas = document.getElementById(`isr-quad-canvas-${idx + 1}`);
                             const qLiveBadge = document.getElementById(`isr-quad-live-${idx + 1}`);
                             if (qCanvas) {
@@ -1041,6 +1063,7 @@ ${secureUrl}`);
                 if (data.active && data.image) {
                     lastReceivedFrame = data.image;
                     lastReceivedTelemetry = data.telemetry;
+                    if (data.telemetry) { feedTelemetry[currentActiveFeedId] = data.telemetry; }
                     renderLiveFrame(data.image, data.telemetry);
                 } else {
                     lastReceivedFrame = null;
@@ -1638,69 +1661,186 @@ ${secureUrl}`);
         renderCurrentActiveView();
     };
 
-    // --- Pin Target to Recon Map ---
-    window.pinIsrTargetToMap = async function() {
-        const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
-        const canvas = document.getElementById('isr-stream-canvas');
-        const dataUrl = canvas ? canvas.toDataURL('image/jpeg', 0.8) : null;
+    // --- Dedicated Pin Function for Specific Feed (PC C2, Mobile, Drone, Scout) ---
+    window.pinSpecificFeedToMap = async function(feedId, tileIndex = null) {
+        try {
+            const feed = feeds.find(f => f.id === feedId) || { id: feedId, name: feedId.replace('feed-', '').toUpperCase() };
+            
+            // 1. Capture snapshot image of this feed
+            let dataUrl = null;
+            if (tileIndex) {
+                const qCanvas = document.getElementById(`isr-quad-canvas-${tileIndex}`);
+                if (qCanvas) dataUrl = qCanvas.toDataURL('image/jpeg', 0.85);
+            }
+            if (!dataUrl) {
+                if (isBroadcasting && broadcastRoleId === feedId) {
+                    const bVid = document.getElementById('isr-broadcaster-video');
+                    if (bVid && bVid.videoWidth > 0) {
+                        const off = document.createElement('canvas');
+                        off.width = bVid.videoWidth;
+                        off.height = bVid.videoHeight;
+                        off.getContext('2d').drawImage(bVid, 0, 0);
+                        dataUrl = off.toDataURL('image/jpeg', 0.85);
+                    }
+                }
+            }
+            if (!dataUrl) {
+                const sCanvas = document.getElementById('isr-stream-canvas');
+                if (sCanvas) dataUrl = sCanvas.toDataURL('image/jpeg', 0.85);
+            }
 
-        // Coordinates from mobile telemetry or map center or default
-        let pinLat = 31.9542;
-        let pinLng = -102.1784;
+            // 2. Resolve coordinates specifically for THIS feed
+            let pinLat = null;
+            let pinLng = null;
+            
+            // Check per-feed telemetry cache first
+            const telem = feedTelemetry[feedId];
+            if (telem && telem.lat && telem.lng) {
+                const tLat = parseFloat(telem.lat);
+                const tLng = parseFloat(telem.lng);
+                if (!isNaN(tLat) && !isNaN(tLng)) {
+                    pinLat = tLat;
+                    pinLng = tLng;
+                }
+            }
+            
+            // If Base C2 on PC, check local device sensors or map center
+            if ((pinLat === null || pinLng === null) && (feedId === 'feed-base-c2' || broadcastRoleId === 'feed-base-c2')) {
+                if (deviceSensors && deviceSensors.lat && deviceSensors.lng && !isNaN(parseFloat(deviceSensors.lat))) {
+                    pinLat = parseFloat(deviceSensors.lat);
+                    pinLng = parseFloat(deviceSensors.lng);
+                } else if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
+                    const c = window.orbitalMap.getCenter();
+                    pinLat = c.lat;
+                    pinLng = c.lng;
+                } else if (feedTelemetry['feed-body-1'] && !isNaN(parseFloat(feedTelemetry['feed-body-1'].lat))) {
+                    pinLat = parseFloat(feedTelemetry['feed-body-1'].lat) + 0.00035;
+                    pinLng = parseFloat(feedTelemetry['feed-body-1'].lng) + 0.00035;
+                } else {
+                    pinLat = 31.9498;
+                    pinLng = -102.1697;
+                }
+            }
 
-        if (lastReceivedTelemetry && lastReceivedTelemetry.lat && lastReceivedTelemetry.lng) {
-            pinLat = parseFloat(lastReceivedTelemetry.lat);
-            pinLng = parseFloat(lastReceivedTelemetry.lng);
-        } else if (deviceSensors && deviceSensors.lat && deviceSensors.lng) {
-            pinLat = parseFloat(deviceSensors.lat);
-            pinLng = parseFloat(deviceSensors.lng);
-        } else if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
-            const center = window.orbitalMap.getCenter();
-            pinLat = center.lat;
-            pinLng = center.lng;
+            // Fallback for mobile / single feed
+            if (pinLat === null || pinLng === null) {
+                if (lastReceivedTelemetry && lastReceivedTelemetry.lat && lastReceivedTelemetry.lng) {
+                    const lLat = parseFloat(lastReceivedTelemetry.lat);
+                    const lLng = parseFloat(lastReceivedTelemetry.lng);
+                    if (!isNaN(lLat) && !isNaN(lLng)) {
+                        pinLat = lLat;
+                        pinLng = lLng;
+                    }
+                }
+            }
+
+            if (pinLat === null || pinLng === null) {
+                if (window.orbitalMap && typeof window.orbitalMap.getCenter === 'function') {
+                    const c = window.orbitalMap.getCenter();
+                    pinLat = c.lat;
+                    pinLng = c.lng;
+                } else {
+                    pinLat = 31.9498;
+                    pinLng = -102.1697;
+                }
+            }
+
+            // If Base C2 coordinates are identical to mobile, apply slight 35m tactical separation
+            if (feedId === 'feed-base-c2' && feedTelemetry['feed-body-1']) {
+                const mLat = parseFloat(feedTelemetry['feed-body-1'].lat);
+                const mLng = parseFloat(feedTelemetry['feed-body-1'].lng);
+                if (!isNaN(mLat) && Math.abs(pinLat - mLat) < 0.00005 && Math.abs(pinLng - mLng) < 0.00005) {
+                    pinLat += 0.00035;
+                    pinLng += 0.00035;
+                }
+            }
+
+            // 3. Determine tactical icon, halo, and labels based on feed type
+            const isC2 = feedId === 'feed-base-c2';
+            const isBody = feedId === 'feed-body-1';
+            const isDrone = feedId === 'feed-drone-1';
+
+            let pinEmoji = isC2 ? '💻' : (isBody ? '🦺' : (isDrone ? '🚁' : '🎯'));
+            let pinColor = isC2 ? '#06b6d4' : (isBody ? '#3b82f6' : (isDrone ? '#10b981' : '#a855f7'));
+            let pinBg = isC2 ? 'rgba(8, 51, 68, 0.95)' : (isBody ? 'rgba(30, 58, 138, 0.95)' : (isDrone ? 'rgba(6, 78, 59, 0.95)' : 'rgba(88, 28, 135, 0.95)'));
+            let pinTitle = isC2 ? '💻 BASE C2 COMMAND POST (PC)' : (isBody ? '🦺 LEAD BODYCAM (CHEST-RIG)' : (isDrone ? '🚁 AIR-1 RECON DRONE' : '🎯 POINT SCOUT'));
+
+            // 4. Plot to Leaflet Orbital Map (Window 3: Geo Matrix)
+            if (window.orbitalMap && window.L) {
+                const targetIcon = window.L.divIcon({
+                    className: 'isr-map-pin-' + feedId,
+                    html: `<div style="background: ${pinBg}; border: 2.5px solid ${pinColor}; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px ${pinColor}; color: white; font-weight: 900; font-size: 15px; cursor: pointer;">${pinEmoji}</div>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                const marker = window.L.marker([pinLat, pinLng], { icon: targetIcon }).addTo(window.orbitalMap);
+                marker.bindPopup(`
+                    <div style="font-family: monospace; font-size: 11px; color: #000; min-width: 190px;">
+                        <b style="color: ${pinColor}; font-size: 12px;">${pinTitle}</b><br>
+                        <b>CHANNEL:</b> ${feed.name}<br>
+                        <b>COORDS:</b> ${pinLat.toFixed(5)}, ${pinLng.toFixed(5)}<br>
+                        <b>TIME:</b> ${new Date().toLocaleTimeString()}<br>
+                        <b>STATUS:</b> <span style="color: #10b981; font-weight: bold;">● LIVE ASSET</span><br>
+                        ${dataUrl ? `<img src="${dataUrl}" style="width: 100%; border-radius: 4px; margin-top: 4px; border: 1.5px solid ${pinColor};">` : ''}
+                    </div>
+                `).openPopup();
+
+                window.orbitalMap.setView([pinLat, pinLng], 15);
+            }
+
+            // 5. Save to Intel Vault
+            if (dataUrl && typeof window.saveIntelSnapshot === 'function') {
+                const pinLabel = `PIN-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now().toString().slice(-4)}`;
+                await window.saveIntelSnapshot(pinLabel, dataUrl, {
+                    type: 'target-pin',
+                    lat: pinLat,
+                    lng: pinLng,
+                    feedId: feedId,
+                    feedName: feed.name,
+                    notes: `Tactical optical pin: ${pinTitle}`
+                });
+            }
+
+            if (typeof window.pushTacLog === 'function') {
+                window.pushTacLog(`ISR ASSET PINNED: ${feed.name} AT ${pinLat.toFixed(5)}, ${pinLng.toFixed(5)}`, "SUCCESS");
+            }
+            showToast(`📍 ${pinTitle} PLOTTED TO GEO MATRIX & INTEL VAULT!`);
+        } catch(err) {
+            console.error("Pin map error:", err);
+            showToast(`⚠️ PIN ERROR: ${err.message}`);
         }
-
-        // Plot to Leaflet Orbital Map (Window 3: Geo Matrix)
-        if (window.orbitalMap && window.L) {
-            const targetIcon = window.L.divIcon({
-                className: 'isr-map-pin',
-                html: `<div style="background: rgba(6,182,212,0.95); border: 2px solid #22d3ee; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(6,182,212,0.9); color: black; font-weight: 900; font-size: 14px; cursor: pointer;">🎯</div>`,
-                iconSize: [28, 28],
-                iconAnchor: [14, 14]
-            });
-
-            const marker = window.L.marker([pinLat, pinLng], { icon: targetIcon }).addTo(window.orbitalMap);
-            marker.bindPopup(`
-                <div style="font-family: monospace; font-size: 11px; color: #000; min-width: 170px;">
-                    <b style="color: #0891b2; font-size: 12px;">🎯 ISR OPTICAL PIN</b><br>
-                    <b>FEED:</b> ${feed.name}<br>
-                    <b>COORDS:</b> ${pinLat.toFixed(5)}, ${pinLng.toFixed(5)}<br>
-                    <b>TIME:</b> ${new Date().toLocaleTimeString()}<br>
-                    ${dataUrl ? `<img src="${dataUrl}" style="width: 100%; border-radius: 4px; margin-top: 4px; border: 1px solid #0891b2;">` : ''}
-                </div>
-            `).openPopup();
-
-            window.orbitalMap.setView([pinLat, pinLng], 15);
-        }
-
-        // Also save to Intel Vault as pinned target
-        if (dataUrl && typeof window.saveIntelSnapshot === 'function') {
-            const pinLabel = `PIN-${feed.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now().toString().slice(-4)}`;
-            await window.saveIntelSnapshot(pinLabel, dataUrl, {
-                type: 'target-pin',
-                lat: pinLat,
-                lng: pinLng,
-                feedName: feed.name,
-                notes: `Optical reconnaissance target locked from ${feed.name}`
-            });
-        }
-
-        if (typeof window.pushTacLog === 'function') {
-            window.pushTacLog(`ISR TARGET PINNED AT ${pinLat.toFixed(5)}, ${pinLng.toFixed(5)}`, "SUCCESS");
-        }
-        showToast(`📍 TARGET FROM ${feed.name} PLOTTED TO GEO MATRIX & VAULT!`);
     };
 
+    // --- Pin Target to Recon Map (Bottom Bar Action) ---
+    window.pinIsrTargetToMap = async function() {
+        if (isMatrixGridMode) {
+            const activePins = [];
+            const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2'];
+            quadFeedIds.forEach((qFid, idx) => {
+                const badge = document.getElementById(`isr-quad-live-${idx + 1}`);
+                if (badge && !badge.classList.contains('hidden')) {
+                    activePins.push({ fid: qFid, tileIdx: idx + 1 });
+                }
+            });
+
+            if (isBroadcasting && broadcastRoleId && !activePins.some(a => a.fid === broadcastRoleId)) {
+                const tileMap = { 'feed-drone-1': 1, 'feed-body-1': 2, 'feed-body-2': 3, 'feed-base-c2': 4 };
+                activePins.push({ fid: broadcastRoleId, tileIdx: tileMap[broadcastRoleId] || 4 });
+            }
+
+            if (activePins.length > 0) {
+                for (const item of activePins) {
+                    await window.pinSpecificFeedToMap(item.fid, item.tileIdx);
+                }
+                showToast(`📍 PINNED ALL ACTIVE SQUAD ASSETS TO GEO MATRIX (${activePins.length} ASSETS)!`);
+                return;
+            }
+        }
+
+        // Single Focus mode fallback: Pin currently focused camera
+        await window.pinSpecificFeedToMap(currentActiveFeedId);
+    };
     // --- Hound Intercept Route ---
     window.interceptHound = function(houndId) {
         const h = hounds.find(d => d.id === houndId);
