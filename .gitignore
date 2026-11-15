@@ -46,3 +46,8 @@ check_*.py
 update_canvas.py
 server.py
 secure_server.py
+serve_mobile.js
+package.json
+package-lock.json
+START_MOBILE_SERVER.bat
+release_update.ps1

@@ -1,14 +1,14 @@
 /* TRC-VERSION - v8.77.3.5 */
-const CACHE_NAME = 'trc-v8.77.5.6';
+const CACHE_NAME = 'trc-v8.77.7.0';
 const ASSETS = [
     './',
     './index.html?v=8.77.4.9',
     './style.css?v=8.77.4.9',
-    './trc_core.js?v=8.77.1.0',
+    './trc_core.js?v=8.77.1.1',
     './js/modules/sfu_audio.js?v=8.30',
     './field_intel_logic.js?v=8.30',
     './blog_logic.js?v=8.77.3.4',
-    './isr_logic.js?v=8.77.4.7',
+    './isr_logic.js?v=8.77.5.8',
     './manifest.json',
     './icon-512.png',
     './icon-192.png',
@@ -27,7 +27,8 @@ const ASSETS = [
     './supply_depot_logic.js?v=8.30',
     './lib/leaflet.css',
     './lib/leaflet.js',
-    './lib/Sortable.min.js'
+    './lib/Sortable.min.js',
+    './lib/hls.min.js'
 ];
 
 self.addEventListener('install', event => {
@@ -84,6 +85,10 @@ self.addEventListener('fetch', event => {
         'somafm.com',               // live radio streams
         'noaa-weatherradio.org',    // live NOAA streams
         '.mp3',                     // audio stream chunks
+        '.m3u8',                    // HLS video playlists
+        '.ts',                      // HLS video segments
+        '.mp4',                     // MP4 video streams
+        '.webm',                    // WebM video streams
         '/stream'                   // shoutcast/icecast streams
     ];
     

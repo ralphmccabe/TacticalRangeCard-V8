@@ -215,7 +215,9 @@ function initializeTacticalDashboard1() {
     // === 0. Global Security & Layout Protection ===
     // Enforce a 25-character limit on ALL text boxes to prevent layout breakage
     document.querySelectorAll('input[type="text"]').forEach(el => {
-        el.setAttribute('maxlength', '25');
+        if (!el.hasAttribute('maxlength') && el.id !== 'custom-stream-url-input') {
+            el.setAttribute('maxlength', '25');
+        }
     });
 
     // type="number" ignores maxlength — enforce 25-char cap globally via JS
