@@ -6841,8 +6841,8 @@ try {
 
                                 <div class="flex items-center gap-2">
                                     <span id="isr-active-telemetry" class="text-[10px] text-emerald-400 font-mono font-bold hidden sm:inline">1080P 30FPS • BAT: 84% • SIGNAL: 98%</span>
-                                    <button type="button" id="isr-matrix-view-toggle-btn" onclick="window.toggleIsrMatrixView()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x2 Multi-Cam Grid">
-                                        <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-matrix-view-btn-text">⊞ 2x2 MATRIX</span>
+                                    <button type="button" id="isr-matrix-view-toggle-btn" onclick="window.toggleIsrMatrixView()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x3 6-Cam Matrix Grid">
+                                        <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-matrix-view-btn-text">⊞ 6-CAM MATRIX</span>
                                     </button>
                                     <button type="button" id="isr-top-screen-btn" onclick="window.displayIsrInMainViewport()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Mirror this feed to the top Main Viewport">
                                         <i data-lucide="tv" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-top-screen-btn-text">TOP SCREEN</span>
@@ -6851,60 +6851,60 @@ try {
                             </div>
 
                             <!-- Central Viewport Display Stage -->
-                            <div class="relative flex-1 min-h-[280px] sm:min-h-[360px] w-full overflow-hidden bg-black flex items-center justify-center">
+                            <div id="isr-viewport-stage" class="relative flex-1 min-h-[340px] sm:min-h-[400px] w-full overflow-hidden bg-black flex items-center justify-center">
                                 <!-- Single Feed Cinema Canvas -->
                                 <canvas id="isr-stream-canvas" class="w-full h-full absolute inset-0 object-cover cursor-crosshair"></canvas>
 
-                                <!-- 2x2 Multi-Cam Quad Matrix View -->
-                                <div id="isr-matrix-grid" class="hidden absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1.5 p-1.5 bg-black/95 z-20">
-                                    <!-- Tile 1: Air-1 Drone -->
+                                <!-- 2x3 Multi-Cam 6-Camera Matrix View -->
+                                <div id="isr-matrix-grid" class="hidden absolute inset-0 grid grid-cols-2 grid-rows-3 gap-1.5 p-1.5 bg-black/95 z-20">
+                                    <!-- Tile 1: Air-1 Overhead Drone -->
                                     <div class="relative bg-slate-900 rounded border border-emerald-500/40 overflow-hidden cursor-pointer group hover:border-emerald-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-drone-1')">
                                         <canvas id="isr-quad-canvas-1" class="absolute inset-0 w-full h-full object-cover"></canvas>
                                         <div class="flex justify-between items-center z-10 pointer-events-none">
-                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🚁 AIR-1 DRONE</span>
+                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🚁 AIR-1 • OVERHEAD DRONE</span>
                                             <span id="isr-quad-live-1" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
                                         </div>
                                         <div class="flex justify-between items-center z-10 mt-auto pt-1 pointer-events-auto">
                                             <span class="text-[7.5px] text-emerald-400/90 font-mono font-bold bg-black/75 px-1 rounded">TAP TO FOCUS</span>
                                             <div class="flex items-center gap-1">
-                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-drone-1')" class="bg-cyan-700/90 hover:bg-cyan-600 text-cyan-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Air-1 Drone Tile">📡 CAST</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-drone-1')" class="bg-cyan-700/90 hover:bg-cyan-600 text-cyan-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Air-1 Overhead Drone">📡 CAST</button>
                                                 <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-drone-1', 1)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Air-1 Drone">📸 SNAP</button>
                                                 <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-drone-1', 1)" class="bg-blue-600/90 hover:bg-blue-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Air-1 Drone to Geo Matrix">📍 PIN</button>
                                                 <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-drone-1')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Drone Feed">⏹ STOP</button>
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- Tile 2: Lead Bodycam -->
+                                    <!-- Tile 2: Lead Cam / Chest Rig Phone -->
                                     <div class="relative bg-slate-900 rounded border border-blue-500/40 overflow-hidden cursor-pointer group hover:border-blue-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-body-1')">
                                         <canvas id="isr-quad-canvas-2" class="absolute inset-0 w-full h-full object-cover"></canvas>
                                         <div class="flex justify-between items-center z-10 pointer-events-none">
-                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🦺 LEAD BODYCAM</span>
+                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🦺 LEAD CAM • CHEST RIG</span>
                                             <span id="isr-quad-live-2" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
                                         </div>
                                         <div class="flex justify-between items-center z-10 mt-auto pt-1 pointer-events-auto">
                                             <span class="text-[7.5px] text-blue-400/90 font-mono font-bold bg-black/75 px-1 rounded">TAP TO FOCUS</span>
                                             <div class="flex items-center gap-1">
-                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-body-1')" class="bg-blue-700/90 hover:bg-blue-600 text-blue-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Lead Bodycam Tile">📡 CAST</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-body-1', 2)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Lead Bodycam">📸 SNAP</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-body-1', 2)" class="bg-blue-600/90 hover:bg-blue-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Lead Bodycam to Geo Matrix">📍 PIN</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-body-1')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Lead Bodycam">⏹ STOP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-body-1')" class="bg-blue-700/90 hover:bg-blue-600 text-blue-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Lead Cam">📡 CAST</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-body-1', 2)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Lead Cam">📸 SNAP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-body-1', 2)" class="bg-blue-600/90 hover:bg-blue-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Lead Cam to Geo Matrix">📍 PIN</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-body-1')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Lead Cam">⏹ STOP</button>
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- Tile 3: Point Scout -->
+                                    <!-- Tile 3: Point Cam / Scout Chest Rig -->
                                     <div class="relative bg-slate-900 rounded border border-purple-500/40 overflow-hidden cursor-pointer group hover:border-purple-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-body-2')">
                                         <canvas id="isr-quad-canvas-3" class="absolute inset-0 w-full h-full object-cover"></canvas>
                                         <div class="flex justify-between items-center z-10 pointer-events-none">
-                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🎯 POINT SCOUT</span>
+                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">🎯 POINT CAM • SCOUT RIG</span>
                                             <span id="isr-quad-live-3" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
                                         </div>
                                         <div class="flex justify-between items-center z-10 mt-auto pt-1 pointer-events-auto">
                                             <span class="text-[7.5px] text-purple-400/90 font-mono font-bold bg-black/75 px-1 rounded">TAP TO FOCUS</span>
                                             <div class="flex items-center gap-1">
-                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-body-2')" class="bg-purple-700/90 hover:bg-purple-600 text-purple-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Point Scout Tile (Chromebook / Scout)">📡 CAST</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-body-2', 3)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Point Scout">📸 SNAP</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-body-2', 3)" class="bg-purple-600/90 hover:bg-purple-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Point Scout to Geo Matrix">📍 PIN</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-body-2')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Point Scout">⏹ STOP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-body-2')" class="bg-purple-700/90 hover:bg-purple-600 text-purple-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Point Cam">📡 CAST</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-body-2', 3)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Point Cam">📸 SNAP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-body-2', 3)" class="bg-purple-600/90 hover:bg-purple-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Point Cam to Geo Matrix">📍 PIN</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-body-2')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Point Cam">⏹ STOP</button>
                                             </div>
                                         </div>
                                     </div>
@@ -6912,16 +6912,50 @@ try {
                                     <div class="relative bg-slate-900 rounded border border-cyan-500/40 overflow-hidden cursor-pointer group hover:border-cyan-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-base-c2')">
                                         <canvas id="isr-quad-canvas-4" class="absolute inset-0 w-full h-full object-cover"></canvas>
                                         <div class="flex justify-between items-center z-10 pointer-events-none">
-                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">💻 BASE C2 (COMMAND)</span>
+                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">💻 BASE C2 • COMMAND POST</span>
                                             <span id="isr-quad-live-4" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
                                         </div>
                                         <div class="flex justify-between items-center z-10 mt-auto pt-1 pointer-events-auto">
                                             <span class="text-[7.5px] text-cyan-400/90 font-mono font-bold bg-black/75 px-1 rounded">TAP TO FOCUS</span>
                                             <div class="flex items-center gap-1">
-                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-base-c2')" class="bg-cyan-700/90 hover:bg-cyan-600 text-cyan-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream PC Webcam into Base C2 Tile">📡 CAST</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-base-c2', 4)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Base C2 Webcam">📸 SNAP</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-base-c2', 4)" class="bg-cyan-600/90 hover:bg-cyan-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Base C2 Command Post to Geo Matrix">📍 PIN</button>
-                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-base-c2')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Base C2 Feed">⏹ STOP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-base-c2')" class="bg-cyan-700/90 hover:bg-cyan-600 text-cyan-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Base C2">📡 CAST</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-base-c2', 4)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Base C2">📸 SNAP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-base-c2', 4)" class="bg-cyan-600/90 hover:bg-cyan-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Base C2 to Geo Matrix">📍 PIN</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-base-c2')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Base C2">⏹ STOP</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Tile 5: Fence Cam / North Fence Post -->
+                                    <div class="relative bg-slate-900 rounded border border-amber-500/40 overflow-hidden cursor-pointer group hover:border-amber-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-trail-1')">
+                                        <canvas id="isr-quad-canvas-5" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                                        <div class="flex justify-between items-center z-10 pointer-events-none">
+                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">📷 FENCE CAM • NORTH POST</span>
+                                            <span id="isr-quad-live-5" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
+                                        </div>
+                                        <div class="flex justify-between items-center z-10 mt-auto pt-1 pointer-events-auto">
+                                            <span class="text-[7.5px] text-amber-400/90 font-mono font-bold bg-black/75 px-1 rounded">TAP TO FOCUS</span>
+                                            <div class="flex items-center gap-1">
+                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-trail-1')" class="bg-amber-700/90 hover:bg-amber-600 text-amber-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Fence Cam">📡 CAST</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-trail-1', 5)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Fence Cam">📸 SNAP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-trail-1', 5)" class="bg-amber-600/90 hover:bg-amber-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Fence Cam to Geo Matrix">📍 PIN</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-trail-1')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Fence Cam">⏹ STOP</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Tile 6: Blind Cam / Feeder -->
+                                    <div class="relative bg-slate-900 rounded border border-pink-500/40 overflow-hidden cursor-pointer group hover:border-pink-400 flex flex-col justify-between p-1.5" onclick="window.selectMatrixTile('feed-trail-2')">
+                                        <canvas id="isr-quad-canvas-6" class="absolute inset-0 w-full h-full object-cover"></canvas>
+                                        <div class="flex justify-between items-center z-10 pointer-events-none">
+                                            <span class="font-mono text-[9px] text-white font-bold bg-black/80 px-1 rounded truncate">👁️ BLIND CAM • FEEDER</span>
+                                            <span id="isr-quad-live-6" class="text-[7.5px] bg-red-600 text-white font-bold px-1 rounded hidden animate-pulse">● LIVE</span>
+                                        </div>
+                                        <div class="flex justify-between items-center z-10 mt-auto pt-1 pointer-events-auto">
+                                            <span class="text-[7.5px] text-pink-400/90 font-mono font-bold bg-black/75 px-1 rounded">TAP TO FOCUS</span>
+                                            <div class="flex items-center gap-1">
+                                                <button type="button" onclick="event.stopPropagation(); window.openBroadcastSetupModal('feed-trail-2')" class="bg-pink-700/90 hover:bg-pink-600 text-pink-100 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stream into Blind Cam">📡 CAST</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.captureSingleTileSnapshot('feed-trail-2', 6)" class="bg-emerald-600/90 hover:bg-emerald-500 text-black text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Snapshot Blind Cam">📸 SNAP</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.pinSpecificFeedToMap('feed-trail-2', 6)" class="bg-pink-600/90 hover:bg-pink-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Pin Blind Cam to Geo Matrix">📍 PIN</button>
+                                                <button type="button" onclick="event.stopPropagation(); window.stopSpecificIsrFeed('feed-trail-2')" class="bg-red-900/90 hover:bg-red-700 text-red-200 text-[7px] font-black px-1.5 py-0.5 rounded shadow cursor-pointer" title="Stop Blind Cam">⏹ STOP</button>
                                             </div>
                                         </div>
                                     </div>
@@ -7315,7 +7349,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.5.8';
+        window.APP_VERSION = 'v8.77.6.7';
 
         if(document.getElementById('header-version-display')) {
 
@@ -8588,7 +8622,7 @@ try {
             </div>
             <!-- Footer -->
             <div class="mt-3 pt-3 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400 shrink-0">
-                <span>CURRENT VERSION: <strong class="text-emerald-400">v8.77.5.8</strong></span>
+                <span>CURRENT VERSION: <strong class="text-emerald-400">v8.77.6.7</strong></span>
                 <button type="button" onclick="window.closeVersionHistoryModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded font-bold uppercase transition-all cursor-pointer">CLOSE</button>
             </div>
         </div>
@@ -10052,7 +10086,7 @@ try {
     <!-- Include Blog Logic -->
     <script src="blog_logic.js?v=8.77.3.4" defer></script>
     <!-- Include Tactical ISR Logic -->
-    <script src="isr_logic.js?v=8.77.5.8" defer></script>
+    <script src="isr_logic.js?v=8.77.6.7" defer></script>
 
     <!-- TACTICAL ICON TRAY (GLOBAL) -->
     <div id="tactical-icon-tray" class="hidden fixed bg-gray-950/95 border-2 border-emerald-500/80 rounded-xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] flex flex-col gap-2 w-72 backdrop-blur-md" style="z-index: 10000000 !important;">

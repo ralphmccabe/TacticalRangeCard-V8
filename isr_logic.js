@@ -170,6 +170,7 @@
 
     // --- Multi-Cam 2x2 Matrix Mode State ---
     let isMatrixGridMode = false;
+    let userManuallySelectedFeed = false;
 
     // --- Screen WakeLock Management (Keeps bodycam/phone display awake during broadcast) ---
     let screenWakeLock = null;
@@ -247,9 +248,21 @@
     }
 
     // --- Switch Active Feed ---
-    window.switchIsrFeed = function(feedId) {
+    window.switchIsrFeed = function(feedId, isAutoSwitch = false) {
+        if (!isAutoSwitch) {
+            userManuallySelectedFeed = true;
+        }
         currentActiveFeedId = feedId;
         const feed = feeds.find(f => f.id === feedId) || feeds[0];
+
+        // Clear stale frame from previous camera, then seed from cloud stream if new camera is live
+        lastReceivedFrame = null;
+        lastReceivedTelemetry = null;
+        const cloudSeed = getCloudStream(feedId);
+        if (cloudSeed && cloudSeed.image) {
+            lastReceivedFrame = cloudSeed.image;
+            lastReceivedTelemetry = cloudSeed.telemetry || {};
+        }
         
         const titleEl = document.getElementById('isr-active-cam-title');
         const teleEl = document.getElementById('isr-active-telemetry');
@@ -275,8 +288,16 @@
             if (topLabel) topLabel.textContent = `SQUAD ISR: ${feed.name}`;
         }
 
+        if (!isAutoSwitch && isMatrixGridMode) {
+            window.toggleIsrMatrixView();
+            return;
+        }
+
         // Trigger immediate render
         renderCurrentActiveView();
+        if (!isAutoSwitch) {
+            showToast(`📺 VIEWING: ${feed.name.toUpperCase()}`);
+        }
     };
 
     // --- Broadcast Modal Tab Switcher ---
@@ -409,7 +430,7 @@
 
         // Query URL parameters for explicit role assignment
         const urlParams = new URLSearchParams(window.location.search);
-        let requestedRole = roleHint || urlParams.get('role') || urlParams.get('feed');
+        let requestedRole = (typeof roleHint === 'string' ? roleHint : '') || urlParams.get('role') || urlParams.get('feed');
         if (requestedRole) {
             requestedRole = requestedRole.toLowerCase().trim();
             if (['scout', 'point', 'body-2', 'feed-body-2', 'chromebook', 'player9'].includes(requestedRole)) requestedRole = 'feed-body-2';
@@ -673,7 +694,7 @@ ${secureUrl}`);
                 video.setAttribute('playsinline', '');
                 video.setAttribute('webkit-playsinline', '');
                 video.muted = true;
-                video.style.display = 'none';
+                video.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:2px;height:2px;opacity:0.01;pointer-events:none;';
                 document.body.appendChild(video);
             }
             video.srcObject = stream;
@@ -694,9 +715,10 @@ ${secureUrl}`);
             // Show floating broadcasting HUD on this device
             showBroadcastingHud(broadcastRoleId);
 
-            // Transmit frames periodically
+            // Transmit frames periodically (with in-flight guard to prevent connection pool saturation)
             if (broadcastInterval) clearInterval(broadcastInterval);
             const intervalMs = Math.round(1000 / broadcastFps);
+            let isBroadcastPostInFlight = false;
 
             broadcastInterval = setInterval(() => {
                 if (!isBroadcasting || !video || video.readyState < 2) return;
@@ -758,12 +780,21 @@ ${secureUrl}`);
                 };
                 feedTelemetry[broadcastRoleId] = payload.telemetry;
                 publishCloudIsrFrame(payload);
-                // POST to local server (if running locally)
-                fetch('/api/isr_frame', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                }).catch(() => {});
+                // POST to local server (if running locally, skip if previous POST is still in flight)
+                if (!isBroadcastPostInFlight) {
+                    isBroadcastPostInFlight = true;
+                    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                    const tid = ctrl ? setTimeout(() => ctrl.abort(), 2500) : null;
+                    fetch('/api/isr_frame', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: ctrl ? ctrl.signal : undefined
+                    }).catch(() => {}).finally(() => {
+                        if (tid) clearTimeout(tid);
+                        isBroadcastPostInFlight = false;
+                    });
+                }
             }, intervalMs);
 
             showToast(`🟢 BROADCASTING LIVE AS ${broadcastRoleId.toUpperCase()}!`);
@@ -811,7 +842,7 @@ ${secureUrl}`);
             broadcastBtn.style.border = '2px solid #22d3ee !important';
             broadcastBtn.style.boxShadow = '0 0 20px rgba(6,182,212,0.8) !important';
             broadcastBtn.innerHTML = '<i data-lucide="smartphone" class="w-4 h-4 text-black shrink-0"></i> <span>📱 BROADCAST FROM PHONE</span>';
-            broadcastBtn.onclick = window.openBroadcastSetupModal;
+            broadcastBtn.onclick = () => window.openBroadcastSetupModal();
             if (window.lucide) window.lucide.createIcons();
         }
 
@@ -819,38 +850,28 @@ ${secureUrl}`);
         renderCurrentActiveView();
     };
 
-    // Dedicated function to stop and disconnect active ISR stream (viewer or broadcaster)
+    // Dedicated function to stop and disconnect ONLY this device's active broadcast or local stream
     window.stopActiveIsrFeed = async function() {
+        let stoppedOwn = false;
         if (isBroadcasting) {
             window.stopLocalBroadcasting();
+            stoppedOwn = true;
         }
-        stopCustomStreamConnector();
+        if (customStreamInterval) {
+            stopCustomStreamConnector();
+            stoppedOwn = true;
+        }
 
-        if (isMatrixGridMode) {
-            const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2'];
-            publishCloudIsrStop(null);
-            for (const qf of quadFeedIds) {
-                try {
-                    await fetch(`/api/isr_stop?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${encodeURIComponent(qf)}`, { method: 'POST' });
-                } catch(e) {}
-                const f = feeds.find(x => x.id === qf);
-                if (f) { f.isOnline = false; f.currentImg = null; }
-            }
-            lastReceivedFrame = null;
-            lastReceivedTelemetry = null;
+        if (stoppedOwn) {
             renderCurrentActiveView();
-            showToast("🛑 ALL SQUAD FEEDS TERMINATED & DISCONNECTED");
-            if (typeof window.pushTacLog === 'function') {
-                window.pushTacLog("ALL ISR SQUAD FEEDS TERMINATED", "WARN");
-            }
             return;
         }
 
-        publishCloudIsrStop(currentActiveFeedId);
+        // If viewer (not broadcasting), clear local view and any stale relay buffer for ONLY this single feed
+        delete cloudStreams[currentActiveFeedId];
         try {
             await fetch(`/api/isr_stop?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${encodeURIComponent(currentActiveFeedId)}`, { method: 'POST' });
         } catch(e) {}
-
         const feed = feeds.find(f => f.id === currentActiveFeedId);
         if (feed) {
             feed.isOnline = false;
@@ -858,12 +879,8 @@ ${secureUrl}`);
         }
         lastReceivedFrame = null;
         lastReceivedTelemetry = null;
-
         renderCurrentActiveView();
-        showToast(`🛑 LIVE FEED STOPPED: ${currentActiveFeedId.replace('feed-', '').toUpperCase()}`);
-        if (typeof window.pushTacLog === 'function') {
-            window.pushTacLog(`ISR LIVE FEED TERMINATED: ${currentActiveFeedId.toUpperCase()}`, "WARN");
-        }
+        showToast(`🛑 FEED STOPPED: ${currentActiveFeedId.replace('feed-', '').toUpperCase()}`);
     };
 
     // Stop a specific single feed from 2x2 tile or control
@@ -871,10 +888,12 @@ ${secureUrl}`);
         if (feedId === 'feed-drone-1') {
             stopCustomStreamConnector();
         }
-        if (feedId === 'feed-base-c2' || feedId === broadcastRoleId) {
-            if (isBroadcasting) {
-                window.stopLocalBroadcasting();
-            }
+        if (isBroadcasting && feedId === broadcastRoleId) {
+            window.stopLocalBroadcasting();
+        }
+        if (feedId === currentActiveFeedId) {
+            lastReceivedFrame = null;
+            lastReceivedTelemetry = null;
         }
         publishCloudIsrStop(feedId);
         try {
@@ -885,6 +904,26 @@ ${secureUrl}`);
         if (feed) {
             feed.isOnline = false;
             feed.currentImg = null;
+        }
+        const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2', 'feed-trail-1', 'feed-trail-2'];
+        const qIdx = quadFeedIds.indexOf(feedId);
+        if (qIdx !== -1) {
+            const qLiveBadge = document.getElementById(`isr-quad-live-${qIdx + 1}`);
+            if (qLiveBadge) qLiveBadge.classList.add('hidden');
+            const qCanvas = document.getElementById(`isr-quad-canvas-${qIdx + 1}`);
+            if (qCanvas) {
+                const qCtx = qCanvas.getContext('2d');
+                if (qCtx) {
+                    qCanvas.width = 320;
+                    qCanvas.height = 240;
+                    qCtx.fillStyle = '#090d16';
+                    qCtx.fillRect(0, 0, 320, 240);
+                    qCtx.fillStyle = '#64748b';
+                    qCtx.font = 'bold 11px monospace';
+                    qCtx.textAlign = 'center';
+                    qCtx.fillText('STANDBY / NO SIGNAL', 160, 125);
+                }
+            }
         }
         showToast(`🛑 FEED TERMINATED: ${feed ? feed.name.toUpperCase() : feedId.toUpperCase()}`);
         if (typeof window.pushTacLog === 'function') {
@@ -998,21 +1037,30 @@ ${secureUrl}`);
         const recBtnText = document.getElementById('isr-record-btn-text');
         const stopBtnText = document.getElementById('isr-stop-feed-btn-text');
 
+        const stage = document.getElementById('isr-viewport-stage');
         if (isMatrixGridMode) {
+            if (stage) {
+                stage.classList.remove('min-h-[340px]', 'sm:min-h-[400px]');
+                stage.classList.add('min-h-[660px]', 'sm:min-h-[580px]');
+            }
             if (singleCanvas) singleCanvas.classList.add('hidden');
             if (grid) grid.classList.remove('hidden');
             if (btnText) btnText.textContent = "⊡ SINGLE FOCUS";
             if (hdrLabel) hdrLabel.textContent = "⊡ SINGLE FOCUS";
-            if (titleEl) titleEl.textContent = "⊞ 2x2 SQUAD TACTICAL MATRIX (4 ACTIVE CHANNELS)";
-            if (snapBtnText) snapBtnText.textContent = "SNAPSHOT (4-CAM QUAD)";
+            if (titleEl) titleEl.textContent = "⊞ 2x3 SQUAD TACTICAL MATRIX (6 CHANNELS)";
+            if (snapBtnText) snapBtnText.textContent = "SNAPSHOT (6-CAM MATRIX)";
             if (recBtnText && !isRecording) recBtnText.textContent = "REC MATRIX";
-            if (stopBtnText) stopBtnText.textContent = "STOP ACTIVE FEEDS";
-            showToast("⊞ 2x2 QUAD-CAM MATRIX ACTIVE — TAP ANY TILE TO EXPAND");
+            if (stopBtnText) stopBtnText.textContent = "STOP MY FEED";
+            showToast("⊞ 2x3 6-CAM MATRIX ACTIVE — TAP ANY TILE TO EXPAND");
         } else {
+            if (stage) {
+                stage.classList.remove('min-h-[660px]', 'sm:min-h-[580px]');
+                stage.classList.add('min-h-[340px]', 'sm:min-h-[400px]');
+            }
             if (grid) grid.classList.add('hidden');
             if (singleCanvas) singleCanvas.classList.remove('hidden');
-            if (btnText) btnText.textContent = "⊞ 2x2 MATRIX";
-            if (hdrLabel) hdrLabel.textContent = "⊞ 2x2 MATRIX";
+            if (btnText) btnText.textContent = "⊞ 6-CAM MATRIX";
+            if (hdrLabel) hdrLabel.textContent = "⊞ 6-CAM MATRIX";
             const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
             if (titleEl) titleEl.textContent = feed.name;
             if (snapBtnText) snapBtnText.textContent = "SNAPSHOT";
@@ -1091,8 +1139,12 @@ ${secureUrl}`);
     
     function startViewerPolling() {
         if (viewerPollInterval) clearInterval(viewerPollInterval);
+        let isPollInFlight = false;
 
         viewerPollInterval = setInterval(async () => {
+            if (isPollInFlight) return;
+            isPollInFlight = true;
+            try {
             pollTick++;
 
             // Every ~1 second (8 ticks @ 120ms), poll active streams across all feeds (cloud + local)
@@ -1136,14 +1188,7 @@ ${secureUrl}`);
                         }
                     });
 
-                    // Auto-switch to active phone stream if user is on default simulation
-                    if (!isBroadcasting && activeList.length > 0) {
-                        const hasActive = activeList.some(s => s.feedId === currentActiveFeedId);
-                        if (!hasActive) {
-                            window.switchIsrFeed(activeList[0].feedId);
-                            showToast(`🔴 LIVE MOBILE STREAM DETECTED: AUTO-SWITCHED TO ${activeList[0].feedId.toUpperCase()}`);
-                        }
-                    }
+                    // Do not auto-switch or pop up unsolicited live-feed toast on startup; user selects camera manually
 
                     // Incoming Base C2 Command Live Alert Banner (for field phones)
                     const c2Active = activeList.some(s => s.feedId === 'feed-base-c2');
@@ -1156,6 +1201,24 @@ ${secureUrl}`);
                         }
                     }
                 } catch (e) {}
+            }
+
+            // If this device is broadcasting on the currently focused feed, draw directly from its own camera video
+            if (isBroadcasting && !isMatrixGridMode && currentActiveFeedId === broadcastRoleId) {
+                const bVid = document.getElementById('isr-broadcaster-video');
+                const bCap = document.getElementById('isr-broadcaster-canvas');
+                const src = (bVid && bVid.readyState >= 2) ? bVid : bCap;
+                const canvas = document.getElementById('isr-stream-canvas');
+                if (src && canvas) {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        const w = canvas.width = canvas.clientWidth || 640;
+                        const h = canvas.height = canvas.clientHeight || 360;
+                        ctx.drawImage(src, 0, 0, w, h);
+                        drawTacticalHud(ctx, w, h, feedTelemetry[broadcastRoleId] || {}, true);
+                        return;
+                    }
+                }
             }
 
             // Check if current active feed has a live stream (cloud first, then local server)
@@ -1173,9 +1236,26 @@ ${secureUrl}`);
                 
             // If in 2x2 Matrix Mode, update all 4 quad tiles
             if (isMatrixGridMode && pollTick % 2 === 0) {
-                const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2'];
+                const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2', 'feed-trail-1', 'feed-trail-2'];
                 quadFeedIds.forEach(async (qFid, idx) => {
                     if (customStreamInterval && qFid === 'feed-drone-1') return;
+                    if (isBroadcasting && qFid === broadcastRoleId) {
+                        const bVid = document.getElementById('isr-broadcaster-video');
+                        const bCap = document.getElementById('isr-broadcaster-canvas');
+                        const src = (bVid && bVid.readyState >= 2) ? bVid : bCap;
+                        const qCanvas = document.getElementById(`isr-quad-canvas-${idx + 1}`);
+                        const qLiveBadge = document.getElementById(`isr-quad-live-${idx + 1}`);
+                        if (src && qCanvas) {
+                            if (qLiveBadge) qLiveBadge.classList.remove('hidden');
+                            const qCtx = qCanvas.getContext('2d');
+                            if (qCtx) {
+                                qCanvas.width = 320;
+                                qCanvas.height = 240;
+                                qCtx.drawImage(src, 0, 0, 320, 240);
+                            }
+                            return;
+                        }
+                    }
                     try {
                         const qRes = await fetch(`/api/isr_frame?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${qFid}`);
                         if (qRes.ok) {
@@ -1255,10 +1335,29 @@ ${secureUrl}`);
                 const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
                 renderSimulationFrame(feed);
             }
-        }, 120);
+            } finally {
+                isPollInFlight = false;
+            }
+        }, 180);
     }
 
     function renderCurrentActiveView() {
+        if (isBroadcasting && !isMatrixGridMode && currentActiveFeedId === broadcastRoleId) {
+            const bVid = document.getElementById('isr-broadcaster-video');
+            const bCap = document.getElementById('isr-broadcaster-canvas');
+            const src = (bVid && bVid.readyState >= 2) ? bVid : bCap;
+            const canvas = document.getElementById('isr-stream-canvas');
+            if (src && canvas) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    const w = canvas.width = canvas.clientWidth || 640;
+                    const h = canvas.height = canvas.clientHeight || 360;
+                    ctx.drawImage(src, 0, 0, w, h);
+                    drawTacticalHud(ctx, w, h, feedTelemetry[broadcastRoleId] || {}, true);
+                    return;
+                }
+            }
+        }
         if (lastReceivedFrame && lastReceivedTelemetry) {
             renderLiveFrame(lastReceivedFrame, lastReceivedTelemetry);
         } else {
@@ -2004,7 +2103,7 @@ ${secureUrl}`);
     window.pinIsrTargetToMap = async function() {
         if (isMatrixGridMode) {
             const activePins = [];
-            const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2'];
+            const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2', 'feed-trail-1', 'feed-trail-2'];
             quadFeedIds.forEach((qFid, idx) => {
                 const badge = document.getElementById(`isr-quad-live-${idx + 1}`);
                 if (badge && !badge.classList.contains('hidden')) {
@@ -2200,19 +2299,38 @@ ${secureUrl}`);
         });
 
         isrCloudChannel.on('broadcast', { event: 'isr_stop' }, ({ payload }) => {
-            if (payload && payload.feedId) {
-                delete cloudStreams[payload.feedId];
-            } else {
-                Object.keys(cloudStreams).forEach(k => delete cloudStreams[k]);
+            const targetId = payload && payload.feedId ? payload.feedId : null;
+            if (!targetId) return;
+            delete cloudStreams[targetId];
+            if (targetId === currentActiveFeedId) {
+                lastReceivedFrame = null;
+                lastReceivedTelemetry = null;
             }
+            renderCurrentActiveView();
         });
 
-        isrCloudChannel.subscribe();
+        isrCloudChannel.subscribe((status) => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                const missionSnapshot = code;
+                setTimeout(() => {
+                    if (isrCloudMission === missionSnapshot && isrCloudChannel) {
+                        isrCloudChannel = null;
+                        ensureIsrCloudChannel(missionSnapshot);
+                    }
+                }, 2000);
+            }
+        });
     }
 
     function publishCloudIsrFrame(payload) {
-        if (!isrCloudChannel) ensureIsrCloudChannel(currentMissionCode);
+        if (!payload || !payload.feedId || !payload.image) return;
         const now = Date.now();
+        cloudStreams[payload.feedId] = {
+            image: payload.image,
+            telemetry: payload.telemetry || {},
+            ts: now
+        };
+        if (!isrCloudChannel) ensureIsrCloudChannel(currentMissionCode);
         if (!isrCloudChannel || now - lastCloudSendTs < 280) return;
         lastCloudSendTs = now;
         isrCloudChannel.send({
@@ -2223,6 +2341,11 @@ ${secureUrl}`);
     }
 
     function publishCloudIsrStop(feedId) {
+        if (feedId) {
+            delete cloudStreams[feedId];
+        } else {
+            Object.keys(cloudStreams).forEach(k => delete cloudStreams[k]);
+        }
         if (!isrCloudChannel) return;
         isrCloudChannel.send({
             type: 'broadcast',
@@ -2233,7 +2356,7 @@ ${secureUrl}`);
 
     function getCloudStream(feedId) {
         const s = cloudStreams[feedId];
-        if (s && Date.now() - s.ts < 8000) return s;
+        if (s && Date.now() - s.ts < 15000) return s;
         return null;
     }
 
@@ -2241,7 +2364,7 @@ ${secureUrl}`);
         const now = Date.now();
         const out = [];
         for (const [fid, s] of Object.entries(cloudStreams)) {
-            if (now - s.ts < 8000) {
+            if (now - s.ts < 15000) {
                 out.push({ feedId: fid, telemetry: s.telemetry, ageMs: now - s.ts });
             }
         }
