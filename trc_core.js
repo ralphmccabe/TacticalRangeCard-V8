@@ -13603,11 +13603,58 @@ let aiSpotterRecognition = null;
 let aiSpotterActive = false;
 let aiSpotterState = 'IDLE';
 
+function getAiSpotterLang() {
+    try {
+        return localStorage.getItem('trc_spotter_lang') || 'en-US';
+    } catch (e) {
+        return 'en-US';
+    }
+}
+
+window.setAiSpotterLang = function(lang) {
+    const clean = lang || 'en-US';
+    try { localStorage.setItem('trc_spotter_lang', clean); } catch (e) {}
+    if (aiSpotterRecognition) {
+        aiSpotterRecognition.lang = clean;
+    }
+    const sel = document.getElementById('ai-spotter-lang-select');
+    if (sel && sel.value !== clean) sel.value = clean;
+};
+
+window.testAiSpotterVoice = function() {
+    const lang = getAiSpotterLang();
+    const samples = {
+        'es': 'Observador listo. Objetivo trescientos metros.',
+        'fr': 'Observateur prêt. Cible trois cents mètres.',
+        'de': 'Beobachter bereit. Ziel dreihundert Meter.',
+        'it': 'Osservatore pronto. Bersaglio trecento metri.',
+        'pt': 'Observador pronto. Alvo trezentos metros.'
+    };
+    const prefix = lang.split('-')[0].toLowerCase();
+    aiSpeak(samples[prefix] || 'Spotter ready. Target three hundred meters.');
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const sel = document.getElementById('ai-spotter-lang-select');
+    if (sel) sel.value = getAiSpotterLang();
+});
+
 function aiSpeak(text) {
     if ('speechSynthesis' in window) {
         // Cancel any ongoing speech
         window.speechSynthesis.cancel();
+        const lang = getAiSpotterLang();
         const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = lang;
+        const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
+        if (voices.length > 0) {
+            const lower = lang.toLowerCase();
+            const base = lower.split('-')[0];
+            const match = voices.find(v => (v.lang || '').toLowerCase() === lower) ||
+                          voices.find(v => (v.lang || '').toLowerCase().startsWith(base + '-')) ||
+                          voices.find(v => (v.lang || '').toLowerCase() === base);
+            if (match) msg.voice = match;
+        }
         msg.pitch = 0.9;
         msg.rate = 1.1;
         window._activeUtterance = msg; // FIX FOR ANDROID BUG: Prevents the voice from being deleted from memory before it finishes speaking
@@ -13640,7 +13687,7 @@ window.toggleAISpotter = function() {
         aiSpotterRecognition = new SpeechRecognition();
         aiSpotterRecognition.continuous = true;
         aiSpotterRecognition.interimResults = false;
-        aiSpotterRecognition.lang = 'en-US';
+        aiSpotterRecognition.lang = getAiSpotterLang();
 
         aiSpotterRecognition.onstart = function() {
             btn.classList.remove('text-gray-400');
