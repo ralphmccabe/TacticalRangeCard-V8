@@ -13639,6 +13639,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sel) sel.value = getAiSpotterLang();
 });
 
+function playSpotterChirp(mode) {
+    try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        const ctx = new AC();
+        const now = ctx.currentTime;
+        const pairs = mode === 'ready'
+            ? [[1046, 0, 0.07], [1568, 0.08, 0.09]]
+            : mode === 'off'
+            ? [[660, 0, 0.07], [440, 0.08, 0.09]]
+            : [[880, 0, 0.06], [1320, 0.07, 0.08]];
+        pairs.forEach(([freq, offset, dur]) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + offset);
+            gain.gain.setValueAtTime(0.18, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + offset);
+            osc.stop(now + offset + dur + 0.01);
+        });
+        setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
+    } catch (e) {}
+}
+
 function aiSpeak(text) {
     if ('speechSynthesis' in window) {
         // Cancel any ongoing speech
@@ -13671,6 +13698,7 @@ window.toggleAISpotter = function() {
         if (aiSpotterRecognition) aiSpotterRecognition.stop();
         btn.classList.remove('text-red-500', 'animate-pulse');
         btn.classList.add('text-gray-400');
+        playSpotterChirp('off');
         aiSpeak("Spotter standing down.");
         if (window.pushTacLog) window.pushTacLog("AI SPOTTER: OFFLINE", "SYS");
         return;
@@ -13692,6 +13720,7 @@ window.toggleAISpotter = function() {
         aiSpotterRecognition.onstart = function() {
             btn.classList.remove('text-gray-400');
             btn.classList.add('text-red-500', 'animate-pulse');
+            playSpotterChirp('on');
             if (window.pushTacLog) window.pushTacLog("AI SPOTTER: LISTENING...", "SUCCESS");
         };
 
@@ -13742,10 +13771,15 @@ window.toggleAISpotter = function() {
             else if (command.includes("range card")) {
                 aiSpeak("Yes");
             }
-            else if (command.includes("new dope") || command.includes("new target")) {
+            else if (command.includes("new dope") || command.includes("new dough") || command.includes("new target") || command.includes("new data")) {
+                playSpotterChirp('ready');
                 aiSpeak("Ready");
                 aiSpotterState = 'WAITING_FOR_DOPE';
-                window.dopeCommandBuffer = command.substring(command.indexOf("new dope") + 8).trim();
+                const idx = command.indexOf("new dope") !== -1 ? command.indexOf("new dope") + 8 :
+                            command.indexOf("new dough") !== -1 ? command.indexOf("new dough") + 9 :
+                            command.indexOf("new target") !== -1 ? command.indexOf("new target") + 10 :
+                            command.indexOf("new data") + 8;
+                window.dopeCommandBuffer = command.substring(idx).trim();
             }
             
             if (aiSpotterState === 'WAITING_FOR_DOPE') {
