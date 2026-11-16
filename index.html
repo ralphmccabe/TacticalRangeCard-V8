@@ -6803,7 +6803,7 @@ try {
 
                                 <!-- Persistent 2x2 Matrix / Single Focus Viewport Toggle Button -->
                                 <button type="button" id="isr-hdr-matrix-toggle-btn" onclick="window.toggleIsrMatrixView()" class="bg-cyan-950 hover:bg-cyan-900 border-2 border-cyan-400 text-cyan-200 hover:text-white font-mono font-black text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(6,182,212,0.5)] cursor-pointer" title="Toggle between 2x2 Squad Matrix and Single Camera Focus">
-                                    <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-hdr-matrix-label">⊞ 2x2 MATRIX</span>
+                                    <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-hdr-matrix-label">⊞ 2x6 MATRIX</span>
                                 </button>
 
                                 <!-- Setup Wizard Button -->
@@ -6841,8 +6841,8 @@ try {
 
                                 <div class="flex items-center gap-2">
                                     <span id="isr-active-telemetry" class="text-[10px] text-emerald-400 font-mono font-bold hidden sm:inline">1080P 30FPS • BAT: 84% • SIGNAL: 98%</span>
-                                    <button type="button" id="isr-matrix-view-toggle-btn" onclick="window.toggleIsrMatrixView()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x3 6-Cam Matrix Grid">
-                                        <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-matrix-view-btn-text">⊞ 6-CAM MATRIX</span>
+                                    <button type="button" id="isr-matrix-view-toggle-btn" onclick="window.toggleIsrMatrixView()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x6 6-Cam Matrix Grid">
+                                        <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-matrix-view-btn-text">⊞ 2x6 MATRIX</span>
                                     </button>
                                     <button type="button" id="isr-top-screen-btn" onclick="window.displayIsrInMainViewport()" class="bg-cyan-950/90 hover:bg-cyan-800 text-cyan-300 hover:text-white border border-cyan-500/50 text-[9px] font-black px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow" title="Mirror this feed to the top Main Viewport">
                                         <i data-lucide="tv" class="w-3.5 h-3.5 text-cyan-400"></i> <span id="isr-top-screen-btn-text">TOP SCREEN</span>
@@ -7090,7 +7090,7 @@ try {
                                 </button>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div id="isr-k9-cards-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                                 <!-- Hound 1 -->
                                 <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col justify-between gap-2 shadow">
                                     <div class="flex justify-between items-start">
@@ -7349,7 +7349,7 @@ try {
 
     <script>
 
-        window.APP_VERSION = 'v8.77.7.0';
+        window.APP_VERSION = 'v8.77.7.9';
 
         if(document.getElementById('header-version-display')) {
 
@@ -8523,8 +8523,8 @@ try {
             <button type="button" onclick="window.switchIsrFeed('feed-base-c2')" class="bg-cyan-900/90 hover:bg-cyan-700 text-cyan-200 border border-cyan-400/60 font-bold px-2.5 py-1 rounded text-[10px] uppercase flex items-center gap-1 transition-all cursor-pointer shadow" title="Watch Base C2 Command Post">
                 <i data-lucide="laptop" class="w-3 h-3 text-cyan-300"></i> <span>WATCH C2</span>
             </button>
-            <button type="button" onclick="window.toggleIsrMatrixView()" class="bg-indigo-900/90 hover:bg-indigo-700 text-indigo-200 border border-indigo-400/60 font-bold px-2.5 py-1 rounded text-[10px] uppercase flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x2 Matrix">
-                <i data-lucide="layout-grid" class="w-3 h-3 text-indigo-300"></i> <span>2x2 MATRIX</span>
+            <button type="button" onclick="window.toggleIsrMatrixView()" class="bg-indigo-900/90 hover:bg-indigo-700 text-indigo-200 border border-indigo-400/60 font-bold px-2.5 py-1 rounded text-[10px] uppercase flex items-center gap-1 transition-all cursor-pointer shadow" title="Toggle 2x6 Matrix">
+                <i data-lucide="layout-grid" class="w-3 h-3 text-indigo-300"></i> <span>2x6 MATRIX</span>
             </button>
             <button type="button" onclick="window.switchIsrFeed('feed-body-1')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 font-bold px-2 py-1 rounded text-[10px] uppercase flex items-center gap-1 transition-all cursor-pointer shadow" title="Watch My Camera">
                 <i data-lucide="shield" class="w-3 h-3 text-blue-400"></i> <span>MY CAM</span>
@@ -8622,7 +8622,7 @@ try {
             </div>
             <!-- Footer -->
             <div class="mt-3 pt-3 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-400 shrink-0">
-                <span>CURRENT VERSION: <strong class="text-emerald-400">v8.77.7.0</strong></span>
+                <span>CURRENT VERSION: <strong class="text-emerald-400">v8.77.7.9</strong></span>
                 <button type="button" onclick="window.closeVersionHistoryModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded font-bold uppercase transition-all cursor-pointer">CLOSE</button>
             </div>
         </div>
@@ -10086,7 +10086,7 @@ try {
     <!-- Include Blog Logic -->
     <script src="blog_logic.js?v=8.77.3.4" defer></script>
     <!-- Include Tactical ISR Logic -->
-    <script src="isr_logic.js?v=8.77.7.0" defer></script>
+    <script src="isr_logic.js?v=8.77.7.9" defer></script>
 
     <!-- TACTICAL ICON TRAY (GLOBAL) -->
     <div id="tactical-icon-tray" class="hidden fixed bg-gray-950/95 border-2 border-emerald-500/80 rounded-xl p-2.5 shadow-[0_10px_35px_rgba(0,0,0,0.9)] flex flex-col gap-2 w-72 backdrop-blur-md" style="z-index: 10000000 !important;">

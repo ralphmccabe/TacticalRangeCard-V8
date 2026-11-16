@@ -135,6 +135,10 @@
     let activeMediaStream = null;
     let broadcastInterval = null;
     let isBroadcasting = false;
+    let broadcastAudioCtx = null;
+    let broadcastAudioProc = null;
+    let viewerAudioCtx = null;
+    let viewerAudioNextTime = 0;
     let broadcastRoleId = 'feed-body-1';
     let lastActiveStreamsList = [];
     let broadcastFacingMode = 'environment';
@@ -251,6 +255,7 @@
     window.switchIsrFeed = function(feedId, isAutoSwitch = false) {
         if (!isAutoSwitch) {
             userManuallySelectedFeed = true;
+            unlockViewerAudio();
         }
         currentActiveFeedId = feedId;
         const feed = feeds.find(f => f.id === feedId) || feeds[0];
@@ -651,16 +656,26 @@ ${secureUrl}`);
                         };
                     }
                     try {
-                        stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    } catch(eExact) {
-                        if (targetDevId) {
-                            // Retry with ideal deviceId
-                            stream = await navigator.mediaDevices.getUserMedia({
-                                video: { deviceId: { ideal: targetDevId }, width: { ideal: 640 }, height: { ideal: 480 } },
-                                audio: false
-                            });
-                        } else {
-                            throw eExact;
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            video: constraints.video,
+                            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                        });
+                    } catch(eAudio) {
+                        try {
+                            stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        } catch(eExact) {
+                            if (targetDevId) {
+                                // Retry with ideal deviceId
+                                stream = await navigator.mediaDevices.getUserMedia({
+                                    video: { deviceId: { ideal: targetDevId }, width: { ideal: 640 }, height: { ideal: 480 } },
+                                    audio: true
+                                }).catch(() => navigator.mediaDevices.getUserMedia({
+                                    video: { deviceId: { ideal: targetDevId }, width: { ideal: 640 }, height: { ideal: 480 } },
+                                    audio: false
+                                }));
+                            } else {
+                                throw eExact;
+                            }
                         }
                     }
                 } catch(e1) {
@@ -714,6 +729,9 @@ ${secureUrl}`);
 
             // Show floating broadcasting HUD on this device
             showBroadcastingHud(broadcastRoleId);
+
+            // Start live microphone audio capture & relay (if mic track available)
+            startBroadcastMicRelay(stream, broadcastRoleId);
 
             // Transmit frames periodically (with in-flight guard to prevent connection pool saturation)
             if (broadcastInterval) clearInterval(broadcastInterval);
@@ -815,6 +833,7 @@ ${secureUrl}`);
     // --- Stop Broadcasting ---
     window.stopLocalBroadcasting = function() {
         isBroadcasting = false;
+        stopBroadcastMicRelay();
         releaseScreenWakeLock();
         if (broadcastInterval) {
             clearInterval(broadcastInterval);
@@ -1059,8 +1078,8 @@ ${secureUrl}`);
             }
             if (grid) grid.classList.add('hidden');
             if (singleCanvas) singleCanvas.classList.remove('hidden');
-            if (btnText) btnText.textContent = "⊞ 6-CAM MATRIX";
-            if (hdrLabel) hdrLabel.textContent = "⊞ 6-CAM MATRIX";
+            if (btnText) btnText.textContent = "⊞ 2x6 MATRIX";
+            if (hdrLabel) hdrLabel.textContent = "⊞ 2x6 MATRIX";
             const feed = feeds.find(f => f.id === currentActiveFeedId) || feeds[0];
             if (titleEl) titleEl.textContent = feed.name;
             if (snapBtnText) snapBtnText.textContent = "SNAPSHOT";
@@ -1216,6 +1235,9 @@ ${secureUrl}`);
                         const h = canvas.height = canvas.clientHeight || 360;
                         ctx.drawImage(src, 0, 0, w, h);
                         drawTacticalHud(ctx, w, h, feedTelemetry[broadcastRoleId] || {}, true);
+                        if (isMirroredToMain) {
+                            renderMainviewMirror(src, feedTelemetry[broadcastRoleId] || {});
+                        }
                         return;
                     }
                 }
@@ -1256,45 +1278,10 @@ ${secureUrl}`);
                             return;
                         }
                     }
-                    try {
-                        const qRes = await fetch(`/api/isr_frame?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${qFid}`);
-                        if (qRes.ok) {
-                            const qData = await qRes.json();
-                            if (qData.telemetry) { feedTelemetry[qFid] = qData.telemetry; }
-                            const qCanvas = document.getElementById(`isr-quad-canvas-${idx + 1}`);
-                            const qLiveBadge = document.getElementById(`isr-quad-live-${idx + 1}`);
-                            if (qCanvas) {
-                                const qCtx = qCanvas.getContext('2d');
-                                if (qData.active && qData.image) {
-                                    if (qLiveBadge) qLiveBadge.classList.remove('hidden');
-                                    const qImg = new Image();
-                                    qImg.onload = () => {
-                                        qCanvas.width = 320;
-                                        qCanvas.height = 240;
-                                        qCtx.drawImage(qImg, 0, 0, qCanvas.width, qCanvas.height);
-                                    };
-                                    qImg.src = qData.image;
-                                } else {
-                                    if (qLiveBadge) qLiveBadge.classList.add('hidden');
-                                    // Draw standby pattern
-                                    qCanvas.width = 320;
-                                    qCanvas.height = 240;
-                                    qCtx.fillStyle = '#090d16';
-                                    qCtx.fillRect(0, 0, 320, 240);
-                                    qCtx.strokeStyle = 'rgba(6,182,212,0.15)';
-                                    qCtx.lineWidth = 1;
-                                    for(let x=0; x<320; x+=20) { qCtx.beginPath(); qCtx.moveTo(x,0); qCtx.lineTo(x,240); qCtx.stroke(); }
-                                    for(let y=0; y<240; y+=20) { qCtx.beginPath(); qCtx.moveTo(0,y); qCtx.lineTo(320,y); qCtx.stroke(); }
-                                    qCtx.fillStyle = '#64748b';
-                                    qCtx.font = 'bold 11px monospace';
-                                    qCtx.textAlign = 'center';
-                                    qCtx.fillText('STANDBY / NO SIGNAL', 160, 125);
-                                }
-                            }
-                        }
-                    } catch(e) {}
+                    let tileRendered = false;
                     const cloudTile = getCloudStream(qFid);
                     if (cloudTile && cloudTile.image) {
+                        tileRendered = true;
                         const qCanvas = document.getElementById(`isr-quad-canvas-${idx + 1}`);
                         const qLiveBadge = document.getElementById(`isr-quad-live-${idx + 1}`);
                         if (qCanvas) {
@@ -1307,6 +1294,51 @@ ${secureUrl}`);
                                 qCtx.drawImage(qImg, 0, 0, qCanvas.width, qCanvas.height);
                             };
                             qImg.src = cloudTile.image;
+                        }
+                    }
+                    if (!tileRendered) {
+                        try {
+                            const qRes = await fetch(`/api/isr_frame?missionId=${encodeURIComponent(currentMissionCode)}&feedId=${qFid}`);
+                            if (qRes.ok) {
+                                const qData = await qRes.json();
+                                if (qData.telemetry) { feedTelemetry[qFid] = qData.telemetry; }
+                                if (qData.active && qData.image) {
+                                    tileRendered = true;
+                                    const qCanvas = document.getElementById(`isr-quad-canvas-${idx + 1}`);
+                                    const qLiveBadge = document.getElementById(`isr-quad-live-${idx + 1}`);
+                                    if (qCanvas) {
+                                        const qCtx = qCanvas.getContext('2d');
+                                        if (qLiveBadge) qLiveBadge.classList.remove('hidden');
+                                        const qImg = new Image();
+                                        qImg.onload = () => {
+                                            qCanvas.width = 320;
+                                            qCanvas.height = 240;
+                                            qCtx.drawImage(qImg, 0, 0, qCanvas.width, qCanvas.height);
+                                        };
+                                        qImg.src = qData.image;
+                                    }
+                                }
+                            }
+                        } catch(e) {}
+                    }
+                    if (!tileRendered) {
+                        const qCanvas = document.getElementById(`isr-quad-canvas-${idx + 1}`);
+                        const qLiveBadge = document.getElementById(`isr-quad-live-${idx + 1}`);
+                        if (qLiveBadge) qLiveBadge.classList.add('hidden');
+                        if (qCanvas) {
+                            const qCtx = qCanvas.getContext('2d');
+                            qCanvas.width = 320;
+                            qCanvas.height = 240;
+                            qCtx.fillStyle = '#090d16';
+                            qCtx.fillRect(0, 0, 320, 240);
+                            qCtx.strokeStyle = 'rgba(6,182,212,0.15)';
+                            qCtx.lineWidth = 1;
+                            for(let x=0; x<320; x+=20) { qCtx.beginPath(); qCtx.moveTo(x,0); qCtx.lineTo(x,240); qCtx.stroke(); }
+                            for(let y=0; y<240; y+=20) { qCtx.beginPath(); qCtx.moveTo(0,y); qCtx.lineTo(320,y); qCtx.stroke(); }
+                            qCtx.fillStyle = '#64748b';
+                            qCtx.font = 'bold 11px monospace';
+                            qCtx.textAlign = 'center';
+                            qCtx.fillText('STANDBY / NO SIGNAL', 160, 125);
                         }
                     }
                 });
@@ -1354,6 +1386,9 @@ ${secureUrl}`);
                     const h = canvas.height = canvas.clientHeight || 360;
                     ctx.drawImage(src, 0, 0, w, h);
                     drawTacticalHud(ctx, w, h, feedTelemetry[broadcastRoleId] || {}, true);
+                    if (isMirroredToMain) {
+                        renderMainviewMirror(src, feedTelemetry[broadcastRoleId] || {});
+                    }
                     return;
                 }
             }
@@ -1530,6 +1565,21 @@ ${secureUrl}`);
         }
 
         isMirroredToMain = true;
+
+        // If the currently focused feed is in standby, auto-pick this device's live broadcast or any live feed
+        const currentIsLive = (isBroadcasting && currentActiveFeedId === broadcastRoleId) ||
+            (customStreamInterval && currentActiveFeedId === 'feed-drone-1') ||
+            !!getCloudStream(currentActiveFeedId);
+        if (!currentIsLive) {
+            if (isBroadcasting && broadcastRoleId) {
+                window.switchIsrFeed(broadcastRoleId, true);
+            } else {
+                const liveList = getActiveCloudStreams();
+                if (liveList.length > 0) {
+                    window.switchIsrFeed(liveList[0].feedId, true);
+                }
+            }
+        }
         const mainCanvas = document.getElementById('mainview-isr-canvas');
         const placeholder = document.getElementById('surveillance-placeholder');
         const killBtn = document.getElementById('feed-kill-btn');
@@ -1649,19 +1699,19 @@ ${secureUrl}`);
 
         if (mode === 'LONE') {
             if (loneBtn) {
-                loneBtn.className = "flex-1 bg-emerald-500 text-black font-black text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 shadow transition-all border border-emerald-400";
+                loneBtn.className = "bg-emerald-500 text-black font-black text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 shadow transition-all border border-emerald-400 cursor-pointer";
             }
             if (squadBtn) {
-                squadBtn.className = "flex-1 bg-slate-900 text-slate-400 font-bold text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 hover:text-white transition-all";
+                squadBtn.className = "bg-slate-900 text-slate-400 font-bold text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 hover:text-white transition-all cursor-pointer";
             }
             if (bodycamRow) bodycamRow.classList.add('hidden');
             showToast('LONE HUNTER MODE ACTIVE (1 SENSOR & 1 K9)');
         } else {
             if (squadBtn) {
-                squadBtn.className = "flex-1 bg-emerald-500 text-black font-black text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 shadow transition-all border border-emerald-400";
+                squadBtn.className = "bg-emerald-500 text-black font-black text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 shadow transition-all border border-emerald-400 cursor-pointer";
             }
             if (loneBtn) {
-                loneBtn.className = "flex-1 bg-slate-900 text-slate-400 font-bold text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 hover:text-white transition-all";
+                loneBtn.className = "bg-slate-900 text-slate-400 font-bold text-[10px] sm:text-xs py-1.5 px-2.5 rounded uppercase tracking-wider flex items-center justify-center gap-1 hover:text-white transition-all cursor-pointer";
             }
             if (bodycamRow) bodycamRow.classList.remove('hidden');
             showToast('SQUAD C2 ACTIVE (FULL 5-MAN BODYCAMS & K9 TELEMETRY)');
@@ -2197,7 +2247,7 @@ ${secureUrl}`);
     // Initialize on window load or script load
     function initIsr() {
         const hdrMatrixLabel = document.getElementById('isr-hdr-matrix-label');
-        if (hdrMatrixLabel) hdrMatrixLabel.textContent = isMatrixGridMode ? "⊡ SINGLE FOCUS" : "⊞ 2x2 MATRIX";
+        if (hdrMatrixLabel) hdrMatrixLabel.textContent = isMatrixGridMode ? "⊡ SINGLE FOCUS" : "⊞ 2x6 MATRIX";
         initDeviceSensors();
         startViewerPolling();
 
@@ -2298,10 +2348,43 @@ ${secureUrl}`);
             };
         });
 
+        isrCloudChannel.on('broadcast', { event: 'isr_audio' }, ({ payload }) => {
+            if (!payload || !payload.feedId || !payload.pcm || !payload.sr) return;
+            playRemoteIsrAudioChunk(payload);
+        });
+
         isrCloudChannel.on('broadcast', { event: 'isr_stop' }, ({ payload }) => {
             const targetId = payload && payload.feedId ? payload.feedId : null;
             if (!targetId) return;
             delete cloudStreams[targetId];
+            const feed = feeds.find(f => f.id === targetId);
+            if (feed) {
+                feed.isOnline = false;
+                feed.currentImg = null;
+            }
+            const card = document.querySelector(`.isr-feed-card[data-feed-id="${targetId}"]`);
+            if (card) {
+                const badge = card.querySelector('.live-badge-pill');
+                if (badge) badge.remove();
+            }
+            const quadFeedIds = ['feed-drone-1', 'feed-body-1', 'feed-body-2', 'feed-base-c2', 'feed-trail-1', 'feed-trail-2'];
+            const qIdx = quadFeedIds.indexOf(targetId);
+            if (qIdx !== -1) {
+                const qLiveBadge = document.getElementById(`isr-quad-live-${qIdx + 1}`);
+                if (qLiveBadge) qLiveBadge.classList.add('hidden');
+                const qCanvas = document.getElementById(`isr-quad-canvas-${qIdx + 1}`);
+                if (qCanvas) {
+                    const qCtx = qCanvas.getContext('2d');
+                    qCanvas.width = 320;
+                    qCanvas.height = 240;
+                    qCtx.fillStyle = '#090d16';
+                    qCtx.fillRect(0, 0, 320, 240);
+                    qCtx.fillStyle = '#64748b';
+                    qCtx.font = 'bold 11px monospace';
+                    qCtx.textAlign = 'center';
+                    qCtx.fillText('STANDBY / NO SIGNAL', 160, 125);
+                }
+            }
             if (targetId === currentActiveFeedId) {
                 lastReceivedFrame = null;
                 lastReceivedTelemetry = null;
@@ -2369,6 +2452,109 @@ ${secureUrl}`);
             }
         }
         return out;
+    }
+
+    // --- Live Microphone Audio Relay (Single Focus Viewer hears active Bodycam/Drone mic) ---
+    function unlockViewerAudio() {
+        try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            if (!viewerAudioCtx) {
+                viewerAudioCtx = new AC();
+            }
+            if (viewerAudioCtx.state === 'suspended') {
+                viewerAudioCtx.resume().catch(() => {});
+            }
+        } catch (e) {}
+    }
+
+    function startBroadcastMicRelay(mediaStream, roleId) {
+        stopBroadcastMicRelay();
+        try {
+            if (!mediaStream || mediaStream.getAudioTracks().length === 0) return;
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            broadcastAudioCtx = new AC({ sampleRate: 16000 });
+            const source = broadcastAudioCtx.createMediaStreamSource(mediaStream);
+            const proc = broadcastAudioCtx.createScriptProcessor(4096, 1, 1);
+            const silentGain = broadcastAudioCtx.createGain();
+            silentGain.gain.value = 0;
+
+            proc.onaudioprocess = (ev) => {
+                if (!isBroadcasting || !isrCloudChannel) return;
+                const input = ev.inputBuffer.getChannelData(0);
+                const i16 = new Int16Array(input.length);
+                for (let i = 0; i < input.length; i++) {
+                    const s = Math.max(-1, Math.min(1, input[i]));
+                    i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                const bytes = new Uint8Array(i16.buffer);
+                let bin = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    bin += String.fromCharCode(bytes[i]);
+                }
+                isrCloudChannel.send({
+                    type: 'broadcast',
+                    event: 'isr_audio',
+                    payload: {
+                        feedId: roleId,
+                        sr: broadcastAudioCtx ? broadcastAudioCtx.sampleRate : 16000,
+                        pcm: btoa(bin)
+                    }
+                }).catch(() => {});
+            };
+
+            source.connect(proc);
+            proc.connect(silentGain);
+            silentGain.connect(broadcastAudioCtx.destination);
+            broadcastAudioProc = proc;
+        } catch (e) {
+            console.warn('[ISR] Mic audio relay unavailable:', e);
+        }
+    }
+
+    function stopBroadcastMicRelay() {
+        try {
+            if (broadcastAudioProc) {
+                broadcastAudioProc.disconnect();
+                broadcastAudioProc = null;
+            }
+            if (broadcastAudioCtx) {
+                broadcastAudioCtx.close().catch(() => {});
+                broadcastAudioCtx = null;
+            }
+        } catch (e) {}
+    }
+
+    function playRemoteIsrAudioChunk(payload) {
+        // Only play sound in Single Focus mode for the currently watched camera (and never echo own mic)
+        if (isMatrixGridMode) return;
+        if (currentActiveFeedId !== payload.feedId) return;
+        if (isBroadcasting && broadcastRoleId === payload.feedId) return;
+
+        try {
+            unlockViewerAudio();
+            if (!viewerAudioCtx || viewerAudioCtx.state !== 'running') return;
+            const bin = atob(payload.pcm);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const i16 = new Int16Array(bytes.buffer);
+            const f32 = new Float32Array(i16.length);
+            for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+
+            const buf = viewerAudioCtx.createBuffer(1, f32.length, payload.sr || 16000);
+            buf.getChannelData(0).set(f32);
+            const src = viewerAudioCtx.createBufferSource();
+            src.buffer = buf;
+            src.connect(viewerAudioCtx.destination);
+
+            const now = viewerAudioCtx.currentTime;
+            if (viewerAudioNextTime < now || viewerAudioNextTime > now + 0.35) {
+                viewerAudioNextTime = now + 0.03;
+            }
+            src.start(viewerAudioNextTime);
+            viewerAudioNextTime += buf.duration;
+        } catch (e) {}
     }
 
     // --- Custom External Stream Connector (HLS / MP4 / MJPEG / RTSP Bridge) ---
@@ -2453,13 +2639,17 @@ ${secureUrl}`);
             ctx.fillRect(0, y, w, 1);
         }
 
-        drawTacticalHud(ctx, w, h, {
+        const telemetry = {
             battery: hudBadge || 'EXT STREAM',
             heading: 'LIVE',
             speed: 'DRONE-1',
             role: 'AIR_DRONE',
             label: labelText || 'EXTERNAL STREAM'
-        }, true);
+        };
+        drawTacticalHud(ctx, w, h, telemetry, true);
+        if (isMirroredToMain) {
+            renderMainviewMirror(sourceEl, telemetry);
+        }
     }
 
     function startImageCanvasLoop(imgEl, labelText) {
