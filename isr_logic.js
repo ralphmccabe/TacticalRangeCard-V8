@@ -2693,7 +2693,13 @@ ${secureUrl}`);
         let playUrl = rawUrl;
         if (/^rtsp:\/\//i.test(rawUrl) && /Android/i.test(navigator.userAgent || '')) {
             showToast('📡 Launching native Android RTSP player...');
-            window.location.href = 'trc-rtsp://play?url=' + encodeURIComponent(rawUrl);
+            const intentUrl = 'intent://play?url=' + encodeURIComponent(rawUrl) + '#Intent;scheme=trc-rtsp;package=tacticleRangeCardv.io;end';
+            const link = document.createElement('a');
+            link.href = intentUrl;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => { try { link.remove(); } catch(e) {} }, 500);
             return;
         }
         if (/^rtsp:\/\//i.test(rawUrl) || /^rtmp:\/\//i.test(rawUrl)) {
